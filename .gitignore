@@ -1,9 +1,17 @@
 HELP.md
 ESTRUCTURA_PROYECTO.md
 dbfutbol.md
+PLAN_VIDEO_DATA_ANALYSIS.md
 .env
 .env.*
 !.env.example
+
+### Pruebas locales de YouTube ###
+/cronoshift.mp4
+/.local/youtube/
+__pycache__/
+*.py[cod]
+
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

@@ -3,6 +3,10 @@
 Backend de clubes de fútbol con Java 21, Spring Boot 4.1.1, Maven y PostgreSQL.
 El modelo relacional parte de [dbfutbol.md](dbfutbol.md).
 
+La integración de videos de partidos con YouTube y el microservicio de análisis está descrita en el [plan de implementación](PLAN_VIDEO_DATA_ANALYSIS.md).
+
+Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
+
 ## Organización
 
 ```text
