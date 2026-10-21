@@ -76,11 +76,13 @@ class AnalysisPostgresIntegrationTest {
         try {
             try (var context = start("create", remote.getAddress().getPort())) {
                 var jdbc = context.getBean(JdbcTemplate.class);
+                jdbc.execute("drop table player_match_metrics");
                 jdbc.execute("drop table analysis_jobs");
                 jdbc.execute("drop table videos_partido");
                 try (var connection = context.getBean(DataSource.class).getConnection()) {
                     ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("..", "database", "migrations", "001_videos_partido.sql")));
                     ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("..", "database", "migrations", "002_analysis_jobs.sql")));
+                    ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("..", "database", "migrations", "003_player_match_metrics.sql")));
                 }
             }
             try (var context = start("validate", remote.getAddress().getPort())) {

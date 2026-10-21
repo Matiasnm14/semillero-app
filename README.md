@@ -9,6 +9,8 @@ El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual
 
 La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
 
+Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerMatchMetrics`, su repositorio y validaciones de análisis, jugador y participación en el partido. La publicación y selección de la versión vigente se implementarán en las siguientes subtareas.
+
 Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
 
 La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) añade carga multipart de videos de partidos, validación con FFmpeg, almacenamiento del original, metadatos y publicación en YouTube en segundo plano. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`; la carga local también funciona con YouTube deshabilitado.
@@ -64,7 +66,7 @@ Variables:
 | `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. HU01 incluye un [SQL de migración](database/migrations/001_videos_partido.sql) de aplicación manual para `videos_partido`; HU02/HU03 agregan [002_analysis_jobs.sql](database/migrations/002_analysis_jobs.sql), necesario también para el índice único parcial que `dev` no crea automáticamente. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. Las migraciones se aplican manualmente y en orden: [001](database/migrations/001_videos_partido.sql) para videos de partidos, [002](database/migrations/002_analysis_jobs.sql) para trabajos de análisis y [003](database/migrations/003_player_match_metrics.sql) para métricas. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas: añaden el índice único parcial de análisis y la FK compuesta de métricas que Hibernate no genera. Consultar sus guías antes de aplicarlas una vez. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
 
 ## Rutas CRUD
 
