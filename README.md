@@ -5,6 +5,10 @@ El modelo relacional parte de [dbfutbol.md](dbfutbol.md).
 
 El [plan de implementación de HU01 y HU12–HU16](PLAN_VIDEO_DATA_ANALYSIS.md) organiza las seis historias y sus 28 subissues reales por entregas, dependencias, cambios por capa, pruebas y criterios de cierre. El orden de trabajo es HU01 → HU12 → HU13 → HU15 → HU14 → HU16, según sus prioridades P0/P1.
 
+El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual y define la solicitud de análisis en segundo plano, la prevención de duplicados y la consulta de estado, avance y finalización, con trazabilidad a sus seis subtareas del tablero.
+
+La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
+
 Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
 
 La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) añade carga multipart de videos de partidos, validación con FFmpeg, almacenamiento del original, metadatos y publicación en YouTube en segundo plano. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`; la carga local también funciona con YouTube deshabilitado.
@@ -60,7 +64,7 @@ Variables:
 | `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. HU01 incluye un [SQL de migración](database/migrations/001_videos_partido.sql) de aplicación manual para `videos_partido`; todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. HU01 incluye un [SQL de migración](database/migrations/001_videos_partido.sql) de aplicación manual para `videos_partido`; HU02/HU03 agregan [002_analysis_jobs.sql](database/migrations/002_analysis_jobs.sql), necesario también para el índice único parcial que `dev` no crea automáticamente. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
 
 ## Rutas CRUD
 

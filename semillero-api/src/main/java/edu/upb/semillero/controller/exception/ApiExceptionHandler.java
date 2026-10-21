@@ -1,6 +1,7 @@
 package edu.upb.semillero.controller.exception;
 
 import edu.upb.semillero.service.exception.BusinessException;
+import edu.upb.semillero.service.exception.AnalysisConflictException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
@@ -23,6 +24,14 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(AnalysisConflictException.class)
+    public ProblemDetail analysisConflict(AnalysisConflictException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problem.setProperty("analysisId", exception.getAnalysisId());
+        problem.setProperty("analysisUrl", "/api/v1/analisis/" + exception.getAnalysisId());
+        return problem;
+    }
+
     @ExceptionHandler({VideoTooLargeException.class, MaxUploadSizeExceededException.class})
     public ProblemDetail videoTooLarge(Exception exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE,
