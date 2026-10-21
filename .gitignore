@@ -2,6 +2,7 @@ HELP.md
 ESTRUCTURA_PROYECTO.md
 dbfutbol.md
 PLAN_VIDEO_DATA_ANALYSIS.md
+Análisis de Rendimiento para Fútbol - Product Backlog.tsv
 .env
 .env.*
 !.env.example
@@ -9,6 +10,8 @@ PLAN_VIDEO_DATA_ANALYSIS.md
 ### Pruebas locales de YouTube ###
 /cronoshift.mp4
 /.local/youtube/
+/.local/backlog/
+/.local/videos/
 __pycache__/
 *.py[cod]
 

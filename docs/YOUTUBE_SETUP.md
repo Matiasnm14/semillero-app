@@ -1,5 +1,7 @@
 # Configuración inicial de YouTube
 
+La carga desde el backend, la asociación con un partido y los reintentos de publicación están documentados en [HU01 — Carga de videos](HU01_CARGA_VIDEOS.md).
+
 Objetivo de la primera prueba: subir `cronoshift.mp4` al canal `@Semillero-Video-Analysis` con título `2026-10-21` y visibilidad **No listado** (`unlisted`). El canal y el cliente OAuth de escritorio ya están configurados; para ejecutar la subida se necesita la autorización interactiva de su propietario.
 
 **Prueba completada el 2026-10-21:** se verificó el canal autorizado, se subieron los 60.013.506 bytes y YouTube confirmó título, visibilidad `unlisted` y procesamiento terminado (`AVAILABLE`). El ID y enlace del video están en el recibo local `.local/youtube/cronoshift-upload-state.json`. La autorización también quedó guardada localmente para las siguientes pruebas.
@@ -23,7 +25,7 @@ Después de crear el canal:
 1. Crear un proyecto **Semillero** en [Google Cloud Console](https://console.cloud.google.com/).
 2. Habilitar **YouTube Data API v3** en ese proyecto.
 3. Configurar Google Auth Platform: nombre de aplicación, correo de contacto y audiencia. Para la prueba con una cuenta Gmail, usar audiencia externa en modo de prueba y agregar la cuenta propietaria como usuario de prueba.
-4. Crear un cliente OAuth de tipo **Aplicación de escritorio** para esta prueba local. Este cliente sirve para una autorización interactiva mediante retorno local; cuando se integre en el servidor se configurará el cliente web y su URI de retorno correspondientes.
+4. Crear un cliente OAuth de tipo **Aplicación de escritorio** para autorizar localmente al propietario mediante retorno por loopback. El worker de HU01 reutiliza esa autorización guardada y puede renovarla sin abrir consentimiento. Si después se incorpora una pantalla web para conectar cuentas, se configurará su cliente web y URI de retorno correspondientes.
 5. Guardar el JSON descargado localmente como `.local/youtube/client_secret.json`. La carpeta está ignorada por Git; no compartir el contenido del archivo en el chat ni incluirlo en el repositorio.
 
 La utilidad utiliza `https://www.googleapis.com/auth/youtube.upload` para subir y `https://www.googleapis.com/auth/youtube.readonly` para verificar el canal y consultar el procesamiento y la visibilidad. La autorización debe concederse desde la cuenta propietaria del canal. Usa el flujo de aplicación instalada de la biblioteca de Google, con retorno por loopback y PKCE, comprobación de `state` y tokens locales en `.local/youtube/`. [OAuth para aplicaciones instaladas](https://developers.google.com/identity/protocols/oauth2/native-app), [API de subida](https://developers.google.com/youtube/data/reference/rest/v3/videos/insert).

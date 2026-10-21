@@ -3,6 +3,8 @@ package edu.upb.semillero.controller.exception;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
+import edu.upb.semillero.service.exception.StorageUnavailableException;
+import edu.upb.semillero.service.exception.VideoTooLargeException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Map;
 import java.util.TreeMap;
@@ -16,9 +18,27 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler({VideoTooLargeException.class, MaxUploadSizeExceededException.class})
+    public ProblemDetail videoTooLarge(Exception exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE,
+                "El video supera el tamaño máximo permitido");
+    }
+
+    @ExceptionHandler(StorageUnavailableException.class)
+    public ProblemDetail videoUnavailable(StorageUnavailableException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ProblemDetail missingFile(MissingServletRequestPartException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Falta el archivo en el campo multipart 'file'");
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail notFound(NotFoundException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());

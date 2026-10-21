@@ -63,6 +63,20 @@ class YouTubeUploadTest(unittest.TestCase):
         self.assertEqual(calls[2].kwargs["headers"]["Content-Range"], "bytes 4-7/8")
         self.assertEqual(calls[2].kwargs["data"], b"5678")
 
+    def test_backend_uses_sports_category_and_match_date(self):
+        self.session.put.return_value = response(201, {"id": "videoABC123"})
+        upload.upload_file(self.session, self.file, "2026-05-02", "channel-id", self.record, "17")
+        snippet = self.session.post.call_args.kwargs["json"]["snippet"]
+        self.assertEqual(snippet, {"title": "2026-05-02", "categoryId": "17"})
+
+    def test_non_interactive_worker_never_starts_oauth_consent(self):
+        client = self.folder / "client.json"
+        upload.save_json(client, {"installed": {"client_id": "test"}})
+        with patch.object(upload.InstalledAppFlow, "from_client_secrets_file") as flow:
+            with self.assertRaises(upload.UploadError):
+                upload.authorize(client, self.folder / "missing-tokens.json", 8765, interactive=False)
+            flow.assert_not_called()
+
     def test_lost_final_response_recovers_existing_id_without_uploading_again(self):
         self.saved_session()
         self.session.put.return_value = response(200, {"id": "videoABC123"})

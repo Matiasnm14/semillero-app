@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prueba local de YouTube; credenciales, sesiones y recibos quedan fuera de Git."""
+"""Subida reanudable de YouTube para el piloto y el worker; secretos y recibos fuera de Git."""
 
 import argparse
 from contextlib import contextmanager
@@ -54,7 +54,7 @@ def load_json(path):
     return json.loads(Path(path).read_text())
 
 
-def authorize(client_file, token_file, port, force=False):
+def authorize(client_file, token_file, port, force=False, interactive=True):
     config = load_json(client_file)
     if "installed" not in config:
         raise UploadError("Esta utilidad necesita un cliente OAuth de aplicación de escritorio")
@@ -68,6 +68,8 @@ def authorize(client_file, token_file, port, force=False):
     if credentials and not credentials.valid and credentials.refresh_token:
         credentials.refresh(Request())
     if credentials is None or not credentials.valid:
+        if not interactive:
+            raise UploadError("La autorización necesita intervención del propietario; ejecuta authorize --reauthorize")
         flow = InstalledAppFlow.from_client_secrets_file(
             str(client_file), SCOPES, autogenerate_code_verifier=True)
         credentials = flow.run_local_server(
@@ -138,7 +140,7 @@ def exclusive_upload(record):
         yield
 
 
-def upload_file(session, file, title, channel_id, record):
+def upload_file(session, file, title, channel_id, record, category_id="22"):
     file, record = Path(file), Path(record)
     size = file.stat().st_size
     if size <= 0:
@@ -156,7 +158,7 @@ def upload_file(session, file, title, channel_id, record):
         response = session.post(
             UPLOAD, params={"uploadType": "resumable", "part": "snippet,status",
                             "notifySubscribers": "false"},
-            json={"snippet": {"title": title, "categoryId": "22"},
+            json={"snippet": {"title": title, "categoryId": category_id},
                   "status": {"privacyStatus": "unlisted"}},
             headers={"X-Upload-Content-Length": str(size), "X-Upload-Content-Type": "video/mp4"},
             timeout=30)
@@ -282,11 +284,19 @@ def main():
     parser.add_argument("--record", type=Path, default=LOCAL / "cronoshift-upload-state.json")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--reauthorize", action="store_true")
+    parser.add_argument("--non-interactive", action="store_true",
+                        help="No iniciar consentimiento OAuth desde un worker del servidor")
+    parser.add_argument("--wait-seconds", type=int, default=60)
+    parser.add_argument("--category", choices=("17", "22"), default="22",
+                        help="17: deportes; 22: categoría del piloto")
     args = parser.parse_args()
+    if args.wait_seconds < 0:
+        parser.error("--wait-seconds no puede ser negativo")
     try:
         if args.command == "upload" and not args.file.is_file():
             raise UploadError("No se encontró el archivo de video")
-        credentials = authorize(args.client, args.tokens, args.port, args.reauthorize)
+        credentials = authorize(args.client, args.tokens, args.port, args.reauthorize,
+                                interactive=not args.non_interactive)
         with AuthorizedSession(credentials) as session:
             channel = verify_channel(session, args.channel)
             save_json(LOCAL / "channel.json", channel)
@@ -294,12 +304,12 @@ def main():
                 print("Autorización guardada. Ya puedes ejecutar upload.", flush=True)
             elif args.command == "upload":
                 with exclusive_upload(args.record):
-                    upload_file(session, args.file, args.title, channel["id"], args.record)
-                    verify_video(session, args.record)
+                    upload_file(session, args.file, args.title, channel["id"], args.record, args.category)
+                    verify_video(session, args.record, wait_seconds=args.wait_seconds)
             else:
                 if load_json(args.record).get("channelId") != channel["id"]:
                     raise UploadError("El registro no corresponde al canal autorizado")
-                verify_video(session, args.record)
+                verify_video(session, args.record, wait_seconds=args.wait_seconds)
         save_json(args.tokens, json.loads(credentials.to_json()))
         return 0
     except UploadError as error:
