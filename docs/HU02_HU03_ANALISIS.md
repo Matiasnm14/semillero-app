@@ -8,6 +8,8 @@ Corresponde a [HU02](https://github.com/s-villanueva/video-data-analysis/issues/
 
 ## Preparar la base
 
+Las instalaciones nuevas con Docker Compose ya reciben 000–003 mediante [init.sql](../database/init.sql). Aplicar las instrucciones manuales siguientes solo a una base existente que aún necesite 002; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+
 Se requiere el esquema existente de Semillero con [HU01](HU01_CARGA_VIDEOS.md). Aplicar una sola vez [002_analysis_jobs.sql](../database/migrations/002_analysis_jobs.sql), antes de arrancar con `ddl-auto=validate`.
 
 En Bash, con las variables de `.env` exportadas:

@@ -22,6 +22,8 @@ El backend invoca el uploader Python mediante una lista de argumentos, sin shell
 
 ## Esquema existente
 
+Las instalaciones nuevas con el Compose actual ya cargan 000–003 mediante [init.sql](../database/init.sql). Las instrucciones manuales siguientes son para bases existentes que todavía necesiten el cambio; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+
 Se añade `videos_partido`, con una FK a `partidos`. El CRUD `/api/v1/videos` conserva su modelo de enlaces de videos de jugadores.
 
 En desarrollo, el perfil `dev` puede crear la tabla mediante `ddl-auto=update`. Para una base existente que arranque con `ddl-auto=validate`, aplicar **una sola vez**, antes del arranque, [001_videos_partido.sql](../database/migrations/001_videos_partido.sql). No ejecutar ese SQL después de que `dev` ya haya creado la tabla.

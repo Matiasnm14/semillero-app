@@ -79,6 +79,8 @@ La correspondencia entre el partido y el video del análisis, y la pertenencia d
 
 ## Aplicación de la migración
 
+En instalaciones nuevas, Docker Compose aplica 000–003 automáticamente mediante [init.sql](../database/init.sql). El procedimiento manual siguiente es para bases existentes que aún no tengan 003; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+
 Con los catálogos base y las migraciones 001/002 aplicadas, ejecutar **una vez** la [migración 003](../database/migrations/003_player_match_metrics.sql), antes de arrancar con `ddl-auto=validate`.
 
 Desde la raíz, con `.env` exportado:
