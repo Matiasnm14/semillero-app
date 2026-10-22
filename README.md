@@ -35,6 +35,8 @@ Por ejemplo, para cambiar el CRUD de jugadores:
 
 ## Arranque local
 
+La [guía de PostgreSQL con Docker](docs/BASE_DATOS_DOCKER.md) explica la creación completa del esquema, los datos de ejemplo y la actualización de bases existentes. En un volumen nuevo, `docker compose up -d --wait db` ejecuta automáticamente [database/init.sql](database/init.sql) y crea las 20 tablas.
+
 Requisitos: JDK 21, Docker con Compose, FFmpeg (`ffmpeg` y `ffprobe`) y acceso a Maven Central en la primera compilación. La publicación en YouTube requiere además Python 3 y las dependencias de `scripts/youtube-requirements.txt`. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
 
 Desde la raíz, en Bash:
@@ -62,11 +64,11 @@ Variables:
 | `DB_NAME` | Nombre de la base de Compose, `semillero`. |
 | `DB_PORT_EXTERNAL` | Puerto local de Compose, `5432`. |
 | `DB_URL` | URL JDBC, `jdbc:postgresql://localhost:5432/semillero`. Adaptar si cambia el nombre o puerto de la base. |
-| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo para crear/actualizar tablas. |
-| `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
+| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo; también respeta `DB_DDL_AUTO`. |
+| `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. Las migraciones se aplican manualmente y en orden: [001](database/migrations/001_videos_partido.sql) para videos de partidos, [002](database/migrations/002_analysis_jobs.sql) para trabajos de análisis y [003](database/migrations/003_player_match_metrics.sql) para métricas. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas: añaden el índice único parcial de análisis y la FK compuesta de métricas que Hibernate no genera. Consultar sus guías antes de aplicarlas una vez. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+El esquema inicial usa [000_base.sql](database/migrations/000_base.sql), seguido de las migraciones 001–003. Docker solo lo aplica automáticamente al inicializar un volumen vacío; en una base existente se aplican manualmente las migraciones pendientes. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas, según sus guías, para completar el índice único parcial y la FK compuesta. La configuración recomendada es `DB_DDL_AUTO=validate`; `dev` conserva `update` como alternativa si no se define esa variable. `docker compose down` detiene la base y conserva los datos.
 
 ## Rutas CRUD
 

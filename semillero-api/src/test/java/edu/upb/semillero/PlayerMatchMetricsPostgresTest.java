@@ -29,10 +29,10 @@ class PlayerMatchMetricsPostgresTest {
             migrate(context, "003_player_match_metrics.sql");
             assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
                     .isEqualTo(1);
-            // Exercise the complete SQL chain against existing catalog tables, without JPA creating these tables.
-            jdbc.execute("drop table player_match_metrics");
-            jdbc.execute("drop table analysis_jobs");
-            jdbc.execute("drop table videos_partido");
+            // Recreate only this disposable test schema; the complete SQL must work without Hibernate creating tables.
+            jdbc.execute("drop schema public cascade");
+            jdbc.execute("create schema public");
+            migrate(context, "000_base.sql");
             migrate(context, "001_videos_partido.sql");
             migrate(context, "002_analysis_jobs.sql");
             migrate(context, "003_player_match_metrics.sql");
