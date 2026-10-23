@@ -41,7 +41,11 @@ class EsquemaTorneosTest {
                 "CHK_EVENTO_MINUTO", "CHK_EVENTO_GOL_EXIGE_TIPO", "CHK_EVENTO_NO_GOL_SIN_TIPO",
                 "CHK_EVENTO_CAMBIO_EXIGE_REL", "CHK_EVENTO_PARTICIPACIONES_DISTINTAS",
                 "CHK_SANCION_FECHAS_SUSPENSION", "CHK_SANCION_FECHAS_CUMPLIDAS",
-                "CHK_SANCION_MANUAL_MOTIVO");
+                "CHK_SANCION_MANUAL_MOTIVO",
+                "CHK_PARTIDO_TORNEO_FASE", "CHK_WALKOVER_CLUB", "CHK_PARTIDO_FECHAS",
+                "CHK_PARTIDO_GOLES_LOCAL", "CHK_PARTIDO_GOLES_VISITANTE",
+                "CHK_PARTIDO_PENALES_LOCAL", "CHK_PARTIDO_PENALES_VISITANTE",
+                "CHK_PARTICIPACION_MINUTOS");
     }
 
     @Test
@@ -54,12 +58,32 @@ class EsquemaTorneosTest {
                 "UK_PLANILLA_PARTIDO");
     }
 
+    /** Tarea S1-06: las columnas que torneos agrega a las tablas acordadas. */
     @Test
-    void tablasAcordadasSiguenSinLasColumnasPendientes() {
-        assertThat(columnas("PARTIDOS")).containsExactlyInAnyOrder(
-                "ID", "FECHA_INICIO", "FECHA_FIN", "CLUB_LOCAL_ID", "CLUB_VISITANTE_ID", "ESTADO");
-        assertThat(columnas("PARTICIPACIONES_PARTIDO")).doesNotContain("CAPITAN", "MINUTOS_JUGADOS");
-        assertThat(columnas("JUGADORES")).doesNotContain("ESTADO");
+    void lasColumnasDeTorneosLlegaronALasTablasAcordadas() {
+        assertThat(columnas("PARTIDOS")).contains(
+                "TORNEO_CATEGORIAS_ID", "GRUPOS_ID", "FASE", "JORNADA", "CANCHAS_ID", "ARBITRO",
+                "MESA_CONTROL_ID", "GOLES_LOCAL", "GOLES_VISITANTE", "PENALES_LOCAL",
+                "PENALES_VISITANTE", "GANADOR_WALKOVER_ID", "PARTIDO_SIGUIENTE_ID",
+                "FECHA_CIERRE", "CERRADO_POR");
+        assertThat(columnas("PARTICIPACIONES_PARTIDO")).contains("CAPITAN", "MINUTOS_JUGADOS");
+        assertThat(columnas("JUGADORES")).contains("ESTADO");
+    }
+
+    /**
+     * Las columnas nuevas no pueden romper el CRUD que ya existía: o aceptan
+     * NULL, o son NOT NULL con valor por defecto.
+     */
+    @Test
+    void lasColumnasNuevasNoRompenElCrudExistente() {
+        assertThat(nullables("PARTIDOS")).contains(
+                "TORNEO_CATEGORIAS_ID", "GRUPOS_ID", "FASE", "JORNADA", "CANCHAS_ID", "ARBITRO",
+                "MESA_CONTROL_ID", "GOLES_LOCAL", "GOLES_VISITANTE", "PENALES_LOCAL",
+                "PENALES_VISITANTE", "GANADOR_WALKOVER_ID", "PARTIDO_SIGUIENTE_ID",
+                "FECHA_CIERRE", "CERRADO_POR");
+        assertThat(nullables("PARTICIPACIONES_PARTIDO")).contains("MINUTOS_JUGADOS");
+        assertThat(nullables("PARTICIPACIONES_PARTIDO")).doesNotContain("CAPITAN");
+        assertThat(nullables("JUGADORES")).doesNotContain("ESTADO");
     }
 
     private List<String> constraints(String tipo) {
@@ -73,6 +97,13 @@ class EsquemaTorneosTest {
         return jdbc.queryForList("""
                 select column_name from information_schema.columns
                 where table_schema = 'PUBLIC' and table_name = ?
+                """, String.class, tabla);
+    }
+
+    private List<String> nullables(String tabla) {
+        return jdbc.queryForList("""
+                select column_name from information_schema.columns
+                where table_schema = 'PUBLIC' and table_name = ? and is_nullable = 'YES'
                 """, String.class, tabla);
     }
 

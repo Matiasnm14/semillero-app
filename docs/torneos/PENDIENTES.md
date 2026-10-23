@@ -3,8 +3,13 @@
 Grupo 4 (Torneos). Actualizado: 21/10/2026.
 
 El módulo de Torneos ya tiene sus 16 tablas propias como entidades JPA (tareas S1-05 y S1-06).
-Lo que falta son los cambios en **archivos compartidos**, que no se tocan sin que el grupo dueño
-esté de acuerdo. La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
+La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
+
+> **Estado al 23/10/2026.** Las columnas de las secciones 1, 2 y 3 **ya están escritas** en la rama
+> `torneos`, con 112 pruebas en verde y sin romper ninguna de las 23 del CRUD que ya existía. Pero se
+> escribieron **antes** de la reunión de la tarea S1-04, así que siguen pendientes de que los grupos
+> dueños de `partidos`, `participaciones_partido` y `jugadores` las acepten. Si alguna no se acepta,
+> se saca de la entidad y de `EsquemaTorneosTest`.
 
 ---
 
@@ -67,6 +72,22 @@ Torneos sólo la **lee**, para validar la lista de buena fe (HU 5).
 
 ---
 
+## 3.b Dos cosas que quedaron abiertas al escribir las columnas
+
+**Las columnas nuevas no se exponen en la API.** `PartidoRequestDto`, `PartidoResponseDto`,
+`ParticipacionPartidoRequestDto`, `ParticipacionPartidoResponseDto` y los DTO de `Jugador` siguen
+igual: las columnas existen en la base pero no entran ni salen por `/api/v1/partidos`,
+`/api/v1/participaciones-partido` ni `/api/v1/jugadores`. Exponerlas obliga a cambiar esos DTO y sus
+servicios, que son de otros grupos. Torneos las va a escribir por sus propios endpoints (HU 7, 9 y
+10), así que no es urgente, pero hay que decidirlo.
+
+**`chk_partido_fechas` es más estricto que `PartidoService`.** La restricción del script dice
+`fecha_fin IS NULL OR fecha_fin > fecha_inicio`, mientras que `PartidoService.validate` solo rechaza
+`fechaFin.isBefore(fechaInicio)`. Con `fechaFin` igual a `fechaInicio`, el servicio deja pasar y la
+base rechaza: el cliente recibe un 409 genérico en vez de un 400 con el motivo. Hay dos salidas, y
+las dos son del grupo dueño de `partidos`: agregar `|| isEqual` en el servicio, o sacar esa
+restricción. Como `PartidoService.java` no es de torneos, quedó sin tocar.
+
 ## 4. Tablas compartidas nuevas: falta definir quién las crea
 
 No están en la BD acordada entre grupos y las necesita torneos junto con al menos otro módulo.
@@ -114,9 +135,9 @@ INSERT INTO roles (codigo, nombre) VALUES
 
 | Pendiente | Tareas que espera |
 | --- | --- |
-| Columnas de `partidos` | **S1-18** (no borrar cancha con partidos), S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
-| Columnas de `participaciones_partido` | S3-02 (titulares y capitán), S3-08 (minutos jugados) |
-| `jugadores.estado` | S2-07 (elegibilidad) |
+| Que acepten las columnas de `partidos` | **S1-18** (no borrar cancha con partidos), S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
+| Que acepten las de `participaciones_partido` | S3-02 (titulares y capitán), S3-08 (minutos jugados) |
+| Que acepten `jugadores.estado` | S2-07 (elegibilidad) |
 | `documentos_jugador` | S2-07 |
 | `roles` y `usuarios_roles` | S2-01 a S2-04 |
 | `auditoria` | **S1-14** (historial del reglamento), S2-12, S3-10, S2-04 |
