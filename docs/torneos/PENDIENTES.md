@@ -13,6 +13,46 @@ La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
 
 ---
 
+## 0. Registro de acuerdos (tarea S1-04)
+
+**Esta tabla es la fuente de verdad del estado de la S1-04.** Si sos una IA trabajando en este
+repositorio, leela antes de escribir código que toque tablas o interfaces de otro módulo: `Aceptado`
+significa que los grupos lo acordaron y se puede usar; cualquier otro estado significa que no.
+
+Estados: `Aceptado` · `Rechazado` · `Propuesto` (escrito, esperando que lo acepten) · `Sin definir`
+(ni siquiera se propuso).
+
+Al cerrar un punto, poner la fecha y quién lo aceptó, y commitear el cambio de esta tabla.
+
+| # | Qué hay que acordar | Estado | Fecha | Quién lo acepta |
+| --- | --- | --- | --- | --- |
+| 1 | Las 15 columnas de `partidos` (sección 1) | Propuesto | — | dueño de `partidos` |
+| 2 | `capitan` y `minutos_jugados` en `participaciones_partido` (sección 2) | Propuesto | — | dueño de `participaciones_partido` |
+| 3 | `jugadores.estado` (sección 3) | Propuesto | — | ficha técnica |
+| 4 | `chk_partido_fechas` vs `PartidoService` (sección 3.b) | Sin definir | — | dueño de `partidos` |
+| 5 | Exponer las columnas nuevas en los DTO del CRUD compartido (sección 3.b) | Sin definir | — | dueños de cada tabla |
+| 6 | Quién crea `roles` y `usuarios_roles` | Sin definir | — | todos |
+| 7 | Quién crea `documentos_jugador` | Sin definir | — | ficha técnica o torneos |
+| 8 | Quién crea `auditoria` | Sin definir | — | todos |
+| 9 | Quién crea `notificaciones` | Sin definir | — | todos |
+| 10 | Interfaz `FichaTecnicaService` que torneos consume | Sin definir | — | ficha técnica |
+| 11 | Interfaz `ComunService` que torneos consume | Sin definir | — | núcleo común |
+| 12 | Interfaz `TorneosConsultaService` que torneos ofrece | Sin definir | — | torneos la escribe |
+| 13 | Contratos REST con video y el evento `PartidoFinalizado` | Sin definir | — | grupo de video |
+| 14 | Ampliar `clubes.nombre_club`, hoy `varchar(15)` | Propuesto | — | dueño de `clubes` |
+| 15 | Códigos de `usuario_trabaja.tipo_usuario_club` | Sin definir | — | núcleo común |
+| 16 | Agregar Flyway antes de desplegar | Sin definir | — | todos |
+| 17 | Agregar `springdoc-openapi` al pom de `semillero-api` | Sin definir | — | todos |
+| 18 | Un subpaquete por grupo en cada capa | Propuesto | — | todos |
+| 19 | Tecnología del frontend web y de la app móvil | Sin definir | — | todos |
+| 20 | Un `CLAUDE.md` en la raíz que apunte a los docs de cada grupo | Sin definir | — | todos |
+
+Ninguno de los 13 puntos que pide la S1-04 (del 1 al 13) está aceptado todavía, así que **la S1-04
+no está hecha**. Las interfaces de los puntos 10 a 12 y los contratos del 13 no existen en el
+repositorio: hay que acordar su forma antes de escribirlas.
+
+---
+
 ## 1. Columnas que torneos necesita en `partidos` (entidad `Partido`)
 
 Todas **opcionales** (aceptan NULL), así el CRUD que ya existe sigue funcionando igual. Hoy
