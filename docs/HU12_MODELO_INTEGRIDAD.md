@@ -79,7 +79,7 @@ La correspondencia entre el partido y el video del análisis, y la pertenencia d
 
 ## Aplicación de la migración
 
-En instalaciones nuevas, Docker Compose aplica 000–003 automáticamente mediante [init.sql](../database/init.sql). El procedimiento manual siguiente es para bases existentes que aún no tengan 003; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+En instalaciones nuevas, Docker Compose aplica 000–004 automáticamente mediante [init.sql](../database/init.sql). El procedimiento manual siguiente es para bases existentes que aún no tengan 003; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
 
 Con los catálogos base y las migraciones 001/002 aplicadas, ejecutar **una vez** la [migración 003](../database/migrations/003_player_match_metrics.sql), antes de arrancar con `ddl-auto=validate`.
 
@@ -115,7 +115,7 @@ Comprueba la migración sobre tabla creada por `dev`, la cadena SQL 001–003 de
 ## Pendientes para el equipo
 
 - Confirmar unidades, precisión e interpretación de `period_start`/`period_end` en el contrato de resultados.
-- Acordar entrega o recuperación de resultados: el gateway actual solo trae estado y `resultadoRef`.
-- Resolver el caso `COMPLETADO` con resultados que se publican después; el worker de HU02/HU03 deja de consultar estados terminales.
+- El gateway adaptado recibe el JSON final mediante Future y lo conserva en `AnalysisJob.respuestaJson`; acordar su estructura antes de convertirlo en métricas definitivas.
+- Resolver dorsales repetidos entre equipos y asociar cada resultado con la participación real. El JSON recibido aún no equivale a métricas publicadas.
 - Definir ámbito y asignación de la versión vigente; implementar publicación transaccional e idempotente con SB-051/SB-053.
 - Completar SB-054 cuando exista ese flujo para probar la publicación completa y el cambio atómico de versión.

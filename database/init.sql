@@ -16,5 +16,6 @@ $$;
 \ir migrations/001_videos_partido.sql
 \ir migrations/002_analysis_jobs.sql
 \ir migrations/003_player_match_metrics.sql
+\ir migrations/004_analysis_future_response.sql
 
-\echo 'Semillero: esquema completo inicializado (000-003).'
+\echo 'Semillero: esquema completo inicializado (000-004).'

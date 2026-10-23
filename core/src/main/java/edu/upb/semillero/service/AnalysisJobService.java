@@ -88,6 +88,6 @@ public class AnalysisJobService {
         return new AnalysisJobResponseDto(job.getId(), job.getVideo().getPartido().getId(), job.getVideo().getId(),
                 job.getEstado(), job.getPorcentaje(), job.getFotogramasProcesados(), job.getFotogramasTotales(),
                 job.getFechaSolicitud(), job.getFechaInicio(), job.getFechaFin(), job.getFechaActualizacion(),
-                job.isResultadosDisponibles(), job.getCodigoError(), job.getMensajeError());
+                job.isResultadosDisponibles(), job.getRespuestaJson() != null, job.getCodigoError(), job.getMensajeError());
     }
 }

@@ -22,7 +22,7 @@ El backend invoca el uploader Python mediante una lista de argumentos, sin shell
 
 ## Esquema existente
 
-Las instalaciones nuevas con el Compose actual ya cargan 000–003 mediante [init.sql](../database/init.sql). Las instrucciones manuales siguientes son para bases existentes que todavía necesiten el cambio; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+Las instalaciones nuevas con el Compose actual ya cargan 000–004 mediante [init.sql](../database/init.sql). Las instrucciones manuales siguientes son para bases existentes que todavía necesiten el cambio; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
 
 Se añade `videos_partido`, con una FK a `partidos`. El CRUD `/api/v1/videos` conserva su modelo de enlaces de videos de jugadores.
 

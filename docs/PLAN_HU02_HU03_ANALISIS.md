@@ -1,5 +1,7 @@
 # Plan de implementación de HU02 y HU03
 
+**Documento histórico:** el protocolo de snapshots PUT/GET descrito aquí fue sustituido el 2026-10-23 por una evaluación HTTP con `CompletableFuture` y JSON final. El contrato vigente está en [HU02_HU03_ANALISIS.md](HU02_HU03_ANALISIS.md).
+
 Fecha de revisión: 2026-10-21, zona America/La_Paz.
 
 Este documento registra el diseño previo a la implementación. El backend desarrollado y el contrato para el futuro servicio Python están descritos en [HU02_HU03_ANALISIS.md](HU02_HU03_ANALISIS.md). La rama de trabajo es `Avance-HU02-y-HU03`, derivada de `video-data-analysis` en `536ef66e38929a0465f9ff5dc07efd42da9a3b0f` (`HU01 implementado`). La referencia remota de la rama de origen coincidía con ese commit al revisar el proyecto.

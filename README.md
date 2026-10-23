@@ -5,9 +5,9 @@ El modelo relacional parte de [dbfutbol.md](dbfutbol.md).
 
 El [plan de implementación de HU01 y HU12–HU16](PLAN_VIDEO_DATA_ANALYSIS.md) organiza las seis historias y sus 28 subissues reales por entregas, dependencias, cambios por capa, pruebas y criterios de cierre. El orden de trabajo es HU01 → HU12 → HU13 → HU15 → HU14 → HU16, según sus prioridades P0/P1.
 
-El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual y define la solicitud de análisis en segundo plano, la prevención de duplicados y la consulta de estado, avance y finalización, con trazabilidad a sus seis subtareas del tablero.
+El [plan inicial de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) conserva el diseño histórico. El contrato vigente usa una evaluación de Python con `CompletableFuture` y respuesta JSON final.
 
-La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
+La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) registra trabajos, responde `202` al frontend y envía el video a Python por multipart. El worker espera un `Future`, conserva el JSON final y administra los estados en Spring. La publicación de métricas por jugador está pendiente del contrato y la identificación por dorsal/equipo; la integración viene deshabilitada.
 
 Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerMatchMetrics`, su repositorio y validaciones de análisis, jugador y participación en el partido. La publicación y selección de la versión vigente se implementarán en las siguientes subtareas.
 
@@ -68,7 +68,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El esquema inicial usa [000_base.sql](database/migrations/000_base.sql), seguido de las migraciones 001–003. Docker solo lo aplica automáticamente al inicializar un volumen vacío; en una base existente se aplican manualmente las migraciones pendientes. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas, según sus guías, para completar el índice único parcial y la FK compuesta. La configuración recomendada es `DB_DDL_AUTO=validate`; `dev` conserva `update` como alternativa si no se define esa variable. `docker compose down` detiene la base y conserva los datos.
+El esquema inicial usa [000_base.sql](database/migrations/000_base.sql), seguido de las migraciones 001–004. Docker solo lo aplica automáticamente al inicializar un volumen vacío; en una base existente se aplican manualmente las migraciones pendientes. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas, según sus guías, para completar el índice único parcial y la FK compuesta. La [004](database/migrations/004_analysis_future_response.sql) agrega la respuesta JSON final del análisis y su restricción; también se aplica una sola vez sobre bases existentes. La configuración recomendada es `DB_DDL_AUTO=validate`; `dev` conserva `update` como alternativa si no se define esa variable. `docker compose down` detiene la base y conserva los datos.
 
 ## Rutas CRUD
 

@@ -23,6 +23,7 @@ Docker crea la base y el usuario de `.env`, y ejecuta automáticamente [database
 | [001_videos_partido.sql](../database/migrations/001_videos_partido.sql) | Video original del partido y metadatos de YouTube |
 | [002_analysis_jobs.sql](../database/migrations/002_analysis_jobs.sql) | Trabajos de análisis, estados e índice único de trabajos activos |
 | [003_player_match_metrics.sql](../database/migrations/003_player_match_metrics.sql) | Métricas, referencias y FK compuesta a participaciones |
+| [004_analysis_future_response.sql](../database/migrations/004_analysis_future_response.sql) | JSON final recibido por el worker de Future y validación de su estructura |
 
 El resultado son **20 tablas**, con claves foráneas, restricciones e índices. Los archivos se montan de solo lectura en `/docker-entrypoint-initdb.d`; las carpetas `migrations` y `seeds` no se ejecutan por separado. `init.sql` incluye las migraciones mediante `\ir`, resolviendo rutas relativas al propio archivo. [Referencia de psql](https://www.postgresql.org/docs/17/app-psql.html).
 
@@ -127,6 +128,7 @@ WHERE schemaname = 'public' AND indexname = 'uk_analysis_active_video';
 - Aplicar 001 si falta `videos_partido`; su SQL requiere que esa tabla no exista.
 - Para 002, revisar su [guía](HU02_HU03_ANALISIS.md): una tabla creada por `dev` también necesita sus restricciones e índice parcial.
 - Para 003, revisar la [guía de métricas](HU12_MODELO_INTEGRIDAD.md): una tabla creada por `dev` también necesita la FK `fk_pmm_participation`.
+- Para 004, revisar la [adaptación de HU02/HU03](HU02_HU03_ANALISIS.md): agrega `respuesta_json` y la restricción `chk_analysis_response`, incluso si `dev` ya creó la columna.
 
 Cada migración usa una transacción y se aplica una sola vez. No hay todavía un ejecutor automático ni una tabla de historial; la existencia de una tabla por sí sola no acredita que sus restricciones estén completas. Conservar registro de las migraciones aplicadas al entorno compartido y actualizarlo con cada entrega del equipo.
 

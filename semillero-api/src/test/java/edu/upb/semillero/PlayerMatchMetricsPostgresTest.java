@@ -27,6 +27,7 @@ class PlayerMatchMetricsPostgresTest {
             var jdbc = context.getBean(JdbcTemplate.class);
             // Dev already created the model: the migration must still add the composite FK.
             migrate(context, "003_player_match_metrics.sql");
+            migrate(context, "004_analysis_future_response.sql");
             assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
                     .isEqualTo(1);
             // Recreate only this disposable test schema; the complete SQL must work without Hibernate creating tables.
@@ -36,6 +37,7 @@ class PlayerMatchMetricsPostgresTest {
             migrate(context, "001_videos_partido.sql");
             migrate(context, "002_analysis_jobs.sql");
             migrate(context, "003_player_match_metrics.sql");
+            migrate(context, "004_analysis_future_response.sql");
         }
         long metricId;
         Instant createdAt;
