@@ -114,13 +114,29 @@ INSERT INTO roles (codigo, nombre) VALUES
 
 | Pendiente | Tareas que espera |
 | --- | --- |
-| Columnas de `partidos` | S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
+| Columnas de `partidos` | **S1-18** (no borrar cancha con partidos), S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
 | Columnas de `participaciones_partido` | S3-02 (titulares y capitán), S3-08 (minutos jugados) |
 | `jugadores.estado` | S2-07 (elegibilidad) |
 | `documentos_jugador` | S2-07 |
 | `roles` y `usuarios_roles` | S2-01 a S2-04 |
-| `auditoria` | S1-14, S2-12, S3-10, S2-04 |
+| `auditoria` | **S1-14** (historial del reglamento), S2-12, S3-10, S2-04 |
 | `notificaciones` | S3-19, S4-16 |
 
-Mientras tanto, lo que ya no depende de nadie: las 16 tablas propias, la HU 1 (crear torneo y
-categorías), la HU 2 (reglamento) y la HU 3 (sedes y canchas).
+## 7. Tareas del sprint 1 que siguen bloqueadas
+
+Las demás del sprint 1 ya están hechas (ver más abajo). Estas cuatro no se pueden cerrar sin una
+decisión del grupo:
+
+| ID | Tarea | Qué la bloquea |
+| --- | --- | --- |
+| S1-02 | Docker, perfiles y Swagger | Agregar `springdoc-openapi` toca `semillero-api/pom.xml` y `application.properties`, los dos compartidos. Sin esto, ningún endpoint cumple el punto "documentado en Swagger" de la definición de terminado. |
+| S1-04 | Acordar interfaces Java y contratos REST | Es un acuerdo entre grupos, no código. Hay que presentar las secciones 1 a 3 de este documento. |
+| S1-07 | Datos de prueba | Falta decidir el mecanismo: no hay Flyway, y un `data.sql` iría en `semillero-api/src/main/resources`, compartido. Lo único sembrado hoy son los 5 criterios de desempate, desde `CriteriosDesempateSeeder` (dentro del subpaquete `torneos`). |
+| S1-14 | Historial de cambios del reglamento | Necesita la tabla `auditoria`, sin dueño. |
+| S1-18 | No eliminar canchas con partidos programados | Necesita `partidos.canchas_id`. Hoy `CanchaService.delete` solo puede comprobar contra `reprogramaciones`, que no es la regla completa de la HU 3. |
+
+### Lo que ya no depende de nadie
+
+Las 16 tablas propias, la HU 1 (crear torneo y categorías, S1-08 a S1-10), la HU 2 (reglamento y
+orden de desempates, S1-12 y S1-13), la HU 3 (sedes y canchas, S1-16 y S1-17) y la HU 4
+(inscripción de equipo con duplicado y cupo, S1-20 y S1-21).

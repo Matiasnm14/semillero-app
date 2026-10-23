@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReprogramacionRepository extends JpaRepository<Reprogramacion, Long> {
     List<Reprogramacion> findByPartidoIdOrderByFechaAsc(Long partidoId);
+
+    boolean existsByCanchaAnteriorIdOrCanchaNuevaId(Long canchaAnteriorId, Long canchaNuevaId);
 }

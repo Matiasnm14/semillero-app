@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReglamentoDesempateRepository extends JpaRepository<ReglamentoDesempate, Long> {
     List<ReglamentoDesempate> findByReglamentoIdOrderByOrdenAsc(Long reglamentoId);
+
+    void deleteByReglamentoId(Long reglamentoId);
 }
