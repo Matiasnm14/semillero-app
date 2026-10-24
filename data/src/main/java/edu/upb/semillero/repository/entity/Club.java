@@ -18,4 +18,8 @@ public class Club extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ciudad_id")
     private Ciudad ciudad;
+
+    @Lob
+    @Column(name = "foto_club")
+    private String fotoClub;
 }

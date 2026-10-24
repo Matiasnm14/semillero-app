@@ -32,4 +32,8 @@ public class Usuario extends BaseEntity {
 
     @Column(name = "apellidos", length = 35)
     private String apellidos;
+
+    @Lob
+    @Column(name = "foto_perfil")
+    private String fotoPerfil;
 }

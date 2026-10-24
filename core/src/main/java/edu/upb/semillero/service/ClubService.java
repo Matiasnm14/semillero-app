@@ -58,12 +58,14 @@ public class ClubService {
     private void apply(Club entity, ClubRequestDto request) {
         entity.setNombreClub(request.nombreClub());
         entity.setCiudad(relations.find(Ciudad.class, request.ciudadId()));
+        entity.setFotoClub(request.fotoClub());
     }
 
     private ClubResponseDto toResponse(Club entity) {
         return new ClubResponseDto(
                 entity.getId(),
                 entity.getNombreClub(),
-                relations.id(entity.getCiudad()));
+                relations.id(entity.getCiudad()),
+                entity.getFotoClub());
     }
 }

@@ -4,6 +4,7 @@ import edu.upb.semillero.repository.dto.request.UsuarioRequestDto;
 import edu.upb.semillero.repository.dto.response.UsuarioResponseDto;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
+import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,9 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponseDto create(UsuarioRequestDto request) {
         Usuario entity = new Usuario();
+        if (request.password() == null || request.password().isBlank()) {
+            throw new BusinessException("La contraseña es obligatoria");
+        }
         apply(entity, request);
         return toResponse(repository.saveAndFlush(entity));
     }
@@ -60,9 +64,12 @@ public class UsuarioService {
         entity.setEmail(request.email());
         entity.setTelefonoUsuario(request.telefonoUsuario());
         entity.setDocIdentidadUsuario(request.docIdentidadUsuario());
-        entity.setPasswordHash(passwordEncoder.encode(request.password()));
+        if (request.password() != null && !request.password().isBlank()) {
+            entity.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
         entity.setNombres(request.nombres());
         entity.setApellidos(request.apellidos());
+        entity.setFotoPerfil(request.fotoPerfil());
     }
 
     private UsuarioResponseDto toResponse(Usuario entity) {
@@ -73,6 +80,7 @@ public class UsuarioService {
                 entity.getTelefonoUsuario(),
                 entity.getDocIdentidadUsuario(),
                 entity.getNombres(),
-                entity.getApellidos());
+                entity.getApellidos(),
+                entity.getFotoPerfil());
     }
 }

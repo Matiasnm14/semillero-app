@@ -66,7 +66,7 @@ Variables:
 | `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. Las migraciones se aplican manualmente y en orden: [001](database/migrations/001_videos_partido.sql) para videos de partidos, [002](database/migrations/002_analysis_jobs.sql) para trabajos de análisis y [003](database/migrations/003_player_match_metrics.sql) para métricas. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas: añaden el índice único parcial de análisis y la FK compuesta de métricas que Hibernate no genera. Consultar sus guías antes de aplicarlas una vez. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. Las migraciones se aplican manualmente y en orden: [001](database/migrations/001_videos_partido.sql) para videos de partidos, [002](database/migrations/002_analysis_jobs.sql) para trabajos de análisis, [003](database/migrations/003_player_match_metrics.sql) para métricas y [004](database/migrations/004_profile_and_club_images.sql) para las imágenes de perfiles y escudos. Ejecutar 002, 003 y 004 también cuando `dev` ya creó sus tablas: 002 y 003 agregan restricciones que Hibernate no genera y 004 asegura que producción tenga las columnas de imágenes. Consultar sus guías antes de aplicarlas una vez. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
 
 ## Rutas CRUD
 
