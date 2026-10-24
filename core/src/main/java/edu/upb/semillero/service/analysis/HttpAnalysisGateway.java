@@ -50,7 +50,7 @@ public class HttpAnalysisGateway implements AnalysisGateway {
         var builder = HttpRequest.newBuilder(URI.create(base + properties.getEvaluationPath()))
                 .timeout(properties.getRequestTimeout()).header("Accept", "application/json")
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .header("X-Analysis-Id", submission.analysisId().toString()).POST(body);
+                .header("X-Analysis-Id", submission.correlationId()).POST(body);
         if (properties.getToken() != null && !properties.getToken().isBlank()) {
             builder.header("Authorization", "Bearer " + properties.getToken());
         }
@@ -97,7 +97,7 @@ public class HttpAnalysisGateway implements AnalysisGateway {
         }
     }
 
-    static AnalysisGatewayException.Reason reason(Throwable error) {
+    public static AnalysisGatewayException.Reason reason(Throwable error) {
         while ((error instanceof CompletionException || error instanceof ExecutionException) && error.getCause() != null) {
             error = error.getCause();
         }

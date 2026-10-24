@@ -1,6 +1,13 @@
 package edu.upb.semillero;
 
 import edu.upb.semillero.config.VideoProperties;
+import edu.upb.semillero.config.AnalysisProperties;
+import edu.upb.semillero.repository.entity.AnalysisJob;
+import edu.upb.semillero.repository.enums.EstadoAnalisis;
+import edu.upb.semillero.repository.repos.AnalysisJobRepository;
+import edu.upb.semillero.service.AnalysisJobService;
+import edu.upb.semillero.service.analysis.AnalysisGateway;
+import edu.upb.semillero.service.analysis.AnalysisWorker;
 import edu.upb.semillero.repository.entity.Club;
 import edu.upb.semillero.repository.entity.Partido;
 import edu.upb.semillero.repository.entity.VideoPartido;
@@ -51,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:video-partido;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+        "analysis.enabled=true", "analysis.base-url=http://127.0.0.1:9999", "analysis.worker-enabled=false",
         "video.youtube.enabled=true", "video.youtube.worker-enabled=false", "video.max-bytes=100000"
 })
 @AutoConfigureMockMvc
@@ -72,11 +80,19 @@ class VideoPartidoIntegrationTest {
     @Autowired VideoProperties properties;
     @Autowired YouTubeUploadWorker worker;
     @MockitoBean YouTubePublisher publisher;
+    @MockitoBean AnalysisGateway gateway;
+    @MockitoSpyBean AnalysisJobRepository analyses;
+    @Autowired AnalysisProperties analysisProperties;
+    @Autowired AnalysisWorker analysisWorker;
+    @Autowired AnalysisJobService analysisService;
+    @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager entityManager;
+    private static final String PAYLOAD = "[{\"dorsal\":9,\"distancia\":12.1234567890123}]";
     private long partidoId;
     private byte[] valid;
 
     @BeforeEach
     void setup() throws Exception {
+        analyses.deleteAll();
         videos.deleteAll();
         partidos.deleteAll();
         clubes.deleteAll();
@@ -85,6 +101,10 @@ class VideoPartidoIntegrationTest {
                 if (!p.equals(root)) Files.delete(p);
             }
         }
+        analysisProperties.setEnabled(true);
+        analysisProperties.setMaxConcurrentJobs(1);
+        analysisProperties.setRequestTimeout(java.time.Duration.ofSeconds(10));
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(PAYLOAD));
         Club local = new Club();
         local.setNombreClub("Local");
         Club visitante = new Club();
@@ -101,7 +121,7 @@ class VideoPartidoIntegrationTest {
     }
 
     @Test
-    void uploadsOriginalAndRecoversMetadataWithoutPublishingInTheRequest() throws Exception {
+    void acceptsVideoAndFinalJsonTogetherWithoutPublishingInTheRequest() throws Exception {
         JsonNode response = upload();
         long id = response.path("id").asLong();
         assertThat(response.path("nombreOriginal").asText()).isEqualTo("partido.mp4");
@@ -115,6 +135,23 @@ class VideoPartidoIntegrationTest {
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(valid)));
         assertThat(response.has("storageId")).isFalse();
         assertThat(response.has("claimToken")).isFalse();
+        assertThat(analyses.count()).isEqualTo(1);
+        var analysis = analyses.findAll().getFirst();
+        assertThat(analysis.getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        assertThat(analysis.getRespuestaJson()).isEqualTo(PAYLOAD);
+        assertThat(analysis.isResultadosDisponibles()).isFalse();
+        assertThat(analysis.isEnviado()).isTrue();
+        assertThat(analysis.getClaimToken()).isNull();
+        assertThat(analysis.getLeaseUntil()).isNull();
+        assertThat(analysis.getProximaEjecucion()).isNull();
+        assertThat(analysis.getFechaInicio()).isBetween(analysis.getFechaSolicitud(), analysis.getFechaFin());
+        mvc.perform(get(base() + "/" + id + "/analisis"))
+                .andExpect(jsonPath("$.content[0].estado").value("COMPLETADO"))
+                .andExpect(jsonPath("$.content[0].respuestaRecibida").value(true))
+                .andExpect(jsonPath("$.content[0].resultadosDisponibles").value(false));
+        mvc.perform(post(base() + "/" + id + "/analisis")).andExpect(status().isConflict());
+        assertThat(analysisWorker.processNext()).isFalse();
+        verify(gateway, times(1)).evaluate(any());
         VideoPartido stored = videos.findById(id).orElseThrow();
         assertThat(Files.readAllBytes(storage.original(stored.getStorageId()))).isEqualTo(valid);
         verifyNoInteractions(publisher);
@@ -130,6 +167,7 @@ class VideoPartidoIntegrationTest {
         mvc.perform(multipart("/api/v1/partidos/99999999/videos").file(file("clip.mp4", valid)))
                 .andExpect(status().isNotFound());
         assertEmpty();
+        verifyNoInteractions(gateway);
     }
 
     @Test
@@ -161,6 +199,7 @@ class VideoPartidoIntegrationTest {
                 .andExpect(status().isBadRequest());
         mvc.perform(multipart(base()).file(file("clip.avi", valid))).andExpect(status().isBadRequest());
         assertEmpty();
+        verifyNoInteractions(gateway);
     }
 
     @Test
@@ -238,6 +277,8 @@ class VideoPartidoIntegrationTest {
         assertThat(captor.getAllValues().get(0)).isEqualTo(captor.getAllValues().get(1));
         assertThat(captor.getValue().title()).isEqualTo("2026-05-02");
         assertThat(videos.count()).isEqualTo(1);
+        assertThat(analyses.count()).isEqualTo(1);
+        assertThat(analyses.findAll().getFirst().getRespuestaJson()).isEqualTo(PAYLOAD);
         mvc.perform(get(base() + "/" + id)).andExpect(jsonPath("$.estadoYoutube").value("DISPONIBLE"))
                 .andExpect(jsonPath("$.youtubeUrl").value("https://www.youtube.com/watch?v=videoABC123"));
     }
@@ -319,6 +360,211 @@ class VideoPartidoIntegrationTest {
         verify(publisher, times(1)).publish(any());
     }
 
+    @Test
+    void pendingInferenceKeepsUploadUnacceptedAndYoutubeCannotPublishIt() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenAnswer(call -> {
+            AnalysisGateway.Submission submission = call.getArgument(0);
+            assertThat(submission.original().getFileName().toString()).isEqualTo("upload.part");
+            assertThat(Files.readAllBytes(submission.original())).isEqualTo(valid);
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+                    .as("inference runs outside SQL transaction").isFalse();
+            assertThatCode(() -> UUID.fromString(submission.correlationId())).doesNotThrowAnyException();
+            entered.countDown();
+            return pending;
+        });
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var upload = executor.submit(() -> mvc.perform(multipart(base()).file(file("partido.mp4", valid))).andReturn());
+            try {
+                assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
+                assertThat(upload.isDone()).isFalse();
+                assertThat(videos.count()).isZero();
+                assertThat(analyses.count()).isZero();
+                assertThat(worker.processNext()).isFalse();
+                assertThat(analysisWorker.processNext()).isFalse();
+                verifyNoInteractions(publisher);
+                try (var files = Files.walk(root)) {
+                    assertThat(files.filter(Files::isRegularFile).map(p -> p.getFileName().toString()).toList())
+                            .containsExactly("upload.part");
+                }
+            } finally { pending.complete(PAYLOAD); }
+            assertThat(upload.get(10, TimeUnit.SECONDS).getResponse().getStatus()).isEqualTo(201);
+        }
+        assertThat(videos.count()).isEqualTo(1);
+        assertThat(analyses.count()).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"null", "42", "{broken", "[] trailing"})
+    void invalidAnalysisPayloadRejectsUploadAndCleansFiles(String payload) throws Exception {
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(payload));
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isBadGateway());
+        assertEmpty();
+        // The failed request must release its concurrency permit.
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(PAYLOAD));
+        upload();
+    }
+
+    @Test
+    void exceptionalOrCancelledInferenceRejectsUploadWithoutLeakingRemoteDetails() throws Exception {
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.failedFuture(
+                new IllegalStateException("secret OAuth details from Python")));
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isBadGateway())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("secret OAuth"))));
+        assertEmpty();
+        CompletableFuture<String> cancelled = new CompletableFuture<>(); cancelled.cancel(true);
+        when(gateway.evaluate(any())).thenReturn(cancelled);
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isBadGateway());
+        assertEmpty();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(PAYLOAD));
+        upload();
+    }
+
+    @Test
+    void publicWaitDeadlineCancelsFutureAndCleansFile() throws Exception {
+        analysisProperties.setRequestTimeout(java.time.Duration.ofMillis(150));
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(pending);
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isGatewayTimeout());
+        assertThat(pending.isCancelled()).isTrue();
+        assertEmpty();
+        analysisProperties.setRequestTimeout(java.time.Duration.ofSeconds(10));
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(PAYLOAD));
+        upload();
+    }
+
+    @Test
+    void gatewayTimeoutIsReportedAs504AndDoesNotPersistAnything() throws Exception {
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.failedFuture(new java.net.http.HttpTimeoutException("secret")));
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isGatewayTimeout());
+        assertEmpty();
+    }
+
+    @Test
+    void disabledAnalysisRejectsBeforeStagingOrInvokingPython() throws Exception {
+        analysisProperties.setEnabled(false);
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isServiceUnavailable());
+        assertEmpty();
+        verifyNoInteractions(gateway);
+    }
+
+    @Test
+    void unconfiguredAnalysisRejectsBeforeWritingOrSendingVideo() throws Exception {
+        var previous = analysisProperties.getBaseUrl();
+        try {
+            analysisProperties.setBaseUrl(null);
+            mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isServiceUnavailable());
+            assertEmpty();
+            verifyNoInteractions(gateway);
+        } finally { analysisProperties.setBaseUrl(previous); }
+    }
+
+    @Test
+    void originalCommitFailureDoesNotLeaveAcceptedVideoOrAnalysis() throws Exception {
+        when(gateway.evaluate(any())).thenAnswer(call -> {
+            AnalysisGateway.Submission submission = call.getArgument(0);
+            Files.delete(submission.original());
+            return CompletableFuture.completedFuture(PAYLOAD);
+        });
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isServiceUnavailable());
+        assertEmpty();
+        doReturn(CompletableFuture.completedFuture(PAYLOAD)).when(gateway).evaluate(any());
+        upload();
+    }
+
+    @Test
+    void unavailableCapacityRejectsUploadAndIsSharedWithLegacyAnalysisWorker() throws Exception {
+        VideoPartido legacy = legacyVideo();
+        long legacyAnalysis = analysisService.create(partidoId, legacy.getId()).id();
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(pending);
+        assertThat(analysisWorker.processNext()).isTrue();
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isServiceUnavailable());
+        assertThat(videos.count()).isEqualTo(1);
+        assertThat(analyses.count()).isEqualTo(1);
+        verify(gateway, times(1)).evaluate(any());
+        pending.complete("[]");
+        await(() -> analyses.findById(legacyAnalysis).orElseThrow().getEstado().isTerminal());
+        // Drain settlement so release is observed even when the completion thread just committed.
+        analysisWorker.processNext();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture(PAYLOAD));
+        upload();
+        assertThat(videos.count()).isEqualTo(2);
+        assertThat(analyses.count()).isEqualTo(2);
+    }
+
+    @Test
+    void pendingUploadPreventsLegacyWorkerFromExceedingSharedCapacity() throws Exception {
+        VideoPartido legacy = legacyVideo();
+        long legacyAnalysis = analysisService.create(partidoId, legacy.getId()).id();
+        CountDownLatch entered = new CountDownLatch(1);
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenAnswer(call -> { entered.countDown(); return pending; });
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var upload = executor.submit(() -> service.create(partidoId, "partido.mp4", valid.length,
+                    new ByteArrayInputStream(valid)));
+            try {
+                assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
+                assertThat(analysisWorker.processNext()).isFalse();
+                assertThat(analyses.findById(legacyAnalysis).orElseThrow().getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
+                mvc.perform(multipart(base()).file(file("second.mp4", valid))).andExpect(status().isServiceUnavailable());
+                verify(gateway, times(1)).evaluate(any());
+            } finally { pending.complete(PAYLOAD); }
+            upload.get(10, TimeUnit.SECONDS);
+        }
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture("[]"));
+        assertThat(analysisWorker.processNext()).isTrue();
+        await(() -> analyses.findById(legacyAnalysis).orElseThrow().getEstado().isTerminal());
+        verify(gateway, times(2)).evaluate(any());
+    }
+
+    @Test
+    void analysisPersistenceFailureRollsBackVideoAndCleansConfirmedOriginal() throws Exception {
+        doThrow(new DataIntegrityViolationException("simulated analysis constraint"))
+                .when(analyses).saveAndFlush(any(AnalysisJob.class));
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isConflict());
+        assertEmpty();
+    }
+
+    @Test
+    void transactionCommitFailureRollsBackBothRecordsAndCleansConfirmedOriginal() throws Exception {
+        doAnswer(call -> {
+            AnalysisJob saved = call.getArgument(0);
+            entityManager.persist(saved);
+            entityManager.flush();
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override public void beforeCommit(boolean readOnly) {
+                            throw new DataIntegrityViolationException("simulated commit failure");
+                        }
+                    });
+            return saved;
+        }).when(analyses).saveAndFlush(any(AnalysisJob.class));
+        mvc.perform(multipart(base()).file(file("clip.mp4", valid))).andExpect(status().isConflict());
+        assertEmpty();
+    }
+
+    private VideoPartido legacyVideo() throws Exception {
+        VideoPartido video = new VideoPartido();
+        video.setPartido(partidos.findById(partidoId).orElseThrow());
+        video.setStorageId(UUID.randomUUID().toString());
+        video.setNombreOriginal("legacy.mp4"); video.setFormato("mp4");
+        video.setTamanoBytes((long) valid.length); video.setSha256("a".repeat(64));
+        video.setFechaCarga(Instant.now()); video.setTituloYoutube("2026-05-02");
+        video.setEstadoYoutube(EstadoYoutube.DESHABILITADO);
+        Path original = storage.original(video.getStorageId());
+        Files.createDirectories(original.getParent()); Files.write(original, valid);
+        return videos.saveAndFlush(video);
+    }
+
+    private void await(java.util.function.BooleanSupplier condition) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) { if (condition.getAsBoolean()) return; Thread.sleep(10); }
+        assertThat(condition.getAsBoolean()).as("asynchronous settlement").isTrue();
+    }
+
     private JsonNode upload() throws Exception {
         String result = mvc.perform(multipart(base()).file(file("partido.mp4", valid)))
                 .andExpect(status().isCreated()).andExpect(header().exists("Location"))
@@ -334,6 +580,7 @@ class VideoPartidoIntegrationTest {
 
     private void assertEmpty() throws Exception {
         assertThat(videos.count()).isZero();
+        assertThat(analyses.count()).isZero();
         try (var files = Files.list(root)) { assertThat(files.count()).isZero(); }
         verifyNoInteractions(publisher);
     }

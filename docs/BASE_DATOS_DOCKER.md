@@ -23,7 +23,7 @@ Docker crea la base y el usuario de `.env`, y ejecuta automáticamente [database
 | [001_videos_partido.sql](../database/migrations/001_videos_partido.sql) | Video original del partido y metadatos de YouTube |
 | [002_analysis_jobs.sql](../database/migrations/002_analysis_jobs.sql) | Trabajos de análisis, estados e índice único de trabajos activos |
 | [003_player_match_metrics.sql](../database/migrations/003_player_match_metrics.sql) | Métricas, referencias y FK compuesta a participaciones |
-| [004_analysis_future_response.sql](../database/migrations/004_analysis_future_response.sql) | JSON final recibido por el worker de Future y validación de su estructura |
+| [004_analysis_future_response.sql](../database/migrations/004_analysis_future_response.sql) | JSON final recibido por carga automática o worker manual y validación de su estructura |
 
 El resultado son **20 tablas**, con claves foráneas, restricciones e índices. Los archivos se montan de solo lectura en `/docker-entrypoint-initdb.d`; las carpetas `migrations` y `seeds` no se ejecutan por separado. `init.sql` incluye las migraciones mediante `\ir`, resolviendo rutas relativas al propio archivo. [Referencia de psql](https://www.postgresql.org/docs/17/app-psql.html).
 
@@ -68,7 +68,7 @@ docker compose exec db psql -U semillero -d semillero -c 'SELECT id, fecha_inici
 docker compose exec db psql -U semillero -d semillero -c 'SELECT partidos_id, jugadores_id, clubes_id FROM participaciones_partido;'
 ```
 
-Con ese partido se puede probar la carga de HU01 usando el ID devuelto. YouTube y el analizador permanecen deshabilitados por defecto.
+Con ese partido se puede probar la carga de HU01 usando el ID devuelto. Primero habilitar y configurar el analizador Python según la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md): sin su JSON final la carga no se acepta. YouTube y el analizador permanecen deshabilitados por defecto; los CRUD pueden usarse con esos valores.
 
 ## Arrancar el backend contra el esquema SQL
 

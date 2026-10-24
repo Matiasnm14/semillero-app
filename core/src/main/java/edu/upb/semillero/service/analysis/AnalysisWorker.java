@@ -35,6 +35,7 @@ public class AnalysisWorker {
     private final AnalysisGateway gateway;
     private final AnalysisResultValidator validator;
     private final AnalysisProperties properties;
+    private final AnalysisConcurrencyLimiter concurrency;
     private final Clock clock;
     private final TransactionTemplate transaction;
     private final ExecutorService completionExecutor;
@@ -45,7 +46,7 @@ public class AnalysisWorker {
     private record Waiting(Work work, CompletableFuture<String> future) {}
 
     public AnalysisWorker(AnalysisJobRepository jobs, LocalVideoStorage storage, AnalysisGateway gateway,
-            AnalysisResultValidator validator, AnalysisProperties properties,
+            AnalysisResultValidator validator, AnalysisProperties properties, AnalysisConcurrencyLimiter concurrency,
             @Qualifier("analysisClock") Clock clock, PlatformTransactionManager manager,
             @Qualifier("analysisCompletionExecutor") ExecutorService completionExecutor) {
         this.jobs = jobs;
@@ -53,6 +54,7 @@ public class AnalysisWorker {
         this.gateway = gateway;
         this.validator = validator;
         this.properties = properties;
+        this.concurrency = concurrency;
         this.clock = clock;
         this.transaction = new TransactionTemplate(manager);
         this.completionExecutor = completionExecutor;
@@ -73,24 +75,35 @@ public class AnalysisWorker {
         if (closing) return false;
         maintainWaiting();
         if (!properties.isEnabled() || running.size() >= properties.getMaxConcurrentJobs()) return false;
-        for (Long id : jobs.findExecutable(ACTIVE, clock.instant(), PageRequest.of(0, 20))) {
-            Work work = transaction.execute(status -> claim(id));
-            if (work == null) continue;
-            CompletableFuture<String> future;
-            try {
-                future = gateway.evaluate(work.submission());
-                if (future == null) future = CompletableFuture.failedFuture(new AnalysisGatewayException(INVALID_RESPONSE));
-            } catch (RuntimeException e) {
-                future = CompletableFuture.failedFuture(new AnalysisGatewayException(HttpAnalysisGateway.reason(e)));
+        var permit = concurrency.tryAcquire();
+        if (permit == null) return false;
+        boolean handedOff = false;
+        try {
+            for (Long id : jobs.findExecutable(ACTIVE, clock.instant(), PageRequest.of(0, 20))) {
+                Work work = transaction.execute(status -> claim(id));
+                if (work == null) continue;
+                CompletableFuture<String> future;
+                try {
+                    future = gateway.evaluate(work.submission());
+                    if (future == null) future = CompletableFuture.failedFuture(new AnalysisGatewayException(INVALID_RESPONSE));
+                } catch (RuntimeException e) {
+                    future = CompletableFuture.failedFuture(new AnalysisGatewayException(HttpAnalysisGateway.reason(e)));
+                }
+                long remaining = Math.max(1, java.time.Duration.between(clock.instant(), work.deadline()).toMillis());
+                future.orTimeout(remaining, TimeUnit.MILLISECONDS);
+                Waiting waiting = new Waiting(work, future);
+                running.put(id, waiting);
+                // Release independently of SQL completion: retrying a commit never starts more inference.
+                future.whenComplete((value, error) -> permit.close());
+                handedOff = true;
+                future.whenCompleteAsync((value, error) -> settle(waiting), completionExecutor);
+                return true;
             }
-            long remaining = Math.max(1, java.time.Duration.between(clock.instant(), work.deadline()).toMillis());
-            future.orTimeout(remaining, TimeUnit.MILLISECONDS);
-            Waiting waiting = new Waiting(work, future);
-            running.put(id, waiting);
-            future.whenCompleteAsync((value, error) -> settle(waiting), completionExecutor);
-            return true;
+            return false;
+        } finally {
+            // No executable job, a rolled-back claim or a dispatch failure must never consume capacity.
+            if (!handedOff) permit.close();
         }
-        return false;
     }
 
     private Work claim(Long id) {

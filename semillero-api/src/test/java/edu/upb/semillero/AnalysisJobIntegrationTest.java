@@ -193,7 +193,7 @@ class AnalysisJobIntegrationTest {
                 .andExpect(jsonPath("$.respuestaJson").doesNotExist()).andExpect(jsonPath("$.porcentaje").isEmpty());
         assertThat(contextMetricsCount()).isZero();
         assertThat(worker.processNext()).isFalse();
-        verify(gateway, times(1)).evaluate(argThat(value -> value.analysisId().equals(id)
+        verify(gateway, times(1)).evaluate(argThat(value -> value.correlationId().equals(Long.toString(id))
                 && value.original().equals(storage.original(video.getStorageId()))));
     }
 
@@ -237,7 +237,7 @@ class AnalysisJobIntegrationTest {
         long second = service.create(partidoId, video(video.getPartido()).getId()).id();
         CompletableFuture<String> a = new CompletableFuture<>(), b = new CompletableFuture<>();
         when(gateway.evaluate(any())).thenAnswer(call ->
-                ((AnalysisGateway.Submission) call.getArgument(0)).analysisId().equals(first) ? a : b);
+                ((AnalysisGateway.Submission) call.getArgument(0)).correlationId().equals(Long.toString(first)) ? a : b);
         assertThat(worker.processNext()).isTrue();
         assertThat(worker.processNext()).isTrue();
         b.complete("[{\"dorsal\":9,\"distancia\":22}]");

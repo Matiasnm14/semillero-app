@@ -115,7 +115,7 @@ Comprueba la migración sobre tabla creada por `dev`, la cadena SQL 001–003 de
 ## Pendientes para el equipo
 
 - Confirmar unidades, precisión e interpretación de `period_start`/`period_end` en el contrato de resultados.
-- El gateway adaptado recibe el JSON final mediante Future y lo conserva en `AnalysisJob.respuestaJson`; acordar su estructura antes de convertirlo en métricas definitivas.
+- El gateway adaptado recibe el JSON final mediante Future y lo conserva en `AnalysisJob.respuestaJson`; las cargas nuevas ya lo guardan junto con el video y un análisis completado mediante la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md). Acordar su estructura antes de convertirlo en métricas definitivas.
 - Resolver dorsales repetidos entre equipos y asociar cada resultado con la participación real. El JSON recibido aún no equivale a métricas publicadas.
 - Definir ámbito y asignación de la versión vigente; implementar publicación transaccional e idempotente con SB-051/SB-053.
 - Completar SB-054 cuando exista ese flujo para probar la publicación completa y el cambio atómico de versión.
