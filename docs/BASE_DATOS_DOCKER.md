@@ -1,157 +1,100 @@
-# Base de datos del equipo con Docker
+# PostgreSQL y migraciones automáticas
 
-Cada integrante puede levantar su propia copia de PostgreSQL 17 con el esquema completo del backend. No hace falta arrancar Java para crear las tablas ni configurar Google o el analizador para probar los CRUD.
+Docker levanta PostgreSQL 17 y crea la base y su usuario. **Spring ejecuta Flyway al arrancar**, antes de validar las entidades con Hibernate. Esto funciona con una base vacía y con instalaciones anteriores del proyecto; no hay que aplicar la migración 004 a mano.
 
-## Primera instalación
+## Arranque del equipo
 
-Desde la raíz del repositorio:
+Desde la raíz, en Bash:
 
 ```bash
-# Solo si todavía no tienes un .env:
+# Solo si todavía no tienes .env:
 cp .env.example .env
 # Editar DB_PASSWORD con una contraseña local.
-docker compose up -d --wait db
-```
-
-En PowerShell, la copia inicial es `Copy-Item .env.example .env`; el comando de Docker es el mismo. Si ya tienes `.env`, conservarlo y revisar la sección de bases existentes antes de ejecutar SQL.
-
-Docker crea la base y el usuario de `.env`, y ejecuta automáticamente [database/init.sql](../database/init.sql). Ese archivo carga, en orden:
-
-| Archivo | Contenido |
-| --- | --- |
-| [000_base.sql](../database/migrations/000_base.sql) | 17 tablas de catálogos y CRUD: usuarios, clubes, jugadores, partidos, participaciones, etc. |
-| [001_videos_partido.sql](../database/migrations/001_videos_partido.sql) | Video original del partido y metadatos de YouTube |
-| [002_analysis_jobs.sql](../database/migrations/002_analysis_jobs.sql) | Trabajos de análisis, estados e índice único de trabajos activos |
-| [003_player_match_metrics.sql](../database/migrations/003_player_match_metrics.sql) | Métricas, referencias y FK compuesta a participaciones |
-| [004_analysis_future_response.sql](../database/migrations/004_analysis_future_response.sql) | JSON final recibido por carga automática o worker manual y validación de su estructura |
-
-El resultado son **20 tablas**, con claves foráneas, restricciones e índices. Los archivos se montan de solo lectura en `/docker-entrypoint-initdb.d`; las carpetas `migrations` y `seeds` no se ejecutan por separado. `init.sql` incluye las migraciones mediante `\ir`, resolviendo rutas relativas al propio archivo. [Referencia de psql](https://www.postgresql.org/docs/17/app-psql.html).
-
-La imagen oficial ejecuta los scripts iniciales únicamente cuando el directorio de datos está vacío. Un volumen existente conserva sus datos y no vuelve a ejecutar `init.sql` después de un pull o reinicio. El healthcheck usa TCP para esperar al servidor definitivo, después de la inicialización. [Documentación de la imagen PostgreSQL](https://hub.docker.com/_/postgres).
-
-## Conexión y comprobación
-
-Con los valores iniciales de `.env.example`:
-
-| Parámetro | Valor |
-| --- | --- |
-| Host para Java, DBeaver o pgAdmin en tu equipo | `localhost` |
-| Puerto | `5432`, configurable con `DB_PORT_EXTERNAL` |
-| Base | `semillero`, configurable con `DB_NAME` |
-| Usuario | `semillero`, configurable con `DB_USER` |
-| Contraseña | La que elegiste en `.env` |
-| JDBC | `jdbc:postgresql://localhost:5432/semillero` |
-
-Los siguientes comandos usan usuario y base `semillero`; sustituirlos si los cambiaste:
-
-```bash
-docker compose ps
-docker compose exec db psql -U semillero -d semillero -c '\dt'
-```
-
-Si cambias el puerto o nombre de base, actualizar también `DB_URL` para Java. Dentro de otro contenedor del mismo Compose, PostgreSQL se alcanza como `db:5432`.
-
-## Datos de ejemplo opcionales
-
-El esquema inicial está vacío. Para crear un país, ciudad, dos clubes, dos jugadores y un partido con sus participaciones:
-
-```bash
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U semillero -d semillero -f /docker-entrypoint-initdb.d/seeds/demo.sql
-```
-
-[demo.sql](../database/seeds/demo.sql) imprime los IDs generados; no presupone que empiecen en 1. Si los clubes de ejemplo ya existen, rechaza repetir la carga sin añadir duplicados. Los jugadores son sintéticos, sin cuentas de acceso. No se crean videos ni resultados ficticios de análisis.
-
-Para consultar el partido y las participaciones:
-
-```bash
-docker compose exec db psql -U semillero -d semillero -c 'SELECT id, fecha_inicio, estado FROM partidos;'
-docker compose exec db psql -U semillero -d semillero -c 'SELECT partidos_id, jugadores_id, clubes_id FROM participaciones_partido;'
-```
-
-Con ese partido se puede probar la carga de HU01 usando el ID devuelto. Primero habilitar y configurar el analizador Python según la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md): sin su JSON final la carga no se acepta. YouTube y el analizador permanecen deshabilitados por defecto; los CRUD pueden usarse con esos valores.
-
-## Arrancar el backend contra el esquema SQL
-
-La plantilla `.env.example` configura `DB_DDL_AUTO=validate`. Así Java comprueba que las tablas coincidan con sus entidades y no depende de `update` para crearlas. El perfil `dev` también respeta esa variable.
-
-En Bash:
-
-```bash
 set -a
 source .env
 set +a
+
+docker compose up -d --wait db
 ./mvnw clean verify
 java -jar semillero-api/target/semillero-api-0.0.1-SNAPSHOT.jar
 ```
 
-Docker Compose lee `.env` por su cuenta; Java necesita las variables exportadas o configuradas en el IDE. En PowerShell, ejecutar `./mvnw.cmd verify` y configurar las variables del backend en la terminal o en el IDE. Por ejemplo, con los valores locales elegidos:
+Compose lee `.env` automáticamente; Java necesita las variables exportadas o configuradas en el IDE. En Windows usar `mvnw.cmd` y configurar `DB_URL`, `DB_USER` y `DB_PASSWORD` en el entorno. Mantener `DB_DDL_AUTO=validate`, también con el perfil `dev`.
 
-```powershell
-$env:DB_URL = 'jdbc:postgresql://localhost:5432/semillero'
-$env:DB_USER = 'semillero'
-$env:DB_PASSWORD = 'tu_contraseña_local'
-$env:DB_DDL_AUTO = 'validate'
-java -jar semillero-api/target/semillero-api-0.0.1-SNAPSHOT.jar
-```
+Con los valores iniciales, la conexión es `jdbc:postgresql://localhost:5432/semillero`, usuario `semillero`. Si cambias `DB_NAME` o `DB_PORT_EXTERNAL`, ajustar también `DB_URL`. Dentro de otro contenedor del mismo Compose, el host es `db:5432`.
 
-Las pruebas Java de HU01 requieren FFmpeg y ffprobe instalados en el host. La base por sí sola solo necesita Docker con Compose.
+Docker por sí solo deja la base vacía. Al iniciar el backend, Flyway crea **20 tablas de negocio y `flyway_schema_history`**. Los archivos SQL se incluyen dentro del JAR; no depende del directorio desde el que se ejecuta Java. Spring Boot integra [Flyway antes de JPA](https://docs.spring.io/spring-boot/how-to/data-initialization.html#howto.data-initialization.migration-tool.flyway).
 
-## Cuando ya existe una base con datos
+## Bases que ya tienen datos
 
-**`init.sql` es para una base vacía.** Comprueba que no existan tablas antes de empezar y se detiene si encuentra alguna. No incluye borrados ni reconstruye la base principal.
+Conservar `.env` y el volumen `db_data`. Después de actualizar el código, arrancar el backend normalmente. La adopción anterior a Flyway ocurre una sola vez:
 
-Para actualizar una base existente, detener el backend, respaldar esa base y aplicar únicamente los archivos pendientes, en orden. Con las carpetas montadas por el Compose actual:
+1. Comprueba las 17 tablas base conocidas y columnas características. Acepta también las tablas opcionales de videos, análisis y métricas. Un esquema incompleto, ajeno o con tablas adicionales sin historial se detiene para revisión.
+2. Registra una base histórica `-1`, que no omite ninguna migración del proyecto.
+3. Ejecuta V000–V004. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta.
+4. Valida las entidades y permite arrancar la API.
+
+Esto cubre bases creadas con los SQL anteriores, incluidas instalaciones que ya aplicaron 004, y bases creadas mediante `ddl-auto=update`. Los datos incompatibles con una restricción detienen la migración; no se borran ni se corrigen silenciosamente. La migración fallida se revierte y puede ejecutarse de nuevo tras corregir la causa. Las anteriores que ya terminaron permanecen registradas.
+
+`baseline-on-migrate` permanece desactivado. La adopción está limitada por la comprobación del esquema; no se reconoce cualquier base como Semillero. Un bloqueo PostgreSQL coordina la adopción y migración si arrancan varias instancias simultáneamente. El historial conserva versiones y checksums: en reinicios posteriores se ejecutan únicamente las versiones pendientes. No hay borrado ni reparación automática del historial.
+
+El usuario de conexión debe poder crear y modificar las tablas del esquema `public`. El usuario creado por Compose ya es propietario de su base. Si una base compartida usa otro propietario, su administrador debe proporcionar los permisos correspondientes. La configuración del proyecto usa `public`.
+
+## Comprobar versiones
+
+Después de arrancar el backend:
 
 ```bash
-# Ejemplo: una base que ya tiene 000, 001 y 002 y necesita las métricas de 003.
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U semillero -d semillero -f /docker-entrypoint-initdb.d/migrations/003_player_match_metrics.sql
+docker compose exec db psql -U semillero -d semillero -c '\dt'
+docker compose exec db psql -U semillero -d semillero -c 'SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;'
 ```
 
-Si el contenedor se creó antes de incorporar este montaje, ejecutar `docker compose up -d --wait db` para actualizar su configuración conservando el volumen. Eso no aplica automáticamente las migraciones sobre datos existentes.
+Las versiones SQL son 000–004. Las bases adoptadas tienen además la entrada `BASELINE` con versión `-1`. En una base nueva no se necesita esa entrada.
 
-La revisión inicial puede hacerse desde psql:
+| Archivo | Contenido |
+| --- | --- |
+| [V000__base.sql](../database/migrations/V000__base.sql) | 17 tablas base, partidos y participaciones |
+| [V001__videos_partido.sql](../database/migrations/V001__videos_partido.sql) | Originales y metadatos de YouTube |
+| [V002__analysis_jobs.sql](../database/migrations/V002__analysis_jobs.sql) | Trabajos, restricciones e índice parcial de análisis activos |
+| [V003__player_match_metrics.sql](../database/migrations/V003__player_match_metrics.sql) | Métricas y FK compuesta a participaciones |
+| [V004__analysis_future_response.sql](../database/migrations/V004__analysis_future_response.sql) | JSON final y validación de su estructura |
 
-```sql
-SELECT to_regclass('public.pais') AS base,
-       to_regclass('public.videos_partido') AS hu01,
-       to_regclass('public.analysis_jobs') AS hu02_hu03,
-       to_regclass('public.player_match_metrics') AS metricas;
+Los nombres siguen `V<versión>__<descripción>.sql`. La fuente única es `database/migrations`; Maven la empaqueta en `db/migration`. No editar archivos ya registrados por Flyway: un checksum distinto detiene el arranque. Para un cambio nuevo añadir, por ejemplo, `V005__descripcion.sql` y reconstruir el JAR. No se necesita modificar código Java ni ejecutar SQL manual.
 
-SELECT conname FROM pg_constraint
-WHERE conname IN ('chk_analysis_queue', 'fk_pmm_participation');
+## Datos de ejemplo opcionales
 
-SELECT indexname FROM pg_indexes
-WHERE schemaname = 'public' AND indexname = 'uk_analysis_active_video';
+Con el esquema ya migrado:
+
+```bash
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U semillero -d semillero -f /opt/semillero/database/seeds/demo.sql
 ```
 
-- Aplicar 000 únicamente si todavía no existen las tablas base.
-- Aplicar 001 si falta `videos_partido`; su SQL requiere que esa tabla no exista.
-- Para 002, revisar su [guía](HU02_HU03_ANALISIS.md): una tabla creada por `dev` también necesita sus restricciones e índice parcial.
-- Para 003, revisar la [guía de métricas](HU12_MODELO_INTEGRIDAD.md): una tabla creada por `dev` también necesita la FK `fk_pmm_participation`.
-- Para 004, revisar la [adaptación de HU02/HU03](HU02_HU03_ANALISIS.md): agrega `respuesta_json` y la restricción `chk_analysis_response`, incluso si `dev` ya creó la columna.
+[demo.sql](../database/seeds/demo.sql) crea un país, ciudad, dos clubes, jugadores sintéticos y un partido con sus participaciones. Imprime los IDs generados y rechaza repetir la carga. No crea resultados de análisis ficticios.
 
-Cada migración usa una transacción y se aplica una sola vez. No hay todavía un ejecutor automático ni una tabla de historial; la existencia de una tabla por sí sola no acredita que sus restricciones estén completas. Conservar registro de las migraciones aplicadas al entorno compartido y actualizarlo con cada entrega del equipo.
+Los archivos se montan de solo lectura en `/opt/semillero/database`, fuera de la inicialización automática de PostgreSQL. [init.sql](../database/init.sql) queda como utilidad manual para construir una base vacía; el flujo normal usa exclusivamente Flyway desde Spring. Si ya se utilizó esa utilidad, el siguiente arranque adopta el esquema.
 
-## Persistencia y pruebas aisladas
+## Analizador y YouTube
 
-`docker compose down` detiene y retira los contenedores, conservando el volumen `db_data`. Al arrancar otra vez se mantienen los datos.
+Migrar la base no necesita acceso a Google ni al servicio de análisis. Los CRUD arrancan con las integraciones deshabilitadas. Cargar videos requiere configurar y habilitar Python según la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md); sin él, la carga responde `503`. YouTube sigue siendo opcional.
 
-Para probar desde cero sin usar la base que ya tienes, elegir otro nombre de proyecto Compose y un puerto libre. En Bash:
+## Persistencia y pruebas
+
+`docker compose down` conserva el volumen y los datos. Para una copia aislada, usar otro nombre de proyecto y puerto:
 
 ```bash
 DB_PORT_EXTERNAL=55432 docker compose -p semillero-pruebas up -d --wait db
-DB_PORT_EXTERNAL=55432 docker compose -p semillero-pruebas exec db psql -U semillero -d semillero -c '\dt'
+# Ejecutar el backend con DB_URL=jdbc:postgresql://localhost:55432/semillero.
 DB_PORT_EXTERNAL=55432 docker compose -p semillero-pruebas down
 ```
 
-Ese proyecto utiliza su propio volumen. Para conectar Java a él, usar `DB_URL=jdbc:postgresql://localhost:55432/semillero`. Mantener el mismo `-p` y puerto en los comandos de ese entorno.
+Las pruebas normales usan H2 con Flyway deshabilitado y esquema JPA desechable. Las migraciones de producción se prueban contra PostgreSQL real, mediante una URL local restringida a la base desechable `migrations_test`, usuario `migrations_test`, sin contraseña en ese entorno aislado:
 
-## Próximas migraciones
+```bash
+MIGRATIONS_PG_TEST_URL=jdbc:postgresql://127.0.0.1:55437/migrations_test ./mvnw clean verify
+```
 
-Añadir cambios nuevos en otro archivo numerado dentro de `database/migrations`, conservar los archivos ya aplicados y agregar el nuevo `\ir` al final de `init.sql`. Así las instalaciones nuevas reciben todo el esquema y las existentes aplican solo el cambio nuevo.
+Estas pruebas recrean exclusivamente ese esquema de prueba. Cubren instalación vacía, reinicio, adopción de SQL previos e Hibernate, actualización hasta 004, conservación del JSON, rechazo de esquemas ajenos, rollback, arranques concurrentes y validación de checksums. Las copias antiguas de SQL bajo `src/test/resources/db/legacy` son fixtures históricos; no se distribuyen como migraciones de producción.
 
-## Verificación realizada el 2026-10-22
+## Verificación del 2026-10-25
 
-Se probó el Compose en un proyecto y volumen desechables con PostgreSQL 17: creación automática de las 20 tablas, restricciones de análisis/métricas, carga opcional de demo, rechazo de cargas repetidas y persistencia después de reiniciar. El JAR arrancó con perfil `dev` y `DB_DDL_AUTO=validate`, consultó los datos por API y aceptó una carga de video de HU01.
-
-Las 108 pruebas Java pasaron, incluidas las bases PostgreSQL de HU02/HU03 y métricas, cuya prueba ahora verifica también el esquema base 000. Se retiraron los contenedores y el volumen de verificación; no se modificó la base del proyecto.
+`clean verify` completó **133 pruebas sin fallos, errores ni omisiones**, con las tres bases PostgreSQL desechables habilitadas mediante `MIGRATIONS_PG_TEST_URL`, `ANALYSIS_PG_TEST_URL` y `METRICS_PG_TEST_URL`. Incluye 10 casos de migraciones automáticas y las pruebas existentes de CRUD, videos, análisis y métricas. Se comprobó también la configuración de Compose y la inclusión de V000–V004 y Flyway en el JAR ejecutable. La base del proyecto no se modificó.

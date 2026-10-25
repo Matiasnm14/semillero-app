@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -106,7 +106,7 @@ class PlayerMatchMetricsPostgresTest {
     private void migrate(ConfigurableApplicationContext context, String name) throws Exception {
         try (var connection = context.getBean(DataSource.class).getConnection()) {
             ScriptUtils.executeSqlScript(connection,
-                    new FileSystemResource(Path.of("..", "database", "migrations", name)));
+                    new ClassPathResource("db/legacy/" + name));
         }
     }
 

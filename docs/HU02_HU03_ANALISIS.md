@@ -121,17 +121,11 @@ El timeout del analizador no incluye la recepción multipart y la validación co
 
 **Para un `.env` anterior:** revisar `ANALYSIS_REQUEST_TIMEOUT`, que antes era `10s`, y reemplazarlo por el plazo acordado de evaluación. Agregar conexión, ruta, concurrencia y límite de respuesta. `ANALYSIS_MAX_FAILURES` ya no se utiliza: no hay reenvío automático de evaluaciones. Reiniciar el backend para cargar los cambios.
 
-## Migración de una base existente
+## Migración automática
 
-Aplicar una vez [004_analysis_future_response.sql](../database/migrations/004_analysis_future_response.sql) después de 003. Agrega `respuesta_json` y comprueba que una respuesta guardada sea un objeto/arreglo JSON y pertenezca a un trabajo completado. Conserva los datos anteriores. Ejecutarla también si `dev` ya añadió la columna, para incorporar la restricción SQL.
+Flyway aplica [V004__analysis_future_response.sql](../database/migrations/V004__analysis_future_response.sql) al arrancar Spring. Agrega `respuesta_json` y comprueba que una respuesta guardada sea un objeto/arreglo JSON de un trabajo completado. Reconoce también instalaciones anteriores que ya aplicaron 004 o donde Hibernate creó la columna, conserva sus datos y completa restricciones ausentes. No es necesario ejecutarla a mano.
 
-```bash
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U semillero -d semillero -f /docker-entrypoint-initdb.d/migrations/004_analysis_future_response.sql
-```
-
-Cambiar usuario/base si difieren en `.env`. Las instalaciones nuevas reciben 000–004 mediante [init.sql](../database/init.sql); no ejecutar el archivo de inicialización sobre una base con datos. Ver [guía de Docker](BASE_DATOS_DOCKER.md).
-
-La integración automática reutiliza las tablas y esta columna; no necesita otra migración.
+Las migraciones V000–V004 se empaquetan en el JAR y se registran en `flyway_schema_history`; Hibernate valida después. La integración automática reutiliza estas tablas y columna. Ver [bases existentes y diagnóstico](BASE_DATOS_DOCKER.md).
 
 ## Errores y conflictos
 

@@ -23,20 +23,9 @@ El backend invoca el uploader Python mediante una lista de argumentos, sin shell
 
 ## Esquema existente
 
-Las instalaciones nuevas con el Compose actual ya cargan 000–004 mediante [init.sql](../database/init.sql). Las instrucciones manuales siguientes son para bases existentes que todavía necesiten el cambio; consultar la [guía del equipo](BASE_DATOS_DOCKER.md).
+Flyway aplica automáticamente [V001__videos_partido.sql](../database/migrations/V001__videos_partido.sql) y las demás migraciones al arrancar Spring, antes de validar JPA. Adopta las bases anteriores del proyecto y conserva tablas y datos, incluso si Hibernate ya creó `videos_partido`. No se requiere aplicar SQL manual. Ver [guía del equipo](BASE_DATOS_DOCKER.md).
 
-Se añade `videos_partido`, con una FK a `partidos`. El CRUD `/api/v1/videos` conserva su modelo de enlaces de videos de jugadores.
-
-En desarrollo, el perfil `dev` puede crear la tabla mediante `ddl-auto=update`. Para una base existente que arranque con `ddl-auto=validate`, aplicar **una sola vez**, antes del arranque, [001_videos_partido.sql](../database/migrations/001_videos_partido.sql). No ejecutar ese SQL después de que `dev` ya haya creado la tabla.
-
-Con PostgreSQL de Docker Compose, desde la raíz y con `.env` exportado:
-
-```bash
-docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-  -U "$DB_USER" -d "$DB_NAME" < database/migrations/001_videos_partido.sql
-```
-
-El esquema completo está versionado en 000–004; las bases existentes aplican manualmente sus migraciones pendientes. La aceptación conjunta de video y JSON reutiliza ese esquema y no requiere una migración adicional.
+Se añade `videos_partido`, con FK a `partidos`. El CRUD `/api/v1/videos` conserva su modelo de enlaces de jugadores. La aceptación conjunta de video y JSON reutiliza V000–V004 y no necesita otra migración.
 
 ## API
 

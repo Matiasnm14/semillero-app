@@ -37,7 +37,7 @@ Por ejemplo, para cambiar el CRUD de jugadores:
 
 ## Arranque local
 
-La [guía de PostgreSQL con Docker](docs/BASE_DATOS_DOCKER.md) explica la creación completa del esquema, los datos de ejemplo y la actualización de bases existentes. En un volumen nuevo, `docker compose up -d --wait db` ejecuta automáticamente [database/init.sql](database/init.sql) y crea las 20 tablas.
+La [guía de PostgreSQL con Docker](docs/BASE_DATOS_DOCKER.md) explica la creación completa del esquema, los datos de ejemplo y la actualización de bases existentes. Docker crea la base; al arrancar Spring, Flyway aplica las migraciones pendientes y Hibernate valida el resultado. Funciona tanto en bases nuevas como en instalaciones existentes del proyecto.
 
 Requisitos: JDK 21, Docker con Compose, FFmpeg (`ffmpeg` y `ffprobe`) y acceso a Maven Central en la primera compilación. Para cargar videos se necesita además el servicio Python de análisis; Compose solo levanta PostgreSQL. La plantilla mantiene las integraciones externas deshabilitadas para el arranque local de los CRUD. La publicación en YouTube requiere Python 3 y las dependencias de `scripts/youtube-requirements.txt`. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
 
@@ -70,7 +70,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El esquema inicial usa [000_base.sql](database/migrations/000_base.sql), seguido de las migraciones 001–004. Docker solo lo aplica automáticamente al inicializar un volumen vacío; en una base existente se aplican manualmente las migraciones pendientes. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas, según sus guías, para completar el índice único parcial y la FK compuesta. La [004](database/migrations/004_analysis_future_response.sql) agrega la respuesta JSON final del análisis y su restricción; también se aplica una sola vez sobre bases existentes. La configuración recomendada es `DB_DDL_AUTO=validate`; `dev` conserva `update` como alternativa si no se define esa variable. `docker compose down` detiene la base y conserva los datos.
+Las migraciones [V000–V004](database/migrations) se incluyen en el JAR y se ejecutan automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate y completa sus restricciones sin borrar datos; incluye la migración 004. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las 20 tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 

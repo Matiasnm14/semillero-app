@@ -21,7 +21,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -73,7 +73,7 @@ class AnalysisPostgresIntegrationTest {
                 try (var connection = context.getBean(DataSource.class).getConnection()) {
                     for (String name : new String[]{"000_base.sql", "001_videos_partido.sql", "002_analysis_jobs.sql",
                             "003_player_match_metrics.sql"}) {
-                        ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("..", "database", "migrations", name)));
+                        ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/" + name));
                     }
                     // Preserve a completed job from the former snapshot protocol across migration 004.
                     jdbc.update("insert into clubes(id, nombre_club) values (501,'Legacy Local'),(502,'Legacy Visita')");
@@ -90,8 +90,7 @@ class AnalysisPostgresIntegrationTest {
                             values (501,501,'COMPLETADO',current_timestamp,current_timestamp,current_timestamp,
                             current_timestamp,true,'legacy:501')
                             """);
-                    ScriptUtils.executeSqlScript(connection, new FileSystemResource(
-                            Path.of("..", "database", "migrations", "004_analysis_future_response.sql")));
+                    ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/004_analysis_future_response.sql"));
                 }
             }
             long match;
