@@ -40,14 +40,17 @@ public class AnalysisJob extends BaseEntity {
     private boolean resultadosDisponibles;
     @Column(name = "resultado_ref", length = 255)
     private String resultadoRef;
+    @Column(name = "respuesta_json", columnDefinition = "text")
+    private String respuestaJson;
     @Column(name = "codigo_error", length = 40)
     private String codigoError;
     @Column(name = "mensaje_error", length = 255)
     private String mensajeError;
 
-    // A lost PUT response is retried with this job's ID, never with a new remote identity.
+    // Persist dispatch intent before the HTTP call. An interrupted wait is not silently resubmitted.
     @Column(nullable = false)
     private boolean enviado;
+    // Kept for historical jobs from the former remote-status protocol; unused by Future evaluations.
     @Column(name = "revision_remota")
     private Long revisionRemota;
     @Column(name = "fallos_consecutivos", nullable = false)

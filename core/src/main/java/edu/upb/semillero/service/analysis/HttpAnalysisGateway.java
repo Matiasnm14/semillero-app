@@ -3,80 +3,108 @@ package edu.upb.semillero.service.analysis;
 import edu.upb.semillero.config.AnalysisProperties;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import java.util.UUID;
+import java.util.concurrent.*;
 import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import static edu.upb.semillero.service.analysis.AnalysisGatewayException.Reason.*;
 
 @Component
 public class HttpAnalysisGateway implements AnalysisGateway {
     private final AnalysisProperties properties;
-    private final ObjectMapper json;
+    private final AnalysisResultValidator validator;
     private volatile HttpClient client;
 
-    public HttpAnalysisGateway(AnalysisProperties properties, ObjectMapper json) {
+    public HttpAnalysisGateway(AnalysisProperties properties, AnalysisResultValidator validator) {
         this.properties = properties;
-        this.json = json;
+        this.validator = validator;
     }
 
     @Override
-    public Snapshot submit(Submission submission) {
-        return send(submission.analysisId(), submission);
-    }
-
-    @Override
-    public Snapshot getStatus(Long analysisId) {
-        return send(analysisId, null);
-    }
-
-    private Snapshot send(Long id, Submission submission) {
-        if (!properties.isEnabled() || !properties.isEndpointValid()) throw new AnalysisGatewayException(REJECTED);
+    public CompletableFuture<String> evaluate(Submission submission) {
+        if (!properties.isEnabled() || !properties.isEndpointValid() || !properties.isEvaluationPathValid()) {
+            return CompletableFuture.failedFuture(new AnalysisGatewayException(REJECTED));
+        }
+        String boundary = "Semillero" + UUID.randomUUID().toString().replace("-", "");
+        var header = HttpRequest.BodyPublishers.ofString("--" + boundary
+                + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"video.mp4\"\r\n"
+                + "Content-Type: video/mp4\r\n\r\n");
+        HttpRequest.BodyPublisher body;
+        try {
+            body = HttpRequest.BodyPublishers.concat(header, HttpRequest.BodyPublishers.ofFile(submission.original()),
+                    HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
+        } catch (IOException e) {
+            return CompletableFuture.failedFuture(new AnalysisGatewayException(MISSING_ORIGINAL));
+        }
         String base = properties.getBaseUrl().toString().replaceAll("/+$", "");
-        var builder = HttpRequest.newBuilder(URI.create(base + "/internal/v1/analisis/" + id))
-                .timeout(properties.getRequestTimeout()).header("Accept", "application/json");
+        var builder = HttpRequest.newBuilder(URI.create(base + properties.getEvaluationPath()))
+                .timeout(properties.getRequestTimeout()).header("Accept", "application/json")
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("X-Analysis-Id", submission.correlationId()).POST(body);
         if (properties.getToken() != null && !properties.getToken().isBlank()) {
             builder.header("Authorization", "Bearer " + properties.getToken());
         }
-        if (submission == null) builder.GET();
-        else builder.header("Content-Type", "application/json").PUT(
-                HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(submission)));
-        var pending = client().sendAsync(builder.build(), response -> new LimitedBody());
-        HttpResponse<byte[]> response;
+        CompletableFuture<HttpResponse<byte[]>> network;
         try {
-            // Covers the entire response body as well as connection/headers.
-            response = pending.get(properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            pending.cancel(true);
-            Thread.currentThread().interrupt();
-            throw new AnalysisGatewayException(TRANSPORT);
-        } catch (java.util.concurrent.TimeoutException e) {
-            pending.cancel(true);
-            throw new AnalysisGatewayException(TRANSPORT);
-        } catch (java.util.concurrent.ExecutionException e) {
-            if (e.getCause() instanceof AnalysisGatewayException gatewayError) throw gatewayError;
-            throw new AnalysisGatewayException(TRANSPORT);
-        }
-        int status = response.statusCode();
-        if (status == 408 || status == 429 || status >= 500) throw new AnalysisGatewayException(TRANSPORT);
-        if (status != 200 && !(submission != null && (status == 201 || status == 202))) {
-            throw new AnalysisGatewayException(REJECTED);
-        }
-        try {
-            return json.readValue(response.body(), Snapshot.class);
+            network = client().sendAsync(builder.build(), response -> new LimitedBody(properties.getMaxResponseBytes()));
         } catch (RuntimeException e) {
-            // Never forward a remote body, URL or credential in a diagnostic.
+            return CompletableFuture.failedFuture(new AnalysisGatewayException(TRANSPORT));
+        }
+        // Own the returned Future: HttpClient's dependent Futures can propagate cancellation
+        // before recording it locally. Complete this one first, then cancel the exchange.
+        var result = new CompletableFuture<String>();
+        network.whenComplete((response, error) -> {
+            try {
+                if (error != null) throw new AnalysisGatewayException(reason(error));
+                result.complete(readResponse(response));
+            } catch (RuntimeException e) {
+                result.completeExceptionally(new AnalysisGatewayException(reason(e)));
+            }
+        });
+        // Unlike a headers-only timeout, this bounds the complete response, including a stalled body.
+        result.orTimeout(properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        result.whenComplete((value, error) -> {
+            if (error != null) network.cancel(true);
+        });
+        return result;
+    }
+
+    private String readResponse(HttpResponse<byte[]> response) {
+        int status = response.statusCode();
+        if (status == 408 || status == 504) throw new AnalysisGatewayException(TIMEOUT);
+        if (status == 429 || status >= 500) throw new AnalysisGatewayException(TRANSPORT);
+        // 202 is an acknowledgement, not the final evaluation JSON expected by this contract.
+        if (status != 200) throw new AnalysisGatewayException(REJECTED);
+        String type = response.headers().firstValue("Content-Type").orElse("").split(";", 2)[0].strip();
+        if (!type.equalsIgnoreCase("application/json") && !type.toLowerCase(java.util.Locale.ROOT).endsWith("+json")) {
             throw new AnalysisGatewayException(INVALID_RESPONSE);
         }
+        try {
+            String payload = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(response.body())).toString();
+            return validator.validate(payload);
+        } catch (java.nio.charset.CharacterCodingException e) {
+            throw new AnalysisGatewayException(INVALID_RESPONSE);
+        }
+    }
+
+    public static AnalysisGatewayException.Reason reason(Throwable error) {
+        while ((error instanceof CompletionException || error instanceof ExecutionException) && error.getCause() != null) {
+            error = error.getCause();
+        }
+        if (error instanceof AnalysisGatewayException gateway) return gateway.reason();
+        if (error instanceof TimeoutException || error instanceof HttpTimeoutException) return TIMEOUT;
+        if (error instanceof CancellationException) return INTERRUPTED;
+        return TRANSPORT;
     }
 
     @PreDestroy
@@ -86,32 +114,28 @@ public class HttpAnalysisGateway implements AnalysisGateway {
 
     private synchronized HttpClient client() {
         if (client == null) {
-            client = HttpClient.newBuilder().connectTimeout(properties.getRequestTimeout())
+            client = HttpClient.newBuilder().connectTimeout(properties.getConnectTimeout())
                     .followRedirects(HttpClient.Redirect.NEVER).build();
         }
         return client;
     }
 
     private static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {
-        private static final int MAX_BYTES = 64 * 1024;
+        private final int maxBytes;
         private final CompletableFuture<byte[]> result = new CompletableFuture<>();
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         private Flow.Subscription subscription;
 
-        @Override
-        public CompletionStage<byte[]> getBody() { return result; }
-
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
+        private LimitedBody(int maxBytes) { this.maxBytes = maxBytes; }
+        @Override public CompletionStage<byte[]> getBody() { return result; }
+        @Override public void onSubscribe(Flow.Subscription subscription) {
             this.subscription = subscription;
             subscription.request(1);
         }
-
-        @Override
-        public void onNext(List<ByteBuffer> buffers) {
+        @Override public void onNext(List<ByteBuffer> buffers) {
             for (var buffer : buffers) {
                 int count = buffer.remaining();
-                if (count > MAX_BYTES - bytes.size()) {
+                if (count > maxBytes - bytes.size()) {
                     subscription.cancel();
                     result.completeExceptionally(new AnalysisGatewayException(INVALID_RESPONSE));
                     return;
@@ -122,11 +146,7 @@ public class HttpAnalysisGateway implements AnalysisGateway {
             }
             subscription.request(1);
         }
-
-        @Override
-        public void onError(Throwable error) { result.completeExceptionally(error); }
-
-        @Override
-        public void onComplete() { result.complete(bytes.toByteArray()); }
+        @Override public void onError(Throwable error) { result.completeExceptionally(error); }
+        @Override public void onComplete() { result.complete(bytes.toByteArray()); }
     }
 }

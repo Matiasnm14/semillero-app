@@ -5,15 +5,17 @@ El modelo relacional parte de [dbfutbol.md](dbfutbol.md).
 
 El [plan de implementación de HU01 y HU12–HU16](PLAN_VIDEO_DATA_ANALYSIS.md) organiza las seis historias y sus 28 subissues reales por entregas, dependencias, cambios por capa, pruebas y criterios de cierre. El orden de trabajo es HU01 → HU12 → HU13 → HU15 → HU14 → HU16, según sus prioridades P0/P1.
 
-El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual y define la solicitud de análisis en segundo plano, la prevención de duplicados y la consulta de estado, avance y finalización, con trazabilidad a sus seis subtareas del tablero.
+El [plan inicial de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) conserva el diseño histórico. El contrato vigente usa una evaluación de Python con `CompletableFuture` y respuesta JSON final.
 
-La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
+La [integración automática de videos](docs/INTEGRACION_AUTOMATICA_VIDEO.md) envía cada carga a Python por multipart y espera su JSON final mediante `CompletableFuture`. El POST de carga devuelve `201` únicamente cuando el video y la respuesta quedaron guardados juntos; entonces se habilita la publicación opcional en YouTube. Un fallo del analizador cancela la carga. El frontend realiza un solo POST.
+
+La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) conserva el POST manual con `202` para videos anteriores que todavía no tengan análisis. Las cargas nuevas ya incluyen uno completado y rechazan un segundo POST con `409`. La publicación de métricas por jugador está pendiente del contrato y de identificar dorsal/equipo.
 
 Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerMatchMetrics`, su repositorio y validaciones de análisis, jugador y participación en el partido. La publicación y selección de la versión vigente se implementarán en las siguientes subtareas.
 
 Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
 
-La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) añade carga multipart de videos de partidos, validación con FFmpeg, almacenamiento del original, metadatos y publicación en YouTube en segundo plano. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`; la carga local también funciona con YouTube deshabilitado.
+La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) valida MP4 con FFmpeg, conserva el original y sus metadatos y publica en YouTube en segundo plano. Para cargar, configurar `ANALYSIS_ENABLED=true` y la URL del servicio Python; con el analizador deshabilitado, la carga responde `503`. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`. YouTube deshabilitado permite aceptar video y JSON sin publicación externa.
 
 ## Organización
 
@@ -35,9 +37,9 @@ Por ejemplo, para cambiar el CRUD de jugadores:
 
 ## Arranque local
 
-La [guía de PostgreSQL con Docker](docs/BASE_DATOS_DOCKER.md) explica la creación completa del esquema, los datos de ejemplo y la actualización de bases existentes. En un volumen nuevo, `docker compose up -d --wait db` ejecuta automáticamente [database/init.sql](database/init.sql) y crea las 20 tablas.
+La [guía de PostgreSQL con Docker](docs/BASE_DATOS_DOCKER.md) explica la creación completa del esquema, los datos de ejemplo y la actualización de bases existentes. Docker crea la base; al arrancar Spring, Flyway aplica las migraciones pendientes y Hibernate valida el resultado. Funciona tanto en bases nuevas como en instalaciones existentes del proyecto.
 
-Requisitos: JDK 21, Docker con Compose, FFmpeg (`ffmpeg` y `ffprobe`) y acceso a Maven Central en la primera compilación. La publicación en YouTube requiere además Python 3 y las dependencias de `scripts/youtube-requirements.txt`. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
+Requisitos: JDK 21, Docker con Compose, FFmpeg (`ffmpeg` y `ffprobe`) y acceso a Maven Central en la primera compilación. Para cargar videos se necesita además el servicio Python de análisis; Compose solo levanta PostgreSQL. La plantilla mantiene las integraciones externas deshabilitadas para el arranque local de los CRUD. La publicación en YouTube requiere Python 3 y las dependencias de `scripts/youtube-requirements.txt`. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
 
 Desde la raíz, en Bash:
 
@@ -68,7 +70,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El esquema inicial usa [000_base.sql](database/migrations/000_base.sql), seguido de las migraciones 001–003. Docker solo lo aplica automáticamente al inicializar un volumen vacío; en una base existente se aplican manualmente las migraciones pendientes. Ejecutar 002 y 003 también cuando `dev` ya creó sus tablas, según sus guías, para completar el índice único parcial y la FK compuesta. La configuración recomendada es `DB_DDL_AUTO=validate`; `dev` conserva `update` como alternativa si no se define esa variable. `docker compose down` detiene la base y conserva los datos.
+Las migraciones [V000–V004](database/migrations) se incluyen en el JAR y se ejecutan automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate y completa sus restricciones sin borrar datos; incluye la migración 004. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las 20 tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 
@@ -173,7 +175,7 @@ Reglas incluidas:
 - Estados de partido: `PROGRAMADO`, `EN_CURSO`, `FINALIZADO`, `CANCELADO`.
 - Una participación por jugador y partido, con restricción única en la base. El club debe ser local o visitante. Cambiar los clubes de un partido tampoco puede invalidar participaciones existentes.
 - `minutoEntrada` vale `0` al omitirse o enviarse `null`; los minutos y estadísticas son no negativos, y la salida no puede ser anterior a la entrada.
-- Los IDs de partido y jugador siguen siendo los identificadores compartidos con el futuro microservicio de análisis. Los videos de partidos y los datos de Couchbase no se guardan en estas tablas.
+- Spring conserva los IDs de partido y jugador; Python recibe el archivo y devuelve el JSON de métricas. La asociación por dorsal y equipo se acordará en HU12. Los videos de partidos tienen su tabla propia `videos_partido`.
 
 Errores HTTP en formato `ProblemDetail`: `400` para datos/reglas inválidos, `404` para registros o relaciones inexistentes y `409` para duplicados o restricciones de integridad, incluido borrar un registro que tiene dependencias.
 

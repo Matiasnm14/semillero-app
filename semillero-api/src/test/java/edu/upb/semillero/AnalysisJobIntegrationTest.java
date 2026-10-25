@@ -48,7 +48,7 @@ class AnalysisJobIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
-    @Autowired AnalysisJobRepository jobs;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean AnalysisJobRepository jobs;
     @Autowired VideoPartidoRepository videos;
     @Autowired PartidoRepository partidos;
     @Autowired ClubRepository clubes;
@@ -70,7 +70,7 @@ class AnalysisJobIntegrationTest {
         clubes.deleteAll();
         when(clock.instant()).thenReturn(now);
         properties.setEnabled(true);
-        properties.setMaxFailures(3);
+        properties.setMaxConcurrentJobs(2);
         properties.setMaxDuration(Duration.ofHours(6));
         Club local = new Club();
         local.setNombreClub("Local");
@@ -144,8 +144,9 @@ class AnalysisJobIntegrationTest {
         long id = create().get("id").asLong();
         mvc.perform(post(base())).andExpect(status().isConflict()).andExpect(jsonPath("$.analysisId").value(id))
                 .andExpect(jsonPath("$.analysisUrl").value("/api/v1/analisis/" + id));
-        when(gateway.submit(any())).thenReturn(snapshot(id, 1, EstadoAnalisis.COMPLETADO, null, false, null));
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture("[]"));
         worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
         mvc.perform(post(base())).andExpect(status().isConflict()).andExpect(jsonPath("$.analysisId").value(id));
         assertThat(jobs.count()).isEqualTo(1);
     }
@@ -172,152 +173,208 @@ class AnalysisJobIntegrationTest {
     }
 
     @Test
-    void continuesWithoutClientRequestsAndReportsProgressAndConfirmedResults() throws Exception {
+    void futureKeepsJobProcessingAndPublicApiResponsiveThenStoresUnmappedJson() throws Exception {
         long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenReturn(snapshot(id, 0, EstadoAnalisis.PENDIENTE, null, false, null));
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
         assertThat(worker.processNext()).isTrue();
-        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
-        when(clock.instant()).thenReturn(now.plusSeconds(5));
-        when(gateway.getStatus(id)).thenReturn(new AnalysisGateway.Snapshot(id, 1L, EstadoAnalisis.PROCESANDO,
-                35.0, 2100L, 6000L, now, null, false, null, null));
-        assertThat(worker.processNext()).isTrue();
+        assertThat(future.isDone()).isFalse();
         mvc.perform(get("/api/v1/analisis/" + id)).andExpect(jsonPath("$.estado").value("PROCESANDO"))
-                .andExpect(jsonPath("$.porcentaje").value(35.0)).andExpect(jsonPath("$.fotogramasProcesados").value(2100));
-        when(clock.instant()).thenReturn(now.plusSeconds(10));
-        when(gateway.getStatus(id)).thenReturn(snapshot(id, 2, EstadoAnalisis.COMPLETADO, 100.0, true, "resultados:101"));
-        worker.processNext();
+                .andExpect(jsonPath("$.fechaInicio").exists()).andExpect(jsonPath("$.porcentaje").isEmpty())
+                .andExpect(jsonPath("$.respuestaRecibida").value(false));
+        mvc.perform(get("/api/v1/clubes")).andExpect(status().isOk());
+        String payload = "[{\"dorsal\":9,\"distancia\":12.123456789}]";
+        future.complete(payload);
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getRespuestaJson()).isEqualTo(payload);
         mvc.perform(get("/api/v1/analisis/" + id)).andExpect(jsonPath("$.estado").value("COMPLETADO"))
-                .andExpect(jsonPath("$.fechaFin").value(now.plusSeconds(1).toString()))
-                .andExpect(jsonPath("$.resultadosDisponibles").value(true));
+                .andExpect(jsonPath("$.respuestaRecibida").value(true))
+                .andExpect(jsonPath("$.resultadosDisponibles").value(false))
+                .andExpect(jsonPath("$.respuestaJson").doesNotExist()).andExpect(jsonPath("$.porcentaje").isEmpty());
+        assertThat(contextMetricsCount()).isZero();
         assertThat(worker.processNext()).isFalse();
-        assertThat(job(id).getClaimToken()).isNull();
-        verify(gateway, times(1)).submit(any());
-        verify(gateway, times(2)).getStatus(id);
+        verify(gateway, times(1)).evaluate(argThat(value -> value.correlationId().equals(Long.toString(id))
+                && value.original().equals(storage.original(video.getStorageId()))));
     }
 
     @Test
-    void completionCanHonestlyReportResultsNotYetAvailable() throws Exception {
+    void limitsConcurrentFuturesAndStartsQueuedWorkWhenCapacityReturns() throws Exception {
+        properties.setMaxConcurrentJobs(1);
+        long first = create().get("id").asLong();
+        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(pending).thenReturn(CompletableFuture.completedFuture("{}"));
+        assertThat(worker.processNext()).isTrue();
+        assertThat(worker.processNext()).isFalse();
+        assertThat(job(second).getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
+        pending.complete("[]");
+        await(() -> job(first).getEstado().isTerminal());
+        assertThat(worker.processNext()).isTrue();
+        await(() -> job(second).getEstado().isTerminal());
+        verify(gateway, times(2)).evaluate(any());
+    }
+
+    @Test
+    void renewsLeaseWhileFutureIsPendingWithoutPollingPython() throws Exception {
         long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenReturn(snapshot(id, 1, EstadoAnalisis.COMPLETADO, null, false, null));
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
         worker.processNext();
-        mvc.perform(get("/api/v1/analisis/" + id)).andExpect(jsonPath("$.estado").value("COMPLETADO"))
-                .andExpect(jsonPath("$.fechaFin").exists()).andExpect(jsonPath("$.resultadosDisponibles").value(false))
-                .andExpect(jsonPath("$.porcentaje").isEmpty());
+        for (int seconds : new int[]{20, 40, 60}) {
+            when(clock.instant()).thenReturn(now.plusSeconds(seconds));
+            worker.processNext();
+            assertThat(job(id).getLeaseUntil()).isAfter(now.plusSeconds(seconds));
+        }
+        future.complete("[]");
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        verify(gateway, times(1)).evaluate(any());
     }
 
     @Test
-    void recoversExpiredReservationWithSameIdAndRejectsConcurrentPoller() throws Exception {
+    void futuresCompletingOutOfOrderKeepTheirOriginalAnalysisContext() throws Exception {
+        long first = create().get("id").asLong();
+        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        CompletableFuture<String> a = new CompletableFuture<>(), b = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenAnswer(call ->
+                ((AnalysisGateway.Submission) call.getArgument(0)).correlationId().equals(Long.toString(first)) ? a : b);
+        assertThat(worker.processNext()).isTrue();
+        assertThat(worker.processNext()).isTrue();
+        b.complete("[{\"dorsal\":9,\"distancia\":22}]");
+        await(() -> job(second).getEstado().isTerminal());
+        assertThat(job(first).getEstado()).isEqualTo(EstadoAnalisis.PROCESANDO);
+        assertThat(job(first).getRespuestaJson()).isNull();
+        a.complete("[{\"dorsal\":9,\"distancia\":11}]");
+        await(() -> job(first).getEstado().isTerminal());
+        assertThat(job(first).getRespuestaJson()).contains("11");
+        assertThat(job(second).getRespuestaJson()).contains("22");
+    }
+
+    @Test
+    void expiredForeignReservationBecomesErrorWithoutResendingUncertainEvaluation() throws Exception {
         long id = create().get("id").asLong();
         var saved = job(id);
-        saved.setClaimToken(UUID.randomUUID().toString());
-        saved.setLeaseUntil(now.minusSeconds(1));
+        saved.setEstado(EstadoAnalisis.PROCESANDO); saved.setFechaInicio(now.minusSeconds(5));
+        saved.setEnviado(true); saved.setClaimToken("previous-process"); saved.setLeaseUntil(now.minusSeconds(1));
         jobs.saveAndFlush(saved);
-        var entered = new CountDownLatch(1);
-        var release = new CountDownLatch(1);
-        when(gateway.submit(any())).thenAnswer(call -> {
-            entered.countDown();
-            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("timeout");
-            return snapshot(id, 1, EstadoAnalisis.PROCESANDO, null, false, null);
-        });
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var first = executor.submit(worker::processNext);
-            try {
-                assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
-                assertThat(worker.processNext()).isFalse();
-                assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
-                mvc.perform(get("/api/v1/clubes")).andExpect(status().isOk());
-            } finally { release.countDown(); }
-            assertThat(first.get(10, TimeUnit.SECONDS)).isTrue();
-        }
-        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PROCESANDO);
-        verify(gateway).submit(argThat(value -> value.analysisId().equals(id) && value.storageId().equals(video.getStorageId())));
-    }
-
-    @Test
-    void responseFromExpiredOwnerCannotOverwriteNewReservation() throws Exception {
-        long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenAnswer(call -> {
-            var claimed = job(id);
-            claimed.setClaimToken("replacement-token");
-            jobs.saveAndFlush(claimed);
-            return snapshot(id, 1, EstadoAnalisis.COMPLETADO, null, false, null);
-        });
-        worker.processNext();
-        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
-        assertThat(job(id).getClaimToken()).isEqualTo("replacement-token");
-    }
-
-    @Test
-    void lostSubmissionResponseRetriesSameIdentityAndEventuallySurfacesSafeError() throws Exception {
-        long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenThrow(new AnalysisGatewayException(TRANSPORT));
-        worker.processNext();
-        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
-        assertThat(worker.processNext()).isFalse();
-        mvc.perform(get("/api/v1/analisis/" + id)).andExpect(status().isOk());
-        when(clock.instant()).thenReturn(now.plusSeconds(5));
-        worker.processNext();
-        when(clock.instant()).thenReturn(now.plusSeconds(15));
         worker.processNext();
         assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.ERROR);
-        assertThat(job(id).getCodigoError()).isEqualTo("RECUPERACION_AGOTADA");
-        assertThat(job(id).getFechaFin()).isEqualTo(now.plusSeconds(15));
-        assertThat(jobs.count()).isEqualTo(1);
-        verify(gateway, times(3)).submit(argThat(value -> value.analysisId().equals(id)));
-    }
-
-    @Test
-    void missingOriginalAndExceededDeadlineFinishWithoutCallingRemoteService() throws Exception {
-        long id = create().get("id").asLong();
-        Files.delete(storage.original(video.getStorageId()));
-        worker.processNext();
-        assertThat(job(id).getCodigoError()).isEqualTo("ORIGINAL_NO_DISPONIBLE");
-        var another = video(video.getPartido());
-        long otherId = service.create(partidoId, another.getId()).id();
-        when(clock.instant()).thenReturn(now.plus(Duration.ofHours(7)));
-        worker.processNext();
-        assertThat(job(otherId).getCodigoError()).isEqualTo("TIEMPO_ANALISIS_AGOTADO");
+        assertThat(job(id).getCodigoError()).isEqualTo("EVALUACION_INTERRUMPIDA");
         verifyNoInteractions(gateway);
     }
 
     @Test
-    void remoteFailureIsSanitizedAndUnknownExceptionsNeverExposeDetails() throws Exception {
+    void lateFutureCannotOverwriteReplacementToken() throws Exception {
         long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenReturn(new AnalysisGateway.Snapshot(id, 1L, EstadoAnalisis.ERROR,
-                null, null, null, null, now, false, null, "secret path and token"));
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
         worker.processNext();
-        mvc.perform(get("/api/v1/analisis/" + id)).andExpect(jsonPath("$.estado").value("ERROR"))
-                .andExpect(jsonPath("$.codigoError").value("ANALISIS_FALLIDO"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("secret"))));
-        long otherId = service.create(partidoId, video(video.getPartido()).getId()).id();
-        properties.setMaxFailures(1);
-        when(gateway.submit(any())).thenThrow(new IllegalStateException("secret credentials"));
-        worker.processNext();
-        assertThat(job(otherId).getMensajeError()).doesNotContain("secret");
-        assertThat(job(otherId).getEstado()).isEqualTo(EstadoAnalisis.ERROR);
-    }
-
-    @Test
-    void staleRemoteRevisionDoesNotRegressProgress() throws Exception {
-        long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenReturn(snapshot(id, 2, EstadoAnalisis.PROCESANDO, 50.0, false, null));
-        worker.processNext();
-        when(clock.instant()).thenReturn(now.plusSeconds(5));
-        when(gateway.getStatus(id)).thenReturn(snapshot(id, 1, EstadoAnalisis.PENDIENTE, null, false, null));
+        var changed = job(id); changed.setClaimToken("replacement-token"); jobs.saveAndFlush(changed);
+        future.complete("[]");
+        // Drain completed Futures deterministically; ownership must also hold in the SQL transaction.
         worker.processNext();
         assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.PROCESANDO);
-        assertThat(job(id).getPorcentaje()).isEqualTo(50.0);
-        assertThat(job(id).getFechaActualizacion()).isEqualTo(now);
+        assertThat(job(id).getClaimToken()).isEqualTo("replacement-token");
+        assertThat(job(id).getRespuestaJson()).isNull();
     }
 
     @Test
-    void invalidRemoteProgressIsRejectedInsteadOfStored() throws Exception {
+    void futureAfterLeaseExpirationIsRejected() throws Exception {
         long id = create().get("id").asLong();
-        when(gateway.submit(any())).thenReturn(snapshot(id, 1, EstadoAnalisis.PROCESANDO, 101.0, false, null));
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
         worker.processNext();
+        when(clock.instant()).thenReturn(now.plusSeconds(31));
+        future.complete("[]");
+        await(() -> job(id).getEstado().isTerminal());
         assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.ERROR);
-        assertThat(job(id).getPorcentaje()).isNull();
+        assertThat(job(id).getRespuestaJson()).isNull();
+    }
+
+    @Test
+    void timeoutAndTransportErrorsAreTerminalWithoutAutomaticResubmission() throws Exception {
+        long id = create().get("id").asLong();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.failedFuture(new TimeoutException("remote secret")));
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getCodigoError()).isEqualTo("ESPERA_EVALUACION_AGOTADA");
+        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("secret credentials")));
+        worker.processNext();
+        await(() -> job(second).getEstado().isTerminal());
+        assertThat(job(second).getMensajeError()).doesNotContain("secret");
+        assertThat(worker.processNext()).isFalse();
+        verify(gateway, times(2)).evaluate(any());
+    }
+
+    @Test
+    void malformedFinalPayloadIsNotStoredOrPublished() throws Exception {
+        long id = create().get("id").asLong();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture("{not JSON}"));
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
         assertThat(job(id).getCodigoError()).isEqualTo("RESPUESTA_ANALIZADOR_INVALIDA");
+        assertThat(job(id).getRespuestaJson()).isNull();
+        assertThat(job(id).isResultadosDisponibles()).isFalse();
+    }
+
+    @Test
+    void sqlCommitFailureRetriesSavingTheCompletedFutureWithoutCallingPythonAgain() throws Exception {
+        long id = create().get("id").asLong();
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
+        worker.processNext();
+        CountDownLatch attempted = new CountDownLatch(1);
+        doAnswer(call -> { attempted.countDown(); throw new org.springframework.dao.DataAccessResourceFailureException("test failure"); })
+                .when(jobs).saveAndFlush(any(AnalysisJob.class));
+        future.complete("[]");
+        assertThat(attempted.await(5, TimeUnit.SECONDS)).isTrue();
+        reset(jobs);
+        await(() -> { worker.processNext(); return job(id).getEstado().isTerminal(); });
+        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        assertThat(job(id).getRespuestaJson()).isEqualTo("[]");
+        verify(gateway, times(1)).evaluate(any());
+    }
+
+    @Test
+    void missingOriginalAndExceededDeadlineNeverCallPython() throws Exception {
+        long id = create().get("id").asLong();
+        Files.delete(storage.original(video.getStorageId()));
+        worker.processNext();
+        assertThat(job(id).getCodigoError()).isEqualTo("ORIGINAL_NO_DISPONIBLE");
+        long other = service.create(partidoId, video(video.getPartido()).getId()).id();
+        when(clock.instant()).thenReturn(now.plus(Duration.ofHours(7)));
+        worker.processNext();
+        assertThat(job(other).getCodigoError()).isEqualTo("TIEMPO_ANALISIS_AGOTADO");
+        verifyNoInteractions(gateway);
+    }
+
+    @Test
+    void overallDeadlineCancelsPendingFuture() throws Exception {
+        long id = create().get("id").asLong();
+        CompletableFuture<String> future = new CompletableFuture<>();
+        when(gateway.evaluate(any())).thenReturn(future);
+        worker.processNext();
+        when(clock.instant()).thenReturn(now.plus(Duration.ofHours(7)));
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(future.isCompletedExceptionally()).isTrue();
+        assertThat(job(id).getCodigoError()).isEqualTo("TIEMPO_ANALISIS_AGOTADO");
+    }
+
+    private long contextMetricsCount() {
+        return jdbc.queryForObject("select count(*) from player_match_metrics", Long.class);
+    }
+
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private void await(java.util.function.BooleanSupplier condition) throws Exception {
+        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < end) {
+            if (condition.getAsBoolean()) return;
+            Thread.sleep(10);
+        }
+        assertThat(condition.getAsBoolean()).as("asynchronous database update").isTrue();
     }
 
     private tools.jackson.databind.JsonNode create() throws Exception {
@@ -330,13 +387,6 @@ class AnalysisJobIntegrationTest {
 
     private String base() { return "/api/v1/partidos/" + partidoId + "/videos/" + video.getId() + "/analisis"; }
     private AnalysisJob job(long id) { return jobs.findById(id).orElseThrow(); }
-
-    private AnalysisGateway.Snapshot snapshot(long id, long revision, EstadoAnalisis state, Double percentage,
-            boolean available, String ref) {
-        return new AnalysisGateway.Snapshot(id, revision, state, percentage, null, null,
-                state == EstadoAnalisis.PENDIENTE ? null : now,
-                state.isTerminal() ? now.plusSeconds(1) : null, available, ref, null);
-    }
 
     private VideoPartido video(Partido partido) throws Exception {
         var value = new VideoPartido();

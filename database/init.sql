@@ -1,7 +1,9 @@
--- Punto de entrada para psql y /docker-entrypoint-initdb.d de la imagen oficial.
--- Solo para una base vacía. Para actualizar una existente, aplicar únicamente
--- las migraciones pendientes, según docs/BASE_DATOS_DOCKER.md.
+-- Utilidad manual para una base vacía; el arranque normal usa Flyway desde Spring.
+-- Solo para una base vacía. Para actualizar una existente, arrancar Spring;
+-- Flyway aplica las migraciones pendientes según docs/BASE_DATOS_DOCKER.md.
 \set ON_ERROR_STOP on
+
+BEGIN;
 
 DO $$
 BEGIN
@@ -12,9 +14,12 @@ END;
 $$;
 
 -- \ir resuelve las rutas desde este archivo, no desde el directorio del proceso.
-\ir migrations/000_base.sql
-\ir migrations/001_videos_partido.sql
-\ir migrations/002_analysis_jobs.sql
-\ir migrations/003_player_match_metrics.sql
+\ir migrations/V000__base.sql
+\ir migrations/V001__videos_partido.sql
+\ir migrations/V002__analysis_jobs.sql
+\ir migrations/V003__player_match_metrics.sql
+\ir migrations/V004__analysis_future_response.sql
 
-\echo 'Semillero: esquema completo inicializado (000-003).'
+COMMIT;
+
+\echo 'Semillero: esquema completo inicializado (000-004).'

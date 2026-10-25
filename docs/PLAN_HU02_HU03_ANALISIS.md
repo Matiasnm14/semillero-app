@@ -1,5 +1,7 @@
 # Plan de implementación de HU02 y HU03
 
+**Documento histórico:** el protocolo de snapshots PUT/GET descrito aquí fue sustituido el 2026-10-23 por una evaluación HTTP con `CompletableFuture` y JSON final. El contrato vigente está en [HU02_HU03_ANALISIS.md](HU02_HU03_ANALISIS.md).
+
 Fecha de revisión: 2026-10-21, zona America/La_Paz.
 
 Este documento registra el diseño previo a la implementación. El backend desarrollado y el contrato para el futuro servicio Python están descritos en [HU02_HU03_ANALISIS.md](HU02_HU03_ANALISIS.md). La rama de trabajo es `Avance-HU02-y-HU03`, derivada de `video-data-analysis` en `536ef66e38929a0465f9ff5dc07efd42da9a3b0f` (`HU01 implementado`). La referencia remota de la rama de origen coincidía con ese commit al revisar el proyecto.
@@ -50,7 +52,7 @@ Se consultaron también [HU12, #7](https://github.com/s-villanueva/video-data-an
 | Resultados | No hay integración Couchbase ni repositorio de resultados; el README menciona un microservicio futuro. | Separar la consulta de estado de HU12/HU13; no inventar métricas ni disponibilidad. |
 | Interfaz | No hay frontend en este repositorio. | Entregar API y guía de consumo; la navegación visual se valida cuando exista el cliente. |
 | Scheduler | Solo se configura `@EnableScheduling`; el uploader realiza una operación potencialmente larga. | Dar al análisis un scheduler propio para que la publicación no retrase su despacho o consulta. |
-| Migraciones | Existe únicamente `001_videos_partido.sql`, de aplicación manual; `dev` usa `ddl-auto=update`. | Añadir SQL incremental y verificarlo en PostgreSQL; H2 no valida índices parciales de PostgreSQL. |
+| Migraciones | Existe únicamente `V001__videos_partido.sql`, de aplicación manual; `dev` usa `ddl-auto=update`. | Añadir SQL incremental y verificarlo en PostgreSQL; H2 no valida índices parciales de PostgreSQL. |
 | Regresión | Tres clases Java cubren CRUD, HU01 y el adaptador YouTube; el script tiene 14 casos Python. | Mantener esas pruebas y añadir cobertura específica de estados, concurrencia y reinicios. |
 | Documentación | README enlaza `dbfutbol.md` y `PLAN_VIDEO_DATA_ANALYSIS.md`, que no existen en el checkout. | Este plan usa el modelo y las historias verificadas, sin asumir el contenido de esos archivos. |
 | Windows | El uploader importa `fcntl`, módulo POSIX; su guía indica Linux/macOS. | La publicación Python requiere un entorno compatible; el análisis debe funcionar con YouTube desactivado. |
@@ -108,7 +110,7 @@ PENDIENTE ──inicio confirmado──→ PROCESANDO ──fin confirmado──
 - Ignorar actualizaciones obsoletas; el token de reserva y el control de versión protegen las escrituras. Mantener el avance coherente dentro del mismo análisis.
 - `COMPLETADO` requiere confirmación real del fin. `resultadosDisponibles` indica disponibilidad confirmada de los resultados de ese análisis; puede ser `false` si todavía no son consultables. El fin del proceso por sí solo no habilita un enlace inexistente ni implementa HU12.
 
-Añadir `database/migrations/002_analysis_jobs.sql`, con FK, comprobaciones de estados/valores, índice para trabajos ejecutables y un índice único parcial por video para estados PENDIENTE/PROCESANDO. El servicio debe bloquear la fila existente de `VideoPartido` mientras consulta e inserta el trabajo. El índice refuerza la regla frente a accesos concurrentes y escrituras que omitan el servicio.
+Añadir `database/migrations/V002__analysis_jobs.sql`, con FK, comprobaciones de estados/valores, índice para trabajos ejecutables y un índice único parcial por video para estados PENDIENTE/PROCESANDO. El servicio debe bloquear la fila existente de `VideoPartido` mientras consulta e inserta el trabajo. El índice refuerza la regla frente a accesos concurrentes y escrituras que omitan el servicio.
 
 La migración se aplica sobre una base que ya tiene HU01. Como en el esquema actual, documentar su aplicación manual antes de `ddl-auto=validate`, y el procedimiento para bases creadas previamente con `dev`; no ejecutar DDL duplicado a ciegas. Probar el índice parcial en PostgreSQL real y no representarlo como una capacidad cubierta por H2.
 
@@ -194,7 +196,7 @@ El gateway simulado se usa solo en pruebas. Sin un analizador real disponible se
 | `semillero-api/.../controller/` | Controladores de creación/listado por video y consulta por ID. |
 | `semillero-api/.../controller/exception/ApiExceptionHandler.java` | Conflicto de análisis activo con referencia al existente y errores de integración aptos para el cliente. |
 | `semillero-api/src/main/resources/application.properties`, `.env.example` | Activación, URL del servicio, acceso interno, polling, timeouts, reserva y límites de recuperación. |
-| `database/migrations/002_analysis_jobs.sql` | Tabla, restricciones e índices de PostgreSQL. |
+| `database/migrations/V002__analysis_jobs.sql` | Tabla, restricciones e índices de PostgreSQL. |
 | `semillero-api/src/test/` | Integración HTTP, worker con gateway controlado, regresión y perfil de PostgreSQL. |
 | `docs/`, `README.md` | Contrato, estados, operación, migración y ejemplos reproducibles de consumo. |
 
