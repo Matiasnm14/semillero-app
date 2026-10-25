@@ -1,17 +1,15 @@
 package edu.upb.semillero.service.analysis;
 
-import edu.upb.semillero.repository.enums.EstadoAnalisis;
-import java.time.Instant;
+import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
-/** Contract for the Python service; the original is resolved in its read-only shared volume. */
+/** Python evaluates the original and completes one response; all domain context stays in Spring. */
 public interface AnalysisGateway {
-    record Submission(Long analysisId, Long videoId, Long partidoId, String storageId, String sha256) {}
-
-    record Snapshot(Long analysisId, Long revision, EstadoAnalisis estado, Double porcentaje,
-            Long fotogramasProcesados, Long fotogramasTotales, Instant fechaInicio, Instant fechaFin,
-            Boolean resultadosDisponibles, String resultadoRef, String codigoError) {}
-
-    Snapshot submit(Submission submission);
-
-    Snapshot getStatus(Long analysisId);
+    record Submission(String correlationId, Path original) {
+        /** Existing jobs have a durable ID; uploads use a correlation before any SQL insert. */
+        public Submission(Long analysisId, Path original) {
+            this(analysisId.toString(), original);
+        }
+    }
+    CompletableFuture<String> evaluate(Submission submission);
 }

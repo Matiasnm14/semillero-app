@@ -11,7 +11,7 @@ Esta entrega prepara persistencia y validación de referencias. La publicación 
 | `data/.../entity/PlayerMatchMetrics.java` | Entidad de métricas, intervalo, relaciones y campos de versionado |
 | `data/.../repos/PlayerMatchMetricsRepository.java` | Persistencia; búsqueda por análisis y por análisis/jugador/intervalo |
 | `core/.../service/PlayerMatchMetricsIntegrityService.java` | Validación de referencias y pertenencia; devuelve las entidades resueltas |
-| `database/migrations/003_player_match_metrics.sql` | Tabla, restricciones, índices y FK compuesta hacia la participación |
+| `database/migrations/V003__player_match_metrics.sql` | Tabla, restricciones, índices y FK compuesta hacia la participación |
 
 El modelo mantiene la organización `semillero-api → core → data` y servicios concretos. La futura publicación usará esta validación desde su propia transacción; esta entrega no añade un endpoint de escritura que permita guardar métricas sin aplicar las reglas de publicación pendientes.
 
@@ -77,20 +77,11 @@ Esto impide insertar métricas de un jugador ajeno al partido incluso si los IDs
 
 La correspondencia entre el partido y el video del análisis, y la pertenencia del club al partido, se validan en el servicio. Los escritores deben usar ese servicio: las FK escalares por sí solas no comprueban esas relaciones transitivas.
 
-## Aplicación de la migración
+## Aplicación automática de la migración
 
-Con los catálogos base y las migraciones 001/002 aplicadas, ejecutar **una vez** la [migración 003](../database/migrations/003_player_match_metrics.sql), antes de arrancar con `ddl-auto=validate`.
+Flyway aplica [V003__player_match_metrics.sql](../database/migrations/V003__player_match_metrics.sql) al arrancar Spring, antes de validar JPA. También reconoce instalaciones anteriores y tablas creadas por Hibernate: conserva la tabla y completa la FK `fk_pmm_participation`, restricciones e índices ausentes. Los registros incompatibles detienen y revierten esa migración; no se eliminan para conciliarlos.
 
-Desde la raíz, con `.env` exportado:
-
-```bash
-docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-  -U "$DB_USER" -d "$DB_NAME" < database/migrations/003_player_match_metrics.sql
-```
-
-También hay que ejecutarla si el perfil `dev` ya creó la tabla: Hibernate crea las FK individuales y comprobaciones del modelo, pero la FK compuesta hacia la participación se incorpora mediante el SQL. La migración conserva una tabla creada por `dev` y añade esa FK; las restricciones hacen fallar la transacción si existen registros incompatibles. No elimina datos para conciliarlos.
-
-No repetir la migración una vez aplicada: la adición de la FK compuesta es una operación única. El proyecto mantiene la aplicación manual de migraciones.
+El historial evita repetir migraciones en reinicios posteriores. No se requiere SQL manual. Ver [guía del equipo](BASE_DATOS_DOCKER.md).
 
 ## Verificación
 
@@ -113,7 +104,7 @@ Comprueba la migración sobre tabla creada por `dev`, la cadena SQL 001–003 de
 ## Pendientes para el equipo
 
 - Confirmar unidades, precisión e interpretación de `period_start`/`period_end` en el contrato de resultados.
-- Acordar entrega o recuperación de resultados: el gateway actual solo trae estado y `resultadoRef`.
-- Resolver el caso `COMPLETADO` con resultados que se publican después; el worker de HU02/HU03 deja de consultar estados terminales.
+- El gateway adaptado recibe el JSON final mediante Future y lo conserva en `AnalysisJob.respuestaJson`; las cargas nuevas ya lo guardan junto con el video y un análisis completado mediante la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md). Acordar su estructura antes de convertirlo en métricas definitivas.
+- Resolver dorsales repetidos entre equipos y asociar cada resultado con la participación real. El JSON recibido aún no equivale a métricas publicadas.
 - Definir ámbito y asignación de la versión vigente; implementar publicación transaccional e idempotente con SB-051/SB-053.
 - Completar SB-054 cuando exista ese flujo para probar la publicación completa y el cambio atómico de versión.

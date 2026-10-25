@@ -2,6 +2,7 @@ package edu.upb.semillero.controller.exception;
 
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.AnalysisConflictException;
+import edu.upb.semillero.service.exception.AnalysisUploadException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
@@ -24,6 +25,12 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(AnalysisUploadException.class)
+    public ProblemDetail analysisUpload(AnalysisUploadException exception) {
+        return ProblemDetail.forStatusAndDetail(exception.isTimeout() ? HttpStatus.GATEWAY_TIMEOUT
+                : HttpStatus.BAD_GATEWAY, exception.getMessage());
+    }
+
     @ExceptionHandler(AnalysisConflictException.class)
     public ProblemDetail analysisConflict(AnalysisConflictException exception) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());

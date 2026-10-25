@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -27,15 +27,17 @@ class PlayerMatchMetricsPostgresTest {
             var jdbc = context.getBean(JdbcTemplate.class);
             // Dev already created the model: the migration must still add the composite FK.
             migrate(context, "003_player_match_metrics.sql");
+            migrate(context, "004_analysis_future_response.sql");
             assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
                     .isEqualTo(1);
-            // Exercise the complete SQL chain against existing catalog tables, without JPA creating these tables.
-            jdbc.execute("drop table player_match_metrics");
-            jdbc.execute("drop table analysis_jobs");
-            jdbc.execute("drop table videos_partido");
+            // Recreate only this disposable test schema; the complete SQL must work without Hibernate creating tables.
+            jdbc.execute("drop schema public cascade");
+            jdbc.execute("create schema public");
+            migrate(context, "000_base.sql");
             migrate(context, "001_videos_partido.sql");
             migrate(context, "002_analysis_jobs.sql");
             migrate(context, "003_player_match_metrics.sql");
+            migrate(context, "004_analysis_future_response.sql");
         }
         long metricId;
         Instant createdAt;
@@ -104,7 +106,7 @@ class PlayerMatchMetricsPostgresTest {
     private void migrate(ConfigurableApplicationContext context, String name) throws Exception {
         try (var connection = context.getBean(DataSource.class).getConnection()) {
             ScriptUtils.executeSqlScript(connection,
-                    new FileSystemResource(Path.of("..", "database", "migrations", name)));
+                    new ClassPathResource("db/legacy/" + name));
         }
     }
 

@@ -62,11 +62,11 @@ Variables:
 | `DB_NAME` | Nombre de la base de Compose, `semillero`. |
 | `DB_PORT_EXTERNAL` | Puerto local de Compose, `5432`. |
 | `DB_URL` | URL JDBC, `jdbc:postgresql://localhost:5432/semillero`. Adaptar si cambia el nombre o puerto de la base. |
-| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo para crear/actualizar tablas. |
-| `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
+| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo; también respeta `DB_DDL_AUTO`. |
+| `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente. Las migraciones se aplican manualmente y en orden: [001](database/migrations/001_videos_partido.sql) para videos de partidos, [002](database/migrations/002_analysis_jobs.sql) para trabajos de análisis, [003](database/migrations/003_player_match_metrics.sql) para métricas y [004](database/migrations/004_profile_and_club_images.sql) para las imágenes de perfiles y escudos. Ejecutar 002, 003 y 004 también cuando `dev` ya creó sus tablas: 002 y 003 agregan restricciones que Hibernate no genera y 004 asegura que producción tenga las columnas de imágenes. Consultar sus guías antes de aplicarlas una vez. Todavía no hay migraciones iniciales de todas las tablas ni un ejecutor automático. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+Las migraciones [V000–V005](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate y completa sus restricciones sin borrar datos; V005 añade las imágenes de perfiles y escudos. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 
