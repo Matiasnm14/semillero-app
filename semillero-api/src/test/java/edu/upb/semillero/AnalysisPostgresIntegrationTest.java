@@ -201,6 +201,7 @@ class AnalysisPostgresIntegrationTest {
         return new SpringApplicationBuilder(SemilleroApplication.class).profiles("test").run(
                 "--spring.datasource.url=" + System.getenv("ANALYSIS_PG_TEST_URL"),
                 "--spring.datasource.username=analysis_test", "--spring.datasource.password=",
+                "--spring.flyway.enabled=" + "validate".equals(ddl),
                 "--spring.jpa.hibernate.ddl-auto=" + ddl,
                 "--server.port=0", "--spring.main.banner-mode=off", "--logging.level.root=WARN",
                 "--analysis.enabled=true", "--analysis.base-url=http://127.0.0.1:" + remotePort,

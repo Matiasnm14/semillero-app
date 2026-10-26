@@ -1,6 +1,7 @@
 package edu.upb.semillero;
 
 import edu.upb.semillero.repository.repos.ClubRepository;
+import edu.upb.semillero.repository.repos.UsuarioRepository;
 import edu.upb.semillero.config.DatabaseMigrationConfiguration;
 import java.sql.Connection;
 import java.util.concurrent.Executors;
@@ -69,7 +70,7 @@ class DatabaseMigrationsPostgresTest {
         legacy(4);
         legacyJob(false);
         jdbc.update("insert into users(name, password_hash) values ('Ana', 'hash')");
-        jdbc.update("insert into clubes(nombre_club) values ('Club con imagen pendiente')");
+        jdbc.update("insert into clubes(nombre_club) values ('Sin imagen')");
         try (var ignored = start(true, "validate")) {
             assertCurrent();
             assertBaseline();
@@ -78,7 +79,7 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isNull();
             assertThat(jdbc.queryForObject("select count(*) from videos_partido", Integer.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("select foto_perfil from users where name='Ana'", String.class)).isNull();
-            assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Club con imagen pendiente'", String.class)).isNull();
+            assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Sin imagen'", String.class)).isNull();
         }
     }
 
@@ -90,12 +91,44 @@ class DatabaseMigrationsPostgresTest {
         jdbc.update("insert into users(name, password_hash, foto_perfil) values ('Ana', 'hash', 'perfil-existente')");
         jdbc.update("insert into clubes(nombre_club, foto_club) values ('Club existente', 'escudo-existente')");
 
-        try (var ignored = start(true, "validate")) {
+        try (var context = start(true, "validate")) {
             assertCurrent();
             assertThat(jdbc.queryForObject("select foto_perfil from users where name='Ana'", String.class))
                     .isEqualTo("perfil-existente");
             assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Club existente'", String.class))
                     .isEqualTo("escudo-existente");
+            assertThat(context.getBean(UsuarioRepository.class).findByNameIgnoreCase("Ana").orElseThrow().getFotoPerfil())
+                    .isEqualTo("perfil-existente");
+            assertThat(context.getBean(ClubRepository.class).findAll().getFirst().getFotoClub()).isEqualTo("escudo-existente");
+        }
+    }
+
+    @Test
+    void convertsLegacyOidImagesPreservingContentNullsAndJpaReadWrite() throws Exception {
+        legacy(4);
+        jdbc.execute("alter table users add column foto_perfil oid");
+        jdbc.execute("alter table clubes add column foto_club oid");
+        String image = "data:image/png;base64," + "áñXYZ".repeat(100);
+        jdbc.update("insert into users(name,password_hash,foto_perfil) values ('Ana','hash',lo_from_bytea(0,convert_to(?,'UTF8')))", image);
+        jdbc.update("insert into users(name,password_hash) values ('Sin foto','hash')");
+        jdbc.update("insert into clubes(nombre_club,foto_club) values ('Club OID',lo_from_bytea(0,convert_to(?,'UTF8')))", image);
+        jdbc.update("insert into clubes(nombre_club) values ('Sin foto')");
+        long userId;
+        try (var context = start(true, "validate")) {
+            assertCurrent();
+            var users = context.getBean(UsuarioRepository.class);
+            var user = users.findByNameIgnoreCase("Ana").orElseThrow();
+            userId = user.getId();
+            assertThat(user.getFotoPerfil()).isEqualTo(image);
+            assertThat(users.findByNameIgnoreCase("Sin foto").orElseThrow().getFotoPerfil()).isNull();
+            assertThat(context.getBean(ClubRepository.class).findAll().stream()
+                    .filter(club -> club.getNombreClub().equals("Club OID")).findFirst().orElseThrow().getFotoClub()).isEqualTo(image);
+            assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Sin foto'", String.class)).isNull();
+            user.setFotoPerfil(image + "nueva");
+            users.saveAndFlush(user);
+        }
+        try (var context = start(true, "validate")) {
+            assertThat(context.getBean(UsuarioRepository.class).findById(userId).orElseThrow().getFotoPerfil()).isEqualTo(image + "nueva");
         }
     }
 
@@ -175,7 +208,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 7 : 6);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 8 : 7);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -184,7 +217,7 @@ class DatabaseMigrationsPostgresTest {
     void rejectsChangedChecksumsInsteadOfRepairingHistory() {
         try (var ignored = start(true, "validate")) { assertCurrent(); }
         jdbc.update("insert into clubes(nombre_club) values ('No borrar')");
-        jdbc.update("update flyway_schema_history set checksum=checksum+1 where version::integer=5");
+        jdbc.update("update flyway_schema_history set checksum=checksum+1 where version::integer=6");
         assertThatThrownBy(() -> start(true, "validate")).hasStackTraceContaining("checksum");
         assertThat(jdbc.queryForObject("select nombre_club from clubes", String.class)).isEqualTo("No borrar");
     }
@@ -192,9 +225,9 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(21);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(6);
+                .isEqualTo(7);
     }
 
     private void assertBaseline() {

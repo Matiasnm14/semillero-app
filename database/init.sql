@@ -19,7 +19,9 @@ $$;
 \ir migrations/V002__analysis_jobs.sql
 \ir migrations/V003__player_match_metrics.sql
 \ir migrations/V004__analysis_future_response.sql
+\ir migrations/V005__profile_and_club_images.sql
+\ir migrations/V006__normalize_image_text_storage.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-004).'
+\echo 'Semillero: esquema completo inicializado (000-006).'

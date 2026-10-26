@@ -31,7 +31,7 @@ Conservar `.env` y el volumen `db_data`. Después de actualizar el código, arra
 
 1. Comprueba las 17 tablas base conocidas y columnas características. Acepta también las tablas opcionales de videos, análisis y métricas. Un esquema incompleto, ajeno o con tablas adicionales sin historial se detiene para revisión.
 2. Registra una base histórica `-1`, que no omite ninguna migración del proyecto.
-3. Ejecuta V000–V004. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta.
+3. Ejecuta V000–V006. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta.
 4. Valida las entidades y permite arrancar la API.
 
 Esto cubre bases creadas con los SQL anteriores, incluidas instalaciones que ya aplicaron 004, y bases creadas mediante `ddl-auto=update`. Los datos incompatibles con una restricción detienen la migración; no se borran ni se corrigen silenciosamente. La migración fallida se revierte y puede ejecutarse de nuevo tras corregir la causa. Las anteriores que ya terminaron permanecen registradas.
@@ -49,7 +49,7 @@ docker compose exec db psql -U semillero -d semillero -c '\dt'
 docker compose exec db psql -U semillero -d semillero -c 'SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;'
 ```
 
-Las versiones SQL son 000–004. Las bases adoptadas tienen además la entrada `BASELINE` con versión `-1`. En una base nueva no se necesita esa entrada.
+Las versiones SQL actuales son 000–006. Las bases adoptadas tienen además la entrada `BASELINE` con versión `-1`. En una base nueva no se necesita esa entrada.
 
 | Archivo | Contenido |
 | --- | --- |
@@ -58,8 +58,12 @@ Las versiones SQL son 000–004. Las bases adoptadas tienen además la entrada `
 | [V002__analysis_jobs.sql](../database/migrations/V002__analysis_jobs.sql) | Trabajos, restricciones e índice parcial de análisis activos |
 | [V003__player_match_metrics.sql](../database/migrations/V003__player_match_metrics.sql) | Métricas y FK compuesta a participaciones |
 | [V004__analysis_future_response.sql](../database/migrations/V004__analysis_future_response.sql) | JSON final y validación de su estructura |
+| [V005__profile_and_club_images.sql](../database/migrations/V005__profile_and_club_images.sql) | Fotos de perfil y clubes como texto |
+| [V006__normalize_image_text_storage.sql](../database/migrations/V006__normalize_image_text_storage.sql) | Convierte las fotos OID creadas por Hibernate a texto conservando su contenido |
 
-Los nombres siguen `V<versión>__<descripción>.sql`. La fuente única es `database/migrations`; Maven la empaqueta en `db/migration`. No editar archivos ya registrados por Flyway: un checksum distinto detiene el arranque. Para un cambio nuevo añadir, por ejemplo, `V005__descripcion.sql` y reconstruir el JAR. No se necesita modificar código Java ni ejecutar SQL manual.
+Los nombres siguen `V<versión>__<descripción>.sql`. La fuente única es `database/migrations`; Maven la empaqueta en `db/migration`. No editar archivos ya registrados por Flyway: un checksum distinto detiene el arranque. Para un cambio nuevo añadir, por ejemplo, `V007__descripcion.sql` y reconstruir el JAR. No se necesita modificar código Java ni ejecutar SQL manual.
+
+Las entidades de fotos usan `String` sobre `TEXT`. La V006 también cubre instalaciones donde `@Lob` creó columnas OID: lee el contenido del objeto grande y conserva los valores nulos. No modifica la V005 ya distribuida ni elimina objetos grandes originales, que pueden tener otras referencias. Si un OID no puede leerse, la migración falla y se revierte; no sustituye fotos por el identificador numérico. Ver la [explicación de Hibernate sobre TEXT y LOB](https://docs.hibernate.org/orm/7.1/introduction/html_single/#lobs).
 
 ## Datos de ejemplo opcionales
 
@@ -98,3 +102,5 @@ Estas pruebas recrean exclusivamente ese esquema de prueba. Cubren instalación 
 ## Verificación del 2026-10-25
 
 `clean verify` completó **133 pruebas sin fallos, errores ni omisiones**, con las tres bases PostgreSQL desechables habilitadas mediante `MIGRATIONS_PG_TEST_URL`, `ANALYSIS_PG_TEST_URL` y `METRICS_PG_TEST_URL`. Incluye 10 casos de migraciones automáticas y las pruebas existentes de CRUD, videos, análisis y métricas. Se comprobó también la configuración de Compose y la inclusión de V000–V004 y Flyway en el JAR ejecutable. La base del proyecto no se modificó.
+
+Después de integrar los cambios de `main` de fotos y autenticación, `clean verify` completó **135 pruebas sin fallos, errores ni omisiones**, con las tres bases PostgreSQL habilitadas. Incluye conservación y lectura JPA de fotos TEXT, conversión de fotos OID con Unicode y valores nulos mediante V006, escritura posterior y persistencia tras reiniciar. Las pruebas de análisis y métricas aplican las migraciones actuales al validar sus esquemas históricos.
