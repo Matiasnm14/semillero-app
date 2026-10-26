@@ -65,9 +65,11 @@ class DatabaseMigrationsPostgresTest {
     }
 
     @Test
-    void upgradesThrough003AndAutomaticallyAdds004PreservingCompletedJobs() throws Exception {
-        legacy(3);
+    void upgradesThrough004AndAutomaticallyAdds005PreservingImagesAndCompletedJobs() throws Exception {
+        legacy(4);
         legacyJob(false);
+        jdbc.update("insert into users(name, password_hash) values ('Ana', 'hash')");
+        jdbc.update("insert into clubes(nombre_club) values ('Club con imagen pendiente')");
         try (var ignored = start(true, "validate")) {
             assertCurrent();
             assertBaseline();
@@ -75,6 +77,25 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select resultado_ref from analysis_jobs where id=50", String.class)).isEqualTo("legacy:50");
             assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isNull();
             assertThat(jdbc.queryForObject("select count(*) from videos_partido", Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select foto_perfil from users where name='Ana'", String.class)).isNull();
+            assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Club con imagen pendiente'", String.class)).isNull();
+        }
+    }
+
+    @Test
+    void keepsExistingProfileAndClubImagesWhenApplying005() throws Exception {
+        legacy(4);
+        jdbc.execute("alter table users add column foto_perfil text");
+        jdbc.execute("alter table clubes add column foto_club text");
+        jdbc.update("insert into users(name, password_hash, foto_perfil) values ('Ana', 'hash', 'perfil-existente')");
+        jdbc.update("insert into clubes(nombre_club, foto_club) values ('Club existente', 'escudo-existente')");
+
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            assertThat(jdbc.queryForObject("select foto_perfil from users where name='Ana'", String.class))
+                    .isEqualTo("perfil-existente");
+            assertThat(jdbc.queryForObject("select foto_club from clubes where nombre_club='Club existente'", String.class))
+                    .isEqualTo("escudo-existente");
         }
     }
 
@@ -154,7 +175,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 6 : 5);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 7 : 6);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -163,7 +184,7 @@ class DatabaseMigrationsPostgresTest {
     void rejectsChangedChecksumsInsteadOfRepairingHistory() {
         try (var ignored = start(true, "validate")) { assertCurrent(); }
         jdbc.update("insert into clubes(nombre_club) values ('No borrar')");
-        jdbc.update("update flyway_schema_history set checksum=checksum+1 where version::integer=4");
+        jdbc.update("update flyway_schema_history set checksum=checksum+1 where version::integer=5");
         assertThatThrownBy(() -> start(true, "validate")).hasStackTraceContaining("checksum");
         assertThat(jdbc.queryForObject("select nombre_club from clubes", String.class)).isEqualTo("No borrar");
     }
@@ -171,9 +192,9 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(21);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4);
+                .containsExactly(0, 1, 2, 3, 4, 5);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(5);
+                .isEqualTo(6);
     }
 
     private void assertBaseline() {
