@@ -33,20 +33,36 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
 | 6 | `roles` y `usuarios_roles` las crea **ficha técnica**, junto con el login JWT | Asignado | 26/10/2026 | Ficha técnica |
 | 7 | `documentos_jugador` la crea **ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
-| 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Decidido | 26/10/2026 | Miguel (torneos) |
-| 9 | `notificaciones` la crea **torneos**, mismo criterio | Decidido | 26/10/2026 | Miguel (torneos) |
-| 10 | `FichaTecnicaService`: torneos escribe la interfaz y un mock; ficha técnica pone la implementación | Decidido | 26/10/2026 | Miguel (torneos) |
-| 11 | `ComunService`: torneos escribe la interfaz y un mock; **ficha técnica** pone la implementación | Asignado | 26/10/2026 | Ficha técnica |
-| 12 | `TorneosConsultaService`: la escribe torneos | Decidido | 26/10/2026 | Miguel (torneos) |
+| 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Hecho | 26/10/2026 | Miguel (torneos) |
+| 9 | `notificaciones` la crea **torneos**, mismo criterio | Hecho | 26/10/2026 | Miguel (torneos) |
+| 10 | `FichaTecnicaService`: interfaz y stub escritos; la implementación real es de ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
+| 11 | `ComunService`: interfaz y stub escritos; **falta la implementación de ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
+| 12 | `TorneosConsultaService`: interfaz escrita; la implementación es la S4-07 | Hecho | 26/10/2026 | Miguel (torneos) |
 | 13 | Contrato de video: el **mínimo**, solo `partidoId` y `fechaCierre` | Decidido | 26/10/2026 | Miguel (torneos) |
 | 14 | `clubes.nombre_club` ampliado a `varchar(80)`, entidad y DTO | Hecho | 26/10/2026 | Miguel (torneos) |
 | 15 | `usuario_trabaja.tipo_usuario_club`: `EN`, `DT`, `PF`, `MD`, `DI` | Decidido | 26/10/2026 | Miguel (torneos) |
-| 16 | Flyway: después del sprint 2, no ahora | Pospuesto | 26/10/2026 | Miguel (torneos) |
+| 16 | Flyway: **ya está en `main`**, lo agregó el grupo de video. La decisión de posponerlo quedó obsoleta | Hecho | 26/10/2026 | Grupo de video |
 | 17 | `springdoc-openapi-starter-webmvc-ui` 2.8.6 en `semillero-api` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 18 | Un subpaquete por grupo en cada capa | Decidido | 26/10/2026 | Miguel (torneos) |
 | 19 | Frontend en **Flutter**, en el repositorio `AdriBc16/furbo` | Decidido | 26/10/2026 | Miguel (torneos) |
 | 20 | `CLAUDE.md` en la raíz, con una sección por grupo | Hecho | 26/10/2026 | Miguel (torneos) |
 | 21 | Los 5 roles de la HU 16 se **derivan** de lo que ya existe (ver abajo) | Decidido | 26/10/2026 | Miguel (torneos) |
+
+| 22 | **Migración Flyway de torneos** (`V006__torneos.sql`): las 16 tablas, las 18 columnas de la S1-06 y el `ALTER` de `clubes.nombre_club` | Pendiente | — | Torneos |
+
+### Punto 22: el bloqueante que apareció el 26/10
+
+`main` pasó a Flyway con `spring.jpa.hibernate.ddl-auto=validate`, **también en el perfil `dev`**, y
+ninguna de sus seis migraciones menciona una tabla de torneos. Antes, `dev` usaba `update` y
+Hibernate creaba las tablas desde las entidades; ahora las valida.
+
+Consecuencia: **al mergear `main`, la aplicación no arranca**, porque las 16 tablas de torneos y las
+18 columnas de la S1-06 no existen en ninguna migración. Y `clubes.nombre_club` sigue en
+`varchar(15)` en `V000__base.sql`, así que el punto 14 también necesita migración.
+
+Las pruebas no lo detectan: `application-test.properties` tiene `ddl-auto=create-drop` y
+`spring.flyway.enabled=false`, así que nunca pasan por Flyway. Un build verde **no** garantiza que
+la aplicación arranque después del merge.
 
 ### Lo que falta confirmar con los otros grupos
 

@@ -58,6 +58,22 @@ class EsquemaTorneosTest {
                 "UK_PLANILLA_PARTIDO");
     }
 
+    /**
+     * Puntos 8 y 9 del acuerdo de la S1-04: las dos tablas compartidas que crea
+     * torneos. Llevan columna {@code modulo} para que sirvan a los cuatro.
+     */
+    @Test
+    void lasTablasCompartidasQueCreaTorneos() {
+        assertThat(nombres("select table_name from information_schema.tables where table_schema = 'PUBLIC'"))
+                .contains("AUDITORIA", "NOTIFICACIONES");
+        assertThat(columnas("AUDITORIA")).contains(
+                "MODULO", "TABLA", "REGISTRO_ID", "ACCION", "VALOR_ANTERIOR", "VALOR_NUEVO",
+                "MOTIVO", "USERS_ID", "FECHA");
+        assertThat(columnas("NOTIFICACIONES")).contains(
+                "USERS_ID", "MODULO", "TITULO", "MENSAJE", "LEIDA", "FECHA");
+        assertThat(nullables("NOTIFICACIONES")).doesNotContain("LEIDA", "FECHA");
+    }
+
     /** Tarea S1-06: las columnas que torneos agrega a las tablas acordadas. */
     @Test
     void lasColumnasDeTorneosLlegaronALasTablasAcordadas() {
