@@ -1,6 +1,6 @@
 # Pendientes del módulo de Torneos para acordar con los otros grupos
 
-Grupo 4 (Torneos). Actualizado: 21/10/2026.
+Grupo 4 (Torneos). Actualizado: 26/10/2026.
 
 El módulo de Torneos ya tiene sus 16 tablas propias como entidades JPA (tareas S1-05 y S1-06).
 La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
@@ -19,37 +19,60 @@ La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
 repositorio, leela antes de escribir código que toque tablas o interfaces de otro módulo: `Aceptado`
 significa que los grupos lo acordaron y se puede usar; cualquier otro estado significa que no.
 
-Estados: `Aceptado` · `Rechazado` · `Propuesto` (escrito, esperando que lo acepten) · `Sin definir`
-(ni siquiera se propuso).
+Estados: `Hecho` (decidido y ya implementado) · `Decidido` (decidido, falta implementarlo) ·
+`Asignado` (le toca a otro grupo, **sin que ellos lo hayan confirmado todavía**) · `Pospuesto`.
 
-Al cerrar un punto, poner la fecha y quién lo aceptó, y commitear el cambio de esta tabla.
+Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio de esta tabla.
 
-| # | Qué hay que acordar | Estado | Fecha | Quién lo acepta |
+| # | Qué se acordó | Estado | Fecha | Quién |
 | --- | --- | --- | --- | --- |
-| 1 | Las 15 columnas de `partidos` (sección 1) | Propuesto | — | dueño de `partidos` |
-| 2 | `capitan` y `minutos_jugados` en `participaciones_partido` (sección 2) | Propuesto | — | dueño de `participaciones_partido` |
-| 3 | `jugadores.estado` (sección 3) | Propuesto | — | ficha técnica |
-| 4 | `chk_partido_fechas` vs `PartidoService` (sección 3.b) | Sin definir | — | dueño de `partidos` |
-| 5 | Exponer las columnas nuevas en los DTO del CRUD compartido (sección 3.b) | Sin definir | — | dueños de cada tabla |
-| 6 | Quién crea `roles` y `usuarios_roles` | Sin definir | — | todos |
-| 7 | Quién crea `documentos_jugador` | Sin definir | — | ficha técnica o torneos |
-| 8 | Quién crea `auditoria` | Sin definir | — | todos |
-| 9 | Quién crea `notificaciones` | Sin definir | — | todos |
-| 10 | Interfaz `FichaTecnicaService` que torneos consume | Sin definir | — | ficha técnica |
-| 11 | Interfaz `ComunService` que torneos consume | Sin definir | — | núcleo común |
-| 12 | Interfaz `TorneosConsultaService` que torneos ofrece | Sin definir | — | torneos la escribe |
-| 13 | Contratos REST con video y el evento `PartidoFinalizado` | Sin definir | — | grupo de video |
-| 14 | Ampliar `clubes.nombre_club`, hoy `varchar(15)` | Propuesto | — | dueño de `clubes` |
-| 15 | Códigos de `usuario_trabaja.tipo_usuario_club` | Sin definir | — | núcleo común |
-| 16 | Agregar Flyway antes de desplegar | Sin definir | — | todos |
-| 17 | Agregar `springdoc-openapi` al pom de `semillero-api` | Sin definir | — | todos |
-| 18 | Un subpaquete por grupo en cada capa | Propuesto | — | todos |
-| 19 | Tecnología del frontend web y de la app móvil | Sin definir | — | todos |
-| 20 | Un `CLAUDE.md` en la raíz que apunte a los docs de cada grupo | Sin definir | — | todos |
+| 1 | Las 15 columnas de `partidos` quedan como están, todas nullable | Hecho | 26/10/2026 | Miguel (torneos) |
+| 2 | `capitan` y `minutos_jugados` en `participaciones_partido` | Hecho | 26/10/2026 | Miguel (torneos) |
+| 3 | `jugadores.estado`, la mantiene ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
+| 4 | `PartidoService` rechaza también fechas iguales, para alinearse con `chk_partido_fechas` | Hecho | 26/10/2026 | Miguel (torneos) |
+| 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
+| 6 | `roles` y `usuarios_roles` las crea **ficha técnica**, junto con el login JWT | Asignado | 26/10/2026 | Ficha técnica |
+| 7 | `documentos_jugador` la crea **ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
+| 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Decidido | 26/10/2026 | Miguel (torneos) |
+| 9 | `notificaciones` la crea **torneos**, mismo criterio | Decidido | 26/10/2026 | Miguel (torneos) |
+| 10 | `FichaTecnicaService`: torneos escribe la interfaz y un mock; ficha técnica pone la implementación | Decidido | 26/10/2026 | Miguel (torneos) |
+| 11 | `ComunService`: torneos escribe la interfaz y un mock; **ficha técnica** pone la implementación | Asignado | 26/10/2026 | Ficha técnica |
+| 12 | `TorneosConsultaService`: la escribe torneos | Decidido | 26/10/2026 | Miguel (torneos) |
+| 13 | Contrato de video: el **mínimo**, solo `partidoId` y `fechaCierre` | Decidido | 26/10/2026 | Miguel (torneos) |
+| 14 | `clubes.nombre_club` ampliado a `varchar(80)`, entidad y DTO | Hecho | 26/10/2026 | Miguel (torneos) |
+| 15 | `usuario_trabaja.tipo_usuario_club`: `EN`, `DT`, `PF`, `MD`, `DI` | Decidido | 26/10/2026 | Miguel (torneos) |
+| 16 | Flyway: después del sprint 2, no ahora | Pospuesto | 26/10/2026 | Miguel (torneos) |
+| 17 | `springdoc-openapi-starter-webmvc-ui` 2.8.6 en `semillero-api` | Hecho | 26/10/2026 | Miguel (torneos) |
+| 18 | Un subpaquete por grupo en cada capa | Decidido | 26/10/2026 | Miguel (torneos) |
+| 19 | Frontend en **Flutter**, en el repositorio `AdriBc16/furbo` | Decidido | 26/10/2026 | Miguel (torneos) |
+| 20 | `CLAUDE.md` en la raíz, con una sección por grupo | Hecho | 26/10/2026 | Miguel (torneos) |
+| 21 | Los 5 roles de la HU 16 se **derivan** de lo que ya existe (ver abajo) | Decidido | 26/10/2026 | Miguel (torneos) |
 
-Ninguno de los 13 puntos que pide la S1-04 (del 1 al 13) está aceptado todavía, así que **la S1-04
-no está hecha**. Las interfaces de los puntos 10 a 12 y los contratos del 13 no existen en el
-repositorio: hay que acordar su forma antes de escribirlas.
+### Lo que falta confirmar con los otros grupos
+
+Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos. Los puntos **6, 7
+y 11 están asignados a ficha técnica y ellos no lo confirmaron todavía**: hasta que lo hagan,
+torneos trabaja con mocks y la HU 16 queda sin seguridad real.
+
+### Punto 21: cómo se derivan los roles
+
+La HU 16 pide cinco roles, pero la BD acordada ya modela parte de eso. En vez de duplicarlo:
+
+| Rol de la HU 16 | De dónde sale |
+| --- | --- |
+| Administrador | La tabla `administrador` que ya existe |
+| Entrenador | `usuario_trabaja.tipo_usuario_club = 'EN'` (punto 15) |
+| Organizador, mesa de control, consulta | Tabla `roles` + `usuarios_roles`, que crea ficha técnica (punto 6) |
+
+La contra de esto, anotada para que nadie se sorprenda: la lógica de permisos queda repartida en
+tres lugares en vez de uno, así que `ComunService.tieneRol` tiene que consultar los tres.
+
+### springdoc sobre Spring Boot 4
+
+`springdoc-openapi` 2.8.6 es la última versión publicada y apunta a Spring Boot 3; **no existe una
+versión para Boot 4**. Se probó sobre Spring Boot 4.1.1 y funciona: publica `/v3/api-docs` y
+documenta los endpoints de los cuatro módulos. `OpenApiDocsTest` lo verifica en cada build, así que
+si una actualización de Spring Boot lo rompe, el build avisa.
 
 ---
 
