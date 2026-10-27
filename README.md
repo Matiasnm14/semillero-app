@@ -3,6 +3,18 @@
 Backend de clubes de fútbol con Java 21, Spring Boot 4.1.1, Maven y PostgreSQL.
 El modelo relacional parte de [dbfutbol.md](dbfutbol.md).
 
+El [plan de implementación de HU01 y HU12–HU16](PLAN_VIDEO_DATA_ANALYSIS.md) organiza las seis historias y sus 28 subissues reales por entregas, dependencias, cambios por capa, pruebas y criterios de cierre. El orden de trabajo es HU01 → HU12 → HU13 → HU15 → HU14 → HU16, según sus prioridades P0/P1.
+
+El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual y define la solicitud de análisis en segundo plano, la prevención de duplicados y la consulta de estado, avance y finalización, con trazabilidad a sus seis subtareas del tablero.
+
+La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
+
+Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerMatchMetrics`, su repositorio y validaciones de análisis, jugador y participación en el partido. La publicación y selección de la versión vigente se implementarán en las siguientes subtareas.
+
+Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
+
+La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) añade carga multipart de videos de partidos, validación con FFmpeg, almacenamiento del original, metadatos y publicación en YouTube en segundo plano. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`; la carga local también funciona con YouTube deshabilitado.
+
 ## Organización
 
 ```text
@@ -23,7 +35,7 @@ Por ejemplo, para cambiar el CRUD de jugadores:
 
 ## Arranque local
 
-Requisitos: JDK 21, Docker con Compose y acceso a Maven Central en la primera compilación. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
+Requisitos: JDK 21, Docker con Compose, FFmpeg (`ffmpeg` y `ffprobe`) y acceso a Maven Central en la primera compilación. La publicación en YouTube requiere además Python 3 y las dependencias de `scripts/youtube-requirements.txt`. Se incluye Maven Wrapper, por lo que no hace falta instalar Maven.
 
 Desde la raíz, en Bash:
 
@@ -50,11 +62,11 @@ Variables:
 | `DB_NAME` | Nombre de la base de Compose, `semillero`. |
 | `DB_PORT_EXTERNAL` | Puerto local de Compose, `5432`. |
 | `DB_URL` | URL JDBC, `jdbc:postgresql://localhost:5432/semillero`. Adaptar si cambia el nombre o puerto de la base. |
-| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo para crear/actualizar tablas. |
-| `DB_DDL_AUTO` | Fuera de `dev`, `validate` por defecto. |
+| `SPRING_PROFILES_ACTIVE` | Usar `dev` en desarrollo; también respeta `DB_DDL_AUTO`. |
+| `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-El perfil `dev` usa `ddl-auto=update` para la base local. Fuera de ese perfil se valida un esquema existente; todavía no se incluyen migraciones de producción. `docker compose down` detiene la base y conserva sus datos en el volumen `db_data`.
+Las migraciones [V000–V005](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate y completa sus restricciones sin borrar datos; V005 añade las imágenes de perfiles y escudos. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 

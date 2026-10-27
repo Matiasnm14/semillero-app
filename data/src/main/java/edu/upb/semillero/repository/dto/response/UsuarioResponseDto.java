@@ -7,5 +7,6 @@ public record UsuarioResponseDto(
         String telefonoUsuario,
         String docIdentidadUsuario,
         String nombres,
-        String apellidos
+        String apellidos,
+        String fotoPerfil
 ) {}
