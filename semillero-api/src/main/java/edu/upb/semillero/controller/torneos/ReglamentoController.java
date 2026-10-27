@@ -2,6 +2,7 @@ package edu.upb.semillero.controller.torneos;
 
 import edu.upb.semillero.repository.dto.request.torneos.DesempatesRequestDto;
 import edu.upb.semillero.repository.dto.request.torneos.ReglamentoRequestDto;
+import edu.upb.semillero.repository.dto.response.torneos.AuditoriaResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.ReglamentoDesempateResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.ReglamentoResponseDto;
 import edu.upb.semillero.service.torneos.ReglamentoService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -47,10 +49,18 @@ public class ReglamentoController {
         return service.update(torneoId, request);
     }
 
+    /** {@code usuarioId} va como parámetro porque un DELETE no lleva cuerpo, y la S1-14 pide registrar quién borró. */
     @DeleteMapping
-    public ResponseEntity<Void> delete(@PathVariable @Positive Long torneoId) {
-        service.delete(torneoId);
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long torneoId,
+            @RequestParam @Positive Long usuarioId) {
+        service.delete(torneoId, usuarioId);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Tarea S1-14: historial de cambios del reglamento, del más reciente al más antiguo. */
+    @GetMapping("/historial")
+    public List<AuditoriaResponseDto> findHistorial(@PathVariable @Positive Long torneoId) {
+        return service.findHistorial(torneoId);
     }
 
     @GetMapping("/desempates")
@@ -62,6 +72,6 @@ public class ReglamentoController {
     @PutMapping("/desempates")
     public List<ReglamentoDesempateResponseDto> reemplazarDesempates(@PathVariable @Positive Long torneoId,
             @Valid @RequestBody DesempatesRequestDto request) {
-        return service.reemplazarDesempates(torneoId, request.codigos());
+        return service.reemplazarDesempates(torneoId, request.codigos(), request.usuarioId());
     }
 }

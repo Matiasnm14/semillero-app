@@ -48,21 +48,37 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 20 | `CLAUDE.md` en la raíz, con una sección por grupo | Hecho | 26/10/2026 | Miguel (torneos) |
 | 21 | Los 5 roles de la HU 16 se **derivan** de lo que ya existe (ver abajo) | Decidido | 26/10/2026 | Miguel (torneos) |
 
-| 22 | **Migración Flyway de torneos** (`V006__torneos.sql`): las 16 tablas, las 18 columnas de la S1-06 y el `ALTER` de `clubes.nombre_club` | Pendiente | — | Torneos |
+| 22 | **Migración Flyway de torneos**: `database/migrations/V007__torneos.sql` | Hecho | 27/10/2026 | Miguel (torneos) |
 
-### Punto 22: el bloqueante que apareció el 26/10
+### Punto 22: la migración Flyway, resuelta el 27/10
 
 `main` pasó a Flyway con `spring.jpa.hibernate.ddl-auto=validate`, **también en el perfil `dev`**, y
-ninguna de sus seis migraciones menciona una tabla de torneos. Antes, `dev` usaba `update` y
-Hibernate creaba las tablas desde las entidades; ahora las valida.
+ninguna de sus siete migraciones menciona una tabla de torneos. Sin una migración propia, al mergear
+`main` la aplicación no arrancaba.
 
-Consecuencia: **al mergear `main`, la aplicación no arranca**, porque las 16 tablas de torneos y las
-18 columnas de la S1-06 no existen en ninguna migración. Y `clubes.nombre_club` sigue en
-`varchar(15)` en `V000__base.sql`, así que el punto 14 también necesita migración.
+`V007__torneos.sql` lo cubre: las 16 tablas propias, `auditoria` y `notificaciones`, las 18 columnas
+de la S1-06, el `ALTER` de `clubes.nombre_club` del punto 14, los índices, las restricciones y los
+cinco criterios de desempate. Es idempotente, como `V000`, así que corre también sobre una base que
+Hibernate ya creó con `ddl-auto=update`.
 
-Las pruebas no lo detectan: `application-test.properties` tiene `ddl-auto=create-drop` y
-`spring.flyway.enabled=false`, así que nunca pasan por Flyway. Un build verde **no** garantiza que
-la aplicación arranque después del merge.
+**Es V007 y no V006 porque `main` ya tiene un `V006__normalize_image_text_storage.sql`.**
+
+Cómo se verificó, porque el build verde no alcanzaba para esto: se creó una base limpia, se le
+aplicaron las siete migraciones de `main` y después la V007, y se arrancó la aplicación contra ella
+con `ddl-auto=validate`. Arrancó sin diferencias, o sea que la migración coincide exactamente con
+las 35 entidades. Para repetirlo:
+
+```bash
+psql -h localhost -p 5433 -U semillero -d postgres -c "CREATE DATABASE semillero_mig OWNER semillero;"
+# aplicar V000..V006 de main y despues database/migrations/V007__torneos.sql
+DB_URL=jdbc:postgresql://localhost:5433/semillero_mig \
+  java -jar semillero-api/target/semillero-api-0.0.1-SNAPSHOT.jar --spring.jpa.hibernate.ddl-auto=validate
+```
+
+Ojo con esto al tocar entidades de torneos: `application-test.properties` tiene
+`spring.flyway.enabled=false`, así que **las pruebas nunca pasan por Flyway**. Si alguien agrega una
+columna a una entidad y no la agrega a una migración, el build sigue verde y la aplicación deja de
+arrancar en `dev`.
 
 ### Lo que falta confirmar con los otros grupos
 
@@ -214,26 +230,37 @@ INSERT INTO roles (codigo, nombre) VALUES
 
 | Pendiente | Tareas que espera |
 | --- | --- |
-| Que acepten las columnas de `partidos` | **S1-18** (no borrar cancha con partidos), S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
+| Que acepten las columnas de `partidos` | S2-14 a S2-17 (fixture), S3-01 (planilla precargada), S3-09 (cierre), S3-12 (tabla) |
 | Que acepten las de `participaciones_partido` | S3-02 (titulares y capitán), S3-08 (minutos jugados) |
 | Que acepten `jugadores.estado` | S2-07 (elegibilidad) |
 | `documentos_jugador` | S2-07 |
 | `roles` y `usuarios_roles` | S2-01 a S2-04 |
-| `auditoria` | **S1-14** (historial del reglamento), S2-12, S3-10, S2-04 |
+| `auditoria` | Ya la creó torneos (punto 8). La usan S2-12, S3-10 y S2-04 |
 | `notificaciones` | S3-19, S4-16 |
 
-## 7. Tareas del sprint 1 que siguen bloqueadas
+## 7. Estado del sprint 1
 
-Las demás del sprint 1 ya están hechas (ver más abajo). Estas cuatro no se pueden cerrar sin una
-decisión del grupo:
+De los 23 IDs del sprint 1, de torneos no queda nada pendiente. Lo que falta es de otros grupos:
 
-| ID | Tarea | Qué la bloquea |
-| --- | --- | --- |
-| S1-02 | Docker, perfiles y Swagger | Agregar `springdoc-openapi` toca `semillero-api/pom.xml` y `application.properties`, los dos compartidos. Sin esto, ningún endpoint cumple el punto "documentado en Swagger" de la definición de terminado. |
-| S1-04 | Acordar interfaces Java y contratos REST | Es un acuerdo entre grupos, no código. Hay que presentar las secciones 1 a 3 de este documento. |
-| S1-07 | Datos de prueba | Falta decidir el mecanismo: no hay Flyway, y un `data.sql` iría en `semillero-api/src/main/resources`, compartido. Lo único sembrado hoy son los 5 criterios de desempate, desde `CriteriosDesempateSeeder` (dentro del subpaquete `torneos`). |
-| S1-14 | Historial de cambios del reglamento | Necesita la tabla `auditoria`, sin dueño. |
-| S1-18 | No eliminar canchas con partidos programados | Necesita `partidos.canchas_id`. Hoy `CanchaService.delete` solo puede comprobar contra `reprogramaciones`, que no es la regla completa de la HU 3. |
+| ID | Tarea | De quién | Por qué falta |
+| --- | --- | --- | --- |
+| S1-11, S1-15, S1-19, S1-22 | Las cuatro pantallas | Ignacio | Frontend en Flutter, en el repositorio `AdriBc16/furbo` |
+| S1-04, puntos 6, 7 y 11 | `roles`, `usuarios_roles`, `documentos_jugador` y la implementación de `ComunService` | Ficha técnica | Asignado el 26/10, sin confirmar por ellos |
+
+Hechas el 27/10/2026, las dos desbloqueadas por la S1-06:
+
+- **S1-14**, historial de cambios del reglamento: cada cambio queda en `auditoria` con quién lo hizo
+  y el reglamento completo antes y después, y se consulta en
+  `GET /api/v1/torneos/{torneoId}/reglamento/historial`.
+- **S1-18**, no eliminar canchas con partidos: `CanchaService.delete` consulta `partidos` por
+  `canchas_id` y rechaza si hay alguno en `PROGRAMADO` o `EN_CURSO`. Los `FINALIZADO` y `CANCELADO`
+  no bloquean, porque ya no se van a jugar ahí.
+
+Y la S1-02 quedó cubierta con springdoc (punto 17), mientras que la S1-07 la resolvió el grupo de
+video con `database/seeds/demo.sql` y `DevelopmentDataInitializer`.
+
+**Ninguna está Completada** según la definición de terminado: siguen en la rama `torneos`, sin PR ni
+revisión de otro integrante.
 
 ### Lo que ya no depende de nadie
 

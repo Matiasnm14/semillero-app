@@ -4,11 +4,14 @@ import edu.upb.semillero.repository.dto.request.torneos.CanchaRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.CanchaResponseDto;
 import edu.upb.semillero.repository.entity.torneos.Cancha;
 import edu.upb.semillero.repository.entity.torneos.Sede;
+import edu.upb.semillero.repository.enums.EstadoPartido;
 import edu.upb.semillero.repository.repos.torneos.CanchaRepository;
+import edu.upb.semillero.repository.repos.torneos.PartidoTorneoRepository;
 import edu.upb.semillero.repository.repos.torneos.ReprogramacionRepository;
 import edu.upb.semillero.service.EntityRelations;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,21 +21,27 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * HU 3 - Canchas con su superficie y descripción (tareas S1-16 y S1-17).
  *
- * <p>La tarea S1-18 ("no eliminar una cancha con partidos programados") queda a
- * medias: hoy solo se puede comprobar contra {@code reprogramaciones}, porque
- * {@code partidos.canchas_id} todavía no existe. Ver docs/torneos/PENDIENTES.md.
+ * <p>Tarea S1-18: una cancha con partidos PROGRAMADO o EN_CURSO no se elimina.
+ * Los partidos FINALIZADO y CANCELADO no la bloquean, porque ya no se van a
+ * jugar ahí.
  */
 @Service
 @Transactional(readOnly = true)
 public class CanchaService {
+    /** Estados en los que un partido todavía necesita su cancha. */
+    private static final List<EstadoPartido> ESTADOS_QUE_BLOQUEAN =
+            List.of(EstadoPartido.PROGRAMADO, EstadoPartido.EN_CURSO);
+
     private final CanchaRepository repository;
     private final ReprogramacionRepository reprogramaciones;
+    private final PartidoTorneoRepository partidos;
     private final EntityRelations relations;
 
     public CanchaService(CanchaRepository repository, ReprogramacionRepository reprogramaciones,
-            EntityRelations relations) {
+            PartidoTorneoRepository partidos, EntityRelations relations) {
         this.repository = repository;
         this.reprogramaciones = reprogramaciones;
+        this.partidos = partidos;
         this.relations = relations;
     }
 
@@ -65,9 +74,14 @@ public class CanchaService {
         return toResponse(repository.saveAndFlush(entity));
     }
 
+    /** Tarea S1-18: no se elimina una cancha que todavía tiene partidos por jugar. */
     @Transactional
     public void delete(Long id) {
         Cancha entity = require(id);
+        if (partidos.existsByCanchaIdAndEstadoIn(id, ESTADOS_QUE_BLOQUEAN)) {
+            throw new ConflictException("La cancha " + entity.getNombre()
+                    + " tiene partidos programados o en curso y no se puede eliminar");
+        }
         if (reprogramaciones.existsByCanchaAnteriorIdOrCanchaNuevaId(id, id)) {
             throw new ConflictException("La cancha " + entity.getNombre()
                     + " tiene reprogramaciones registradas y no se puede eliminar");

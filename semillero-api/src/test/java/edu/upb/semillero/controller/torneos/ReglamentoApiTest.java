@@ -116,7 +116,8 @@ class ReglamentoApiTest {
 
         mvc.perform(put(url + "/desempates").contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("codigos",
-                                List.of("FAIR_PLAY", "DIF_GOLES", "SORTEO")))))
+                                List.of("FAIR_PLAY", "DIF_GOLES", "SORTEO"),
+                                "usuarioId", organizadorId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].codigo").value("FAIR_PLAY"))
@@ -128,7 +129,7 @@ class ReglamentoApiTest {
                 .andExpect(jsonPath("$.desempates.length()").value(3));
 
         mvc.perform(put(url + "/desempates").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("codigos", List.of("SORTEO", "SORTEO")))))
+                        .content(json.writeValueAsString(Map.of("codigos", List.of("SORTEO", "SORTEO"), "usuarioId", organizadorId))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -137,7 +138,9 @@ class ReglamentoApiTest {
         long torneoId = crearTorneo();
         mvc.perform(get(TORNEOS + "/" + torneoId + "/reglamento")).andExpect(status().isNotFound());
         mvc.perform(get(TORNEOS + "/" + Long.MAX_VALUE + "/reglamento")).andExpect(status().isNotFound());
-        mvc.perform(delete(TORNEOS + "/" + torneoId + "/reglamento")).andExpect(status().isNotFound());
+        mvc.perform(delete(TORNEOS + "/" + torneoId + "/reglamento")
+                        .param("usuarioId", String.valueOf(organizadorId)))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -145,9 +148,66 @@ class ReglamentoApiTest {
         long torneoId = crearTorneo();
         String url = TORNEOS + "/" + torneoId + "/reglamento";
         postJson(url, reglamento(List.of("DIF_GOLES", "SORTEO"))).andExpect(status().isCreated());
-        mvc.perform(delete(url)).andExpect(status().isNoContent());
+        mvc.perform(delete(url).param("usuarioId", String.valueOf(organizadorId)))
+                .andExpect(status().isNoContent());
         mvc.perform(get(url)).andExpect(status().isNotFound());
         mvc.perform(get(url + "/desempates")).andExpect(status().isNotFound());
+    }
+
+    /** Tarea S1-14: cada cambio queda registrado con quién lo hizo. */
+    @Test
+    void elHistorialRegistraCadaCambioDelReglamento() throws Exception {
+        long torneoId = crearTorneo();
+        String url = TORNEOS + "/" + torneoId + "/reglamento";
+
+        postJson(url, reglamento(List.of("DIF_GOLES", "GOLES_FAVOR"))).andExpect(status().isCreated());
+
+        Map<String, Object> modificado = reglamento(List.of("DIF_GOLES", "GOLES_FAVOR"));
+        modificado.put("umbralAmarillas", 3);
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(modificado))).andExpect(status().isOk());
+
+        mvc.perform(put(url + "/desempates").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("codigos", List.of("SORTEO"),
+                                "usuarioId", organizadorId))))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(url + "/historial")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].accion").value("MODIFICAR_DESEMPATES"))
+                .andExpect(jsonPath("$[1].accion").value("MODIFICAR"))
+                .andExpect(jsonPath("$[2].accion").value("CREAR"))
+                .andExpect(jsonPath("$[*].usuarioId").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is((int) organizadorId))))
+                .andExpect(jsonPath("$[2].tabla").value("reglamentos"))
+                .andExpect(jsonPath("$[2].modulo").value("TORNEOS"));
+    }
+
+    @Test
+    void elHistorialGuardaElAntesYElDespues() throws Exception {
+        long torneoId = crearTorneo();
+        String url = TORNEOS + "/" + torneoId + "/reglamento";
+        postJson(url, reglamento(List.of("DIF_GOLES"))).andExpect(status().isCreated());
+
+        Map<String, Object> modificado = reglamento(List.of("DIF_GOLES"));
+        modificado.put("umbralAmarillas", 9);
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(modificado))).andExpect(status().isOk());
+
+        mvc.perform(get(url + "/historial")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].accion").value("MODIFICAR"))
+                .andExpect(jsonPath("$[0].valorAnterior").value(
+                        org.hamcrest.Matchers.containsString("\"umbralAmarillas\":5")))
+                .andExpect(jsonPath("$[0].valorNuevo").value(
+                        org.hamcrest.Matchers.containsString("\"umbralAmarillas\":9")))
+                .andExpect(jsonPath("$[1].valorAnterior").doesNotExist());
+    }
+
+    @Test
+    void elTorneoSinReglamentoNoTieneHistorial() throws Exception {
+        long torneoId = crearTorneo();
+        mvc.perform(get(TORNEOS + "/" + torneoId + "/reglamento/historial"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -180,6 +240,7 @@ class ReglamentoApiTest {
         body.put("minJugadores", 11);
         body.put("maxJugadores", 18);
         body.put("desempates", desempates);
+        body.put("usuarioId", organizadorId);
         return body;
     }
 

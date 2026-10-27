@@ -1,7 +1,7 @@
 # Pruebas manuales del sprint 1 · Módulo de Torneos
 
 Colección de Postman que prueba de punta a punta todo lo que el módulo de Torneos entregó en el
-sprint 1: **52 requests y 86 aserciones** repartidas en 7 carpetas.
+sprint 1: **54 requests y 93 aserciones** repartidas en 7 carpetas.
 
 | Carpeta | Qué cubre | Tareas |
 | --- | --- | --- |
@@ -125,7 +125,7 @@ npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection
 ```
 
 Las URLs de los requests van como texto plano (`{{baseUrl}}/torneos`), no como objeto con `raw`:
-newman no resuelve un objeto que solo trae `raw` y falla con `request url is empty` en los 52
+newman no resuelve un objeto que solo trae `raw` y falla con `request url is empty` en los 54
 requests. Si alguien edita la colección a mano, conviene no cambiar eso.
 
 Al final imprime una tabla. **Lo que hay que mirar es que `assertions` tenga 0 en la columna
@@ -152,12 +152,12 @@ país y el último necesita el torneo que creó la carpeta 01.
 | `Could not resolve placeholder 'DB_PASSWORD'` al arrancar | No se cargó el `.env`: ver el paso 2 |
 | `Port 8080 was already in use` | Otro programa lo tiene, casi siempre Apache de XAMPP. Arrancar con `--server.port=8081` |
 | `Unable to find a suitable main class` | Se usó `-am` con `spring-boot:run`: ver el paso 2 |
-| Los 52 requests fallan con `request url is empty` | La colección se editó y las URLs quedaron como objeto `{raw}` en vez de texto plano |
+| Los 54 requests fallan con `request url is empty` | La colección se editó y las URLs quedaron como objeto `{raw}` en vez de texto plano |
 | `password authentication failed for user "semillero"` al arrancar | Falta el paso 1, o la contraseña del `.env` no coincide con la del rol |
 | El primer request da 500 | Hibernate no pudo crear las tablas: mirá el log, suele ser que el usuario `semillero` no es dueño de la base |
 | Falla "cupo lleno" con 201 en vez de 400 | Estás corriendo contra una base donde ya se llenó otra categoría; la colección es re-ejecutable, pero si editaste los cupos a mano revisá eso |
 | Falla "fechaCorte por defecto" | La temporada del torneo y la de la fecha de corte no coinciden: pasa si editaste el body a mano con una temporada fija |
 
-Las pruebas automáticas (`./mvnw clean verify`, 121 casos) cubren lo mismo sobre H2 y **no**
+Las pruebas automáticas (`./mvnw clean verify`, 126 casos) cubren lo mismo sobre H2 y **no**
 necesitan nada de esto. Esta colección sirve para verificar contra PostgreSQL de verdad, que es lo
 que pide la definición de terminado antes de cerrar el sprint.

@@ -769,7 +769,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"umbralAmarillas\": 5,\n  \"minJugadores\": 11,\n  \"maxJugadores\": 18,\n  \"desempates\": [\"DIF_GOLES\", \"GOLES_FAVOR\", \"ENFRENTAMIENTO\"]\n}",
+              "raw": "{\n  \"umbralAmarillas\": 5,\n  \"minJugadores\": 11,\n  \"maxJugadores\": 18,\n  \"desempates\": [\"DIF_GOLES\", \"GOLES_FAVOR\", \"ENFRENTAMIENTO\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -836,7 +836,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigos\": [\"FAIR_PLAY\", \"DIF_GOLES\", \"SORTEO\"]\n}",
+              "raw": "{\n  \"codigos\": [\"FAIR_PLAY\", \"DIF_GOLES\", \"SORTEO\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -864,6 +864,42 @@
           ]
         },
         {
+          "name": "S1-14 historial de cambios del reglamento",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/torneos/{{torneoId}}/reglamento/historial"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const h = pm.response.json();",
+                  "// En este punto la coleccion hizo dos cosas: crear el reglamento y",
+                  "// reemplazar el orden de los desempates. El historial tiene esas dos.",
+                  "pm.test('S1-14 registro los dos cambios', () => {",
+                  "  pm.expect(h.length).to.eql(2);",
+                  "  pm.expect(h[0].accion).to.eql('MODIFICAR_DESEMPATES');",
+                  "  pm.expect(h[1].accion).to.eql('CREAR');",
+                  "});",
+                  "pm.test('guarda quien lo cambio', () => pm.expect(h[0].usuarioId).to.eql(Number(pm.collectionVariables.get('organizadorId'))));",
+                  "pm.test('guarda el antes y el despues', () => {",
+                  "  pm.expect(h[0].valorAnterior).to.include('DIF_GOLES');",
+                  "  pm.expect(h[0].valorNuevo).to.include('FAIR_PLAY');",
+                  "  pm.expect(h[1].valorAnterior).to.be.oneOf([null, undefined]);",
+                  "});",
+                  "pm.test('es del modulo TORNEOS sobre la tabla reglamentos', () => {",
+                  "  pm.expect(h[0].modulo).to.eql('TORNEOS');",
+                  "  pm.expect(h[0].tabla).to.eql('reglamentos');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Dos reglamentos en un torneo da 409",
           "request": {
             "method": "POST",
@@ -875,7 +911,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"minJugadores\": 11,\n  \"maxJugadores\": 18,\n  \"desempates\": [\"DIF_GOLES\"]\n}",
+              "raw": "{\n  \"minJugadores\": 11,\n  \"maxJugadores\": 18,\n  \"desempates\": [\"DIF_GOLES\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -908,7 +944,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"minJugadores\": 20,\n  \"maxJugadores\": 11,\n  \"desempates\": [\"DIF_GOLES\"]\n}",
+              "raw": "{\n  \"minJugadores\": 20,\n  \"maxJugadores\": 11,\n  \"desempates\": [\"DIF_GOLES\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -941,7 +977,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigos\": [\"SORTEO\", \"SORTEO\"]\n}",
+              "raw": "{\n  \"codigos\": [\"SORTEO\", \"SORTEO\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -974,7 +1010,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigos\": [\"NO_EXISTE\"]\n}",
+              "raw": "{\n  \"codigos\": [\"NO_EXISTE\"],\n  \"usuarioId\": {{organizadorId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1248,6 +1284,25 @@
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(pm.response.json()).to.have.property('content');",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S1-18 una cancha sin partidos si se borra",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/torneos/canchas/{{canchaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('S1-18: sin partidos PROGRAMADO ni EN_CURSO, la cancha se borra', () => pm.expect(pm.response.code).to.eql(204));"
                 ]
               }
             }

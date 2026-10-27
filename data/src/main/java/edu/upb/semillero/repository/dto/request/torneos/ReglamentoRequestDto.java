@@ -26,5 +26,6 @@ public record ReglamentoRequestDto(
         @NotNull @Positive Short minJugadores,
         @NotNull @Positive Short maxJugadores,
         @Positive Short descansoMinimoMin,
-        @NotEmpty List<String> desempates
+        @NotEmpty List<String> desempates,
+        @NotNull @Positive Long usuarioId
 ) {}

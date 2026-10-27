@@ -4,15 +4,19 @@ import edu.upb.semillero.repository.dto.request.torneos.CanchaRequestDto;
 import edu.upb.semillero.repository.entity.torneos.Cancha;
 import edu.upb.semillero.repository.entity.torneos.Sede;
 import edu.upb.semillero.repository.enums.torneos.TipoSuperficie;
+import edu.upb.semillero.repository.enums.EstadoPartido;
 import edu.upb.semillero.repository.repos.torneos.CanchaRepository;
+import edu.upb.semillero.repository.repos.torneos.PartidoTorneoRepository;
 import edu.upb.semillero.repository.repos.torneos.ReprogramacionRepository;
 import edu.upb.semillero.service.EntityRelations;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,6 +24,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +37,7 @@ import static org.mockito.Mockito.when;
 class CanchaServiceTest {
     @Mock CanchaRepository repository;
     @Mock ReprogramacionRepository reprogramaciones;
+    @Mock PartidoTorneoRepository partidos;
     @Mock EntityRelations relations;
     @InjectMocks CanchaService service;
 
@@ -75,9 +82,36 @@ class CanchaServiceTest {
         assertThat(response.activa()).isTrue();
     }
 
+    /** Tarea S1-18: un partido PROGRAMADO o EN_CURSO bloquea el borrado. */
+    @Test
+    void noBorraUnaCanchaConPartidosProgramados() {
+        when(repository.findById(5L)).thenReturn(Optional.of(cancha()));
+        when(partidos.existsByCanchaIdAndEstadoIn(eq(5L), anyCollection())).thenReturn(true);
+
+        assertThatThrownBy(() -> service.delete(5L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("partidos programados");
+        verify(repository, never()).delete(any());
+    }
+
+    @Test
+    void losPartidosQueBloquearSonSoloProgramadoYEnCurso() {
+        when(repository.findById(5L)).thenReturn(Optional.of(cancha()));
+        when(partidos.existsByCanchaIdAndEstadoIn(eq(5L), anyCollection())).thenReturn(false);
+        when(reprogramaciones.existsByCanchaAnteriorIdOrCanchaNuevaId(5L, 5L)).thenReturn(false);
+
+        service.delete(5L);
+
+        ArgumentCaptor<Collection<EstadoPartido>> estados = ArgumentCaptor.forClass(Collection.class);
+        verify(partidos).existsByCanchaIdAndEstadoIn(eq(5L), estados.capture());
+        assertThat(estados.getValue())
+                .containsExactlyInAnyOrder(EstadoPartido.PROGRAMADO, EstadoPartido.EN_CURSO);
+    }
+
     @Test
     void noBorraUnaCanchaConReprogramaciones() {
         when(repository.findById(5L)).thenReturn(Optional.of(cancha()));
+        when(partidos.existsByCanchaIdAndEstadoIn(eq(5L), anyCollection())).thenReturn(false);
         when(reprogramaciones.existsByCanchaAnteriorIdOrCanchaNuevaId(5L, 5L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.delete(5L))
@@ -90,6 +124,7 @@ class CanchaServiceTest {
     void borraLaCanchaQueNadieUsa() {
         Cancha cancha = cancha();
         when(repository.findById(5L)).thenReturn(Optional.of(cancha));
+        when(partidos.existsByCanchaIdAndEstadoIn(eq(5L), anyCollection())).thenReturn(false);
         when(reprogramaciones.existsByCanchaAnteriorIdOrCanchaNuevaId(5L, 5L)).thenReturn(false);
 
         service.delete(5L);

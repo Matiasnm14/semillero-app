@@ -4,6 +4,7 @@ import edu.upb.semillero.repository.dto.request.torneos.ReglamentoRequestDto;
 import edu.upb.semillero.repository.entity.torneos.CriterioDesempate;
 import edu.upb.semillero.repository.entity.torneos.Reglamento;
 import edu.upb.semillero.repository.entity.torneos.Torneo;
+import edu.upb.semillero.repository.repos.AuditoriaRepository;
 import edu.upb.semillero.repository.repos.torneos.CriterioDesempateRepository;
 import edu.upb.semillero.repository.repos.torneos.ReglamentoDesempateRepository;
 import edu.upb.semillero.repository.repos.torneos.ReglamentoRepository;
@@ -37,6 +38,7 @@ class ReglamentoServiceTest {
     @Mock ReglamentoDesempateRepository desempates;
     @Mock CriterioDesempateRepository criterios;
     @Mock TorneoRepository torneos;
+    @Mock AuditoriaRepository auditoria;
     @Mock EntityRelations relations;
     @InjectMocks ReglamentoService service;
 
@@ -142,6 +144,6 @@ class ReglamentoServiceTest {
 
     private ReglamentoRequestDto request(Short min, Short max, LocalDate fechaCorte, List<String> codigos) {
         return new ReglamentoRequestDto(null, null, null, null, null, null, null,
-                fechaCorte, min, max, null, codigos);
+                fechaCorte, min, max, null, codigos, 7L);
     }
 }
