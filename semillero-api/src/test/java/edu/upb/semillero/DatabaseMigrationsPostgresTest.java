@@ -223,11 +223,11 @@ class DatabaseMigrationsPostgresTest {
     }
 
     private void assertCurrent() {
-        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(21);
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(39);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(7);
+                .isEqualTo(8);
     }
 
     private void assertBaseline() {

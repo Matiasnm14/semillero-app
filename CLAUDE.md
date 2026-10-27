@@ -19,7 +19,11 @@ Spring Boot 4.1.1, Java 21, Maven Wrapper, Lombok, PostgreSQL 17 en Docker. Paqu
 3. **Una rama por tarea**, con el ID del sprint backlog en la rama y en el commit:
    `[S1-08] Endpoint crear torneo`. Nunca trabajar directo en `main`.
 4. **Antes de pushear, `./mvnw clean verify` tiene que pasar.** Si el número de pruebas baja
-   respecto del commit anterior, algo se rompió.
+   respecto del commit anterior, algo se rompió. Ojo: las pruebas del módulo de video necesitan
+   **FFmpeg** instalado (`ffmpeg` y `ffprobe` en el PATH). Sin eso `VideoPartidoIntegrationTest`
+   falla 28 casos con `503`, en `main` igual que en cualquier rama, y no es algo que hayas roto vos.
+   Para verificar el resto mientras no lo tengas instalado:
+   `./mvnw clean verify -Dtest='!VideoPartidoIntegrationTest' -DfailIfNoTests=false`.
 5. **Nada de contraseñas ni `.env` en Git.**
 
 ## Si sos una IA trabajando en este repositorio
@@ -46,8 +50,10 @@ docker compose up -d --wait db
 ```
 
 Las pruebas usan **H2 en memoria** y no necesitan Docker. La API queda en
-`http://localhost:8080/api/v1` con el perfil `dev`, donde Hibernate crea las tablas desde las
-entidades (`ddl-auto=update`); no se ejecuta ningún script SQL a mano.
+`http://localhost:8080/api/v1` con el perfil `dev`, donde **Flyway crea y actualiza el esquema**
+con los scripts de `database/migrations/` y después Hibernate solo lo valida
+(`ddl-auto=validate`, también en `dev`). No se corre ningún script SQL a mano: una tabla o columna
+nueva se agrega con una migración `V<n>__<nombre>.sql`, nunca dejando que Hibernate la cree.
 
 Documentación OpenAPI en `/v3/api-docs` y Swagger UI en `/swagger-ui.html`.
 

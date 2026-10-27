@@ -219,8 +219,15 @@ INSERT INTO roles (codigo, nombre) VALUES
 - Códigos de `usuario_trabaja.tipo_usuario_club` (`char(2)`): por ejemplo `EN` = entrenador.
 - Si se usa un subpaquete por grupo en cada capa. Torneos ya lo hizo así (`...entity.torneos`,
   `...service.torneos`, `...controller.torneos`, tarea S1-01).
-- Si se agrega Flyway antes de desplegar, en lugar de depender de `ddl-auto=update`.
-- Quién hace el núcleo común y el login con JWT (hoy el repositorio no tiene seguridad).
+- ~~Si se agrega Flyway antes de desplegar~~. **Resuelto**: `main` ya usa Flyway con
+  `ddl-auto=validate` en todos los perfiles, y torneos aporta `V007__torneos.sql` (punto 22).
+- Quién hace el núcleo común y el login con JWT. `main` ya trae un `AuthenticationService` con
+  `/auth/login`, pero todavía no hay `roles` ni `usuarios_roles` ni filtro por rol en los endpoints.
+- `ApiExceptionHandler` no maneja `HandlerMethodValidationException`. Cuando un controlador tiene
+  a la vez un `@PathVariable @Positive` y un `@Valid @RequestBody`, Spring lanza esa excepción en
+  lugar de `MethodArgumentNotValidException`, y la respuesta sale sin el mapa `errors` con el campo
+  que falló. Pasa, por ejemplo, en `POST /torneos/{torneoId}/categorias` con un `cupoMaximo`
+  inválido. Es del núcleo común, no de torneos; hace falta agregar un `@ExceptionHandler` más.
 - Interfaces Java entre módulos: torneos consume `FichaTecnicaService` y `ComunService`, y ofrece
   `TorneosConsultaService`. Contratos REST con el microservicio de video en OpenAPI (tarea S1-04).
 

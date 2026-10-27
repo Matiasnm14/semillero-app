@@ -79,7 +79,7 @@ mvnw.cmd clean verify
 Para correr la API desde IntelliJ: perfil `dev` y las variables del `.env` en la configuración de ejecución (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `SPRING_PROFILES_ACTIVE=dev`). La API queda en `http://localhost:8080/api/v1`.
 
 - Conexión a la BD (DBeaver o pgAdmin): host `localhost`, puerto `5432`, base `semillero`, usuario `semillero`, contraseña la del `.env`.
-- Con el perfil `dev` (`ddl-auto=update`) **las tablas las crea Hibernate a partir de las entidades**. No se ejecuta ningún script SQL a mano.
+- Con el perfil `dev` **el esquema lo crea Flyway** con los scripts de `database/migrations/`, y Hibernate solo lo valida (`ddl-auto=validate`). Las tablas de torneos están en `V007__torneos.sql`. Una tabla o columna nueva se agrega con una migración nueva, no dejando que Hibernate la cree.
 - `docker compose down` apaga la base y conserva los datos.
 - Las pruebas usan H2 en modo PostgreSQL, no necesitan Docker.
 

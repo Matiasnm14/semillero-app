@@ -81,8 +81,21 @@ Tres cosas que hacen falta y no son obvias:
 3. **Si el puerto 8080 está ocupado** (un XAMPP o WAMP suele tomarlo), agregar `--server.port=8081`
    y usar ese puerto en todo lo que sigue.
 
-Con el perfil `dev` esta rama usa `ddl-auto=update`, así que **Hibernate crea las 35 tablas solo** a
-partir de las entidades. No hay que correr ningún script.
+Con el perfil `dev` el esquema lo crea **Flyway**, con los scripts de `database/migrations/`
+(`V000` a `V007`), y después Hibernate solo lo valida (`ddl-auto=validate`). Las 35 tablas quedan
+creadas al arrancar, sin correr nada a mano.
+
+**Importante si ya usaste esta base antes del merge con `main`:** si la base la creó Hibernate con
+`ddl-auto=update`, no tiene la tabla `flyway_schema_history` y la aplicación se niega a arrancar con
+`Esquema existente no reconocido como Semillero`. La salida es recrearla vacía y dejar que Flyway la
+construya desde cero:
+
+```bash
+docker compose down -v && docker compose up -d --wait db
+```
+
+El `-v` borra el volumen, o sea los datos. Son datos de prueba, así que no se pierde nada; la
+colección los vuelve a crear.
 
 Para saber que arrancó bien, en el log tiene que aparecer `Started SemilleroApplication` y ninguna
 excepción. Verificación rápida:
@@ -112,7 +125,7 @@ conviene la colección.
 
 ### Opción A · Por terminal, recomendada
 
-Da un reporte de las 86 aserciones en una sola corrida:
+Da un reporte de las 93 aserciones en una sola corrida:
 
 ```bash
 npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json
@@ -157,6 +170,8 @@ país y el último necesita el torneo que creó la carpeta 01.
 | El primer request da 500 | Hibernate no pudo crear las tablas: mirá el log, suele ser que el usuario `semillero` no es dueño de la base |
 | Falla "cupo lleno" con 201 en vez de 400 | Estás corriendo contra una base donde ya se llenó otra categoría; la colección es re-ejecutable, pero si editaste los cupos a mano revisá eso |
 | Falla "fechaCorte por defecto" | La temporada del torneo y la de la fecha de corte no coinciden: pasa si editaste el body a mano con una temporada fija |
+| `Esquema existente no reconocido como Semillero` al arrancar | La base la creó Hibernate antes del merge con `main` y no tiene `flyway_schema_history`: ver el aviso del paso 1 |
+| `VideoPartidoIntegrationTest` falla 28 casos con `503` en `clean verify` | Falta FFmpeg en el PATH. Es del módulo de video y pasa igual en `main`; no lo rompió torneos |
 
 Las pruebas automáticas (`./mvnw clean verify`, 126 casos) cubren lo mismo sobre H2 y **no**
 necesitan nada de esto. Esta colección sirve para verificar contra PostgreSQL de verdad, que es lo
