@@ -33,7 +33,6 @@ public class Usuario extends BaseEntity {
     @Column(name = "apellidos", length = 35)
     private String apellidos;
 
-    @Lob
-    @Column(name = "foto_perfil")
+    @Column(name = "foto_perfil", columnDefinition = "text")
     private String fotoPerfil;
 }

@@ -19,7 +19,6 @@ public class Club extends BaseEntity {
     @JoinColumn(name = "ciudad_id")
     private Ciudad ciudad;
 
-    @Lob
-    @Column(name = "foto_club")
+    @Column(name = "foto_club", columnDefinition = "text")
     private String fotoClub;
 }
