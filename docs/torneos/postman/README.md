@@ -61,7 +61,7 @@ el contenedor no va a poder levantar. O paras el servicio de Windows (`postgresq
 
 En Windows: `.\mvnw.cmd` en vez de `./mvnw`.
 
-Con el perfil `dev` esta rama usa `ddl-auto=update`, así que **Hibernate crea las 19 tablas solo** a
+Con el perfil `dev` esta rama usa `ddl-auto=update`, así que **Hibernate crea las 35 tablas solo** a
 partir de las entidades. No hay que correr ningún script.
 
 Para saber que arrancó bien, en el log tiene que aparecer `Started SemilleroApplication` y ninguna
