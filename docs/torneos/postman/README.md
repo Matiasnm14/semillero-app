@@ -55,23 +55,43 @@ el contenedor no va a poder levantar. O paras el servicio de Windows (`postgresq
 
 ## Paso 2 · Levantar la API
 
+Primero compilar una vez, si no se hizo todavía:
+
 ```bash
-./mvnw -pl semillero-api -am spring-boot:run -Dspring-boot.run.profiles=dev
+./mvnw clean verify
 ```
 
-En Windows: `.\mvnw.cmd` en vez de `./mvnw`.
+Y después arrancar el jar ejecutable que eso dejó:
+
+```bash
+set -a && . ./.env && set +a && java -jar semillero-api/target/semillero-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+```
+
+En Windows: `.\mvnw.cmd` en vez de `./mvnw`. La línea de arriba es de Git Bash; en PowerShell hay
+que exportar las variables a mano.
+
+Tres cosas que hacen falta y no son obvias:
+
+1. **Spring Boot no lee el archivo `.env`.** El `.env` es solo para Docker Compose. La API saca
+   `DB_PASSWORD` y `DB_URL` de variables de entorno, así que hay que cargarlas antes (`set -a && . ./.env`).
+   Sin eso falla pidiendo `DB_PASSWORD`, o se conecta al puerto equivocado: el valor por omisión en
+   `application.properties` es el 5432 y el `.env` del equipo apunta al 5433.
+2. **No usar `-pl semillero-api -am spring-boot:run`.** El `-am` incluye el pom raíz en la ejecución
+   y Maven falla con `Unable to find a suitable main class`, porque el pom raíz no tiene clase main.
+3. **Si el puerto 8080 está ocupado** (un XAMPP o WAMP suele tomarlo), agregar `--server.port=8081`
+   y usar ese puerto en todo lo que sigue.
 
 Con el perfil `dev` esta rama usa `ddl-auto=update`, así que **Hibernate crea las 35 tablas solo** a
 partir de las entidades. No hay que correr ningún script.
 
 Para saber que arrancó bien, en el log tiene que aparecer `Started SemilleroApplication` y ninguna
-excepción de Hibernate. Verificación rápida:
+excepción. Verificación rápida:
 
 ```bash
 curl http://localhost:8080/api/v1/torneos
 ```
 
-Tiene que responder un `PageResponse` vacío, no un error de conexión.
+Tiene que responder un `PageResponse`, no un error de conexión.
 
 ---
 
@@ -98,11 +118,15 @@ Da un reporte de las 86 aserciones en una sola corrida:
 npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json
 ```
 
-Si la API no está en `localhost:8080`:
+Si la API quedó en otro puerto, por ejemplo el 8081 porque el 8080 estaba ocupado:
 
 ```bash
-npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json --env-var baseUrl=http://otro-host:8080/api/v1
+npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json --env-var baseUrl=http://localhost:8081/api/v1
 ```
+
+Las URLs de los requests van como texto plano (`{{baseUrl}}/torneos`), no como objeto con `raw`:
+newman no resuelve un objeto que solo trae `raw` y falla con `request url is empty` en los 52
+requests. Si alguien edita la colección a mano, conviene no cambiar eso.
 
 Al final imprime una tabla. **Lo que hay que mirar es que `assertions` tenga 0 en la columna
 `failed`.**
@@ -125,6 +149,10 @@ país y el último necesita el torneo que creó la carpeta 01.
 | Síntoma | Causa |
 | --- | --- |
 | Todos los requests dan `ECONNREFUSED` | La API no está levantada, o está en otro puerto |
+| `Could not resolve placeholder 'DB_PASSWORD'` al arrancar | No se cargó el `.env`: ver el paso 2 |
+| `Port 8080 was already in use` | Otro programa lo tiene, casi siempre Apache de XAMPP. Arrancar con `--server.port=8081` |
+| `Unable to find a suitable main class` | Se usó `-am` con `spring-boot:run`: ver el paso 2 |
+| Los 52 requests fallan con `request url is empty` | La colección se editó y las URLs quedaron como objeto `{raw}` en vez de texto plano |
 | `password authentication failed for user "semillero"` al arrancar | Falta el paso 1, o la contraseña del `.env` no coincide con la del rol |
 | El primer request da 500 | Hibernate no pudo crear las tablas: mirá el log, suele ser que el usuario `semillero` no es dueño de la base |
 | Falla "cupo lleno" con 201 en vez de 400 | Estás corriendo contra una base donde ya se llenó otra categoría; la colección es re-ejecutable, pero si editaste los cupos a mano revisá eso |
