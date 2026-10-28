@@ -17,4 +17,7 @@ public interface ListaBuenaFeRepository extends JpaRepository<ListaBuenaFe, Long
     Optional<ListaBuenaFe> findByInscripcionEquipoIdAndDorsal(Long inscripcionEquipoId, Short dorsal);
 
     long countByInscripcionEquipoId(Long inscripcionEquipoId);
+
+    /** HU 14: los equipos de un jugador, para sus próximos partidos. */
+    List<ListaBuenaFe> findByJugadorIdOrderByIdDesc(Long jugadorId);
 }

@@ -2,6 +2,7 @@ package edu.upb.semillero.service.seguridad;
 
 import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.comun.Roles;
+import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ForbiddenException;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
@@ -79,6 +80,29 @@ public class AccesoTorneos {
             throw new ForbiddenException("El partido " + partidoId
                     + " no está asignado a tu mesa de control");
         }
+    }
+
+    /**
+     * Tarea S4-10: de quién son los datos que se piden (notificaciones, "mi
+     * cuenta"). Con token, del dueño del token: pedir los de otro da 403, salvo
+     * al administrador. Sin token, que solo pasa en las pruebas con usuario de
+     * mentira, del {@code usuarioId} que se manda.
+     */
+    public Long usuarioDeLaConsulta(Long pedido, String queIntento) {
+        Optional<UsuarioAutenticado> actual = actual();
+        if (actual.isEmpty()) {
+            if (pedido == null) {
+                throw new BusinessException("Falta usuarioId: sin token no se sabe de quién son los datos");
+            }
+            return pedido;
+        }
+        UsuarioAutenticado usuario = actual.get();
+        if (pedido == null || pedido.equals(usuario.usuarioId()) || usuario.tieneRol(Roles.ADMIN)) {
+            return pedido == null ? usuario.usuarioId() : pedido;
+        }
+        registro.rechazado("", queIntento, usuario.usuarioId(),
+                "Pidió los datos del usuario " + pedido);
+        throw new ForbiddenException("Solo podés ver tus propios datos");
     }
 
     private boolean mandaEnTodo(UsuarioAutenticado usuario) {
