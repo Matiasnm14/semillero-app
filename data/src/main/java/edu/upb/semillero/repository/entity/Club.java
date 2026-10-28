@@ -12,7 +12,7 @@ import lombok.Setter;
 @Table(name = "clubes")
 public class Club extends BaseEntity {
 
-    @Column(name = "nombre_club", length = 15)
+    @Column(name = "nombre_club", length = 80)
     private String nombreClub;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -8,8 +8,12 @@ import edu.upb.semillero.repository.repos.AdministradorRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
+import edu.upb.semillero.repository.repos.UsuarioRolRepository;
 import edu.upb.semillero.repository.repos.UsuarioTrabajaRepository;
+import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.exception.BusinessException;
+import edu.upb.semillero.service.seguridad.JwtService;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,9 @@ public class AuthenticationService {
     private final UsuarioClubRepository usuariosClub;
     private final UsuarioTrabajaRepository usuariosTrabaja;
     private final PasswordEncoder passwordEncoder;
+    private final UsuarioRolRepository usuariosRoles;
+    private final ComunService comun;
+    private final JwtService jwt;
 
     public AuthenticationService(
             UsuarioRepository usuarios,
@@ -30,13 +37,19 @@ public class AuthenticationService {
             JugadorRepository jugadores,
             UsuarioClubRepository usuariosClub,
             UsuarioTrabajaRepository usuariosTrabaja,
-            PasswordEncoder passwordEncoder) {
+            UsuarioRolRepository usuariosRoles,
+            PasswordEncoder passwordEncoder,
+            ComunService comun,
+            JwtService jwt) {
         this.usuarios = usuarios;
         this.administradores = administradores;
         this.jugadores = jugadores;
         this.usuariosClub = usuariosClub;
         this.usuariosTrabaja = usuariosTrabaja;
+        this.usuariosRoles = usuariosRoles;
         this.passwordEncoder = passwordEncoder;
+        this.comun = comun;
+        this.jwt = jwt;
     }
 
     public LoginResponseDto login(LoginRequestDto request) {
@@ -61,13 +74,26 @@ public class AuthenticationService {
             return response(usuario, "USUARIO_CLUB", null, vinculacion.getClub().getId(),
                     vinculacion.getClub().getNombreClub());
         }
+        // Tarea S2-01: una cuenta del sistema (organizador, mesa de control o
+        // consulta) no está en administrador, jugadores ni usuarios_club: su rol
+        // sale de usuarios_roles (migración V008).
+        if (!usuariosRoles.findByUsuarioId(usuario.getId()).isEmpty()) {
+            return response(usuario, "USUARIO_SISTEMA", null, null, null);
+        }
         throw new BusinessException("La cuenta no tiene un rol asignado");
     }
 
+    /**
+     * Tarea S2-01: la respuesta lleva además el JWT y los roles de la HU 16,
+     * que son los que mira la autorización de los endpoints de torneos.
+     */
     private LoginResponseDto response(
             Usuario usuario, String rol, Long jugadorId, Long clubId, String nombreClub) {
+        List<String> roles = List.copyOf(comun.rolesDe(usuario.getId()));
         return new LoginResponseDto(usuario.getId(), usuario.getName(), usuario.getNombres(),
                 usuario.getApellidos(), usuario.getEmail(), rol, jugadorId, clubId, nombreClub,
-                usuario.getFotoPerfil());
+                usuario.getFotoPerfil(),
+                jwt.emitir(usuario.getId(), usuario.getName(), roles, clubId),
+                roles);
     }
 }
