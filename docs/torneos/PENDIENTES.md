@@ -86,6 +86,20 @@ Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos
 y 11 están asignados a ficha técnica y ellos no lo confirmaron todavía**: hasta que lo hagan,
 torneos trabaja con mocks y la HU 16 queda sin seguridad real.
 
+### Punto 10: qué hace hoy la implementación de `FichaTecnicaService`
+
+Desde la tarea S2-05 el bean que responde ya no inventa los datos: **lee** `jugadores.fecha_nacimiento`
+(para la edad a la fecha de corte), `jugadores.estado` y la tabla `fichado` (para saber en qué club
+está fichado el jugador). Son tablas de la BD acordada y torneos **solo las lee**, nunca escribe en
+ellas; la consulta está en `repos/torneos/FichajeConsultaRepository`, que extiende `Repository` y no
+`JpaRepository` justamente para que no haya forma de escribir.
+
+Lo único que sigue falseado son `documentosVigentes` y `aptoMedicoVigente`, que responden siempre
+`true`, porque `documentos_jugador` es de ficha técnica (punto 7) y todavía no existe. **Mientras
+eso siga así, esas dos validaciones de la HU 5 no comprueban nada.** El bean sigue anotado con
+`@ConditionalOnMissingBean`, así que el día que ficha técnica publique su `@Service` real, este se
+apaga solo.
+
 ### Punto 21: cómo se derivan los roles
 
 La HU 16 pide cinco roles, pero la BD acordada ya modela parte de eso. En vez de duplicarlo:
