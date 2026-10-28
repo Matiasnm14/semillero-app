@@ -8,6 +8,7 @@ import edu.upb.semillero.repository.entity.UsuarioClub;
 import edu.upb.semillero.repository.entity.UsuarioRol;
 import edu.upb.semillero.repository.entity.UsuarioTrabaja;
 import edu.upb.semillero.repository.repos.AuditoriaRepository;
+import edu.upb.semillero.repository.repos.AdministradorRepository;
 import edu.upb.semillero.repository.repos.ClubRepository;
 import edu.upb.semillero.repository.repos.RolRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
@@ -20,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -59,6 +62,7 @@ class SeguridadTorneosApiTest {
     @Autowired UsuarioClubRepository usuariosClub;
     @Autowired UsuarioTrabajaRepository usuariosTrabaja;
     @Autowired AuditoriaRepository auditoria;
+    @Autowired AdministradorRepository administradores;
     @Autowired PasswordEncoder passwordEncoder;
 
     /** Tarea S2-01: el login devuelve el token y los roles de la HU 16. */
@@ -190,6 +194,126 @@ class SeguridadTorneosApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[\"NO_EXISTE\"]"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void elRegistroPublicoNoPermiteConvertirseEnAdministrador() throws Exception {
+        String email = "registro" + System.nanoTime() + "@example.com";
+        long usuarioId = idDe(postJson("/api/v1/usuarios", Map.of(
+                "name", "registro" + System.nanoTime(), "email", email, "password", CLAVE))
+                .andExpect(status().isCreated()));
+
+        postJson("/api/v1/administradores", Map.of("usuarioId", usuarioId))
+                .andExpect(status().isUnauthorized());
+        assertThat(administradores.findFirstByUsuarioId(usuarioId)).isEmpty();
+        postJson("/api/v1/auth/login", Map.of("identificador", email, "password", CLAVE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("La cuenta no tiene un rol asignado"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"administradores", "usuarios-club", "usuarios-trabaja"})
+    void lasAsignacionesDePrivilegiosRequierenAdministrador(String ruta) throws Exception {
+        String url = "/api/v1/" + ruta;
+        String tokenConsulta = token(usuarioCon(Roles.CONSULTA));
+        for (var peticion : List.of(post(url), put(url + "/999999"), delete(url + "/999999"))) {
+            mvc.perform(peticion.contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isUnauthorized());
+        }
+        for (var peticion : List.of(post(url), put(url + "/999999"), delete(url + "/999999"))) {
+            mvc.perform(peticion.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void noSePuedeCambiarLaClaveNiEliminarLaCuentaDeOtroUsuario() throws Exception {
+        Usuario admin = usuarioCon(Roles.ADMIN);
+        String tokenConsulta = token(usuarioCon(Roles.CONSULTA));
+        String url = "/api/v1/usuarios/" + admin.getId();
+        String hashAnterior = admin.getPasswordHash();
+        String cambio = json.writeValueAsString(Map.of("password", "claveAjena123"));
+
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta)
+                        .contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(url)).andExpect(status().isUnauthorized());
+        mvc.perform(delete(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta))
+                .andExpect(status().isForbidden());
+
+        assertThat(usuarios.findById(admin.getId()).orElseThrow().getPasswordHash())
+                .isEqualTo(hashAnterior);
+        login(admin).andExpect(status().isOk()).andExpect(jsonPath("$.roles[0]").value(Roles.ADMIN));
+    }
+
+    @Test
+    void elUsuarioPuedeCambiarSuPropiaClave() throws Exception {
+        Usuario usuario = usuarioCon(Roles.CONSULTA);
+        String token = token(usuario);
+
+        mvc.perform(put("/api/v1/usuarios/" + usuario.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("name", usuario.getName(),
+                                "email", usuario.getEmail(), "password", "nuevaClave123"))))
+                .andExpect(status().isOk());
+
+        assertThat(passwordEncoder.matches("nuevaClave123",
+                usuarios.findById(usuario.getId()).orElseThrow().getPasswordHash())).isTrue();
+        login(usuario).andExpect(status().isBadRequest());
+        postJson("/api/v1/auth/login", Map.of("identificador", usuario.getEmail(),
+                "password", "nuevaClave123")).andExpect(status().isOk());
+    }
+
+    @Test
+    void elAdministradorPuedeEditarYEliminarOtrasCuentas() throws Exception {
+        Usuario usuario = nuevoUsuario();
+        String tokenAdmin = token(usuarioCon(Roles.ADMIN));
+        String url = "/api/v1/usuarios/" + usuario.getId();
+        mvc.perform(put(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("name", usuario.getName(),
+                                "email", usuario.getEmail(), "password", "claveAdmin123"))))
+                .andExpect(status().isOk());
+        assertThat(passwordEncoder.matches("claveAdmin123",
+                usuarios.findById(usuario.getId()).orElseThrow().getPasswordHash())).isTrue();
+        mvc.perform(delete(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin))
+                .andExpect(status().isNoContent());
+        assertThat(usuarios.existsById(usuario.getId())).isFalse();
+    }
+
+    @Test
+    void elAdministradorPuedeAsignarLosRolesDerivadosDelCrudCompartido() throws Exception {
+        Usuario administrador = nuevoUsuario();
+        Usuario entrenador = nuevoUsuario();
+        Club club = club("Club asignado");
+        String tokenAdmin = token(usuarioCon(Roles.ADMIN));
+
+        mvc.perform(post("/api/v1/administradores")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("usuarioId", administrador.getId()))))
+                .andExpect(status().isCreated());
+        login(administrador).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value(Roles.ADMIN));
+
+        long usuarioClubId = idDe(mvc.perform(post("/api/v1/usuarios-club")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("usuarioId", entrenador.getId()))))
+                .andExpect(status().isCreated()));
+        mvc.perform(post("/api/v1/usuarios-trabaja")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("usuarioClubId", usuarioClubId,
+                                "clubId", club.getId(), "tipoUsuarioClub", "EN"))))
+                .andExpect(status().isCreated());
+        login(entrenador).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value(Roles.ENTRENADOR))
+                .andExpect(jsonPath("$.clubId").value(club.getId()));
     }
 
     private long inscripcionDe(Club club, long organizadorId) throws Exception {

@@ -151,6 +151,17 @@ class DatabaseMigrationsPostgresTest {
     void completesHibernateCreatedSchemaIncludingCompositeForeignKeyAndPartialIndex() {
         try (var ignored = start(false, "create")) {
             jdbc.update("insert into clubes(nombre_club) values ('Desde dev')");
+            jdbc.update("insert into users(id,name,email,password_hash) values (50,'Organizador existente','legacy@example.test','hash')");
+            jdbc.update("""
+                    insert into torneos(id,nombre,temporada,tipo,formato,fecha_inicio,fecha_fin,
+                    fecha_limite_inscripcion,users_id)
+                    values (50,'Torneo existente',2026,'OFICIAL','LIGA','2026-10-28',
+                    '2026-11-04','2026-10-27',50)
+                    """);
+            jdbc.update("""
+                    insert into usuarios_roles(users_id,roles_id)
+                    select 50,id from roles where codigo='ORGANIZADOR'
+                    """);
         }
         assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
                 .isZero();
@@ -162,6 +173,13 @@ class DatabaseMigrationsPostgresTest {
                     .isEqualTo(1);
             assertThat(jdbc.queryForObject("select indexdef from pg_indexes where indexname='uk_analysis_active_video'", String.class))
                     .contains("UNIQUE", "WHERE");
+            assertThat(jdbc.queryForObject("select nombre from torneos where id=50", String.class)).isEqualTo("Torneo existente");
+            assertThat(jdbc.queryForObject("select users_id from torneos where id=50", Long.class)).isEqualTo(50L);
+            assertThat(jdbc.queryForList("""
+                    select r.codigo from usuarios_roles ur join roles r on r.id=ur.roles_id where ur.users_id=50
+                    """, String.class)).containsExactly("ORGANIZADOR");
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
+            assertThat(jdbc.queryForObject("select count(*) from criterios_desempate", Integer.class)).isEqualTo(5);
         }
     }
 
@@ -172,6 +190,18 @@ class DatabaseMigrationsPostgresTest {
         assertThatThrownBy(() -> start(true, "validate")).hasStackTraceContaining("Esquema existente no reconocido");
         assertThat(jdbc.queryForObject("select dato from ajeno", String.class)).isEqualTo("conservar");
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void refusesUnknownTableEvenWhenTheSemilleroBaseExists() throws Exception {
+        legacy(0);
+        jdbc.update("insert into clubes(nombre_club) values ('Conservar')");
+        jdbc.execute("create table ajeno(id integer primary key)");
+
+        assertThatThrownBy(() -> start(true, "validate")).hasStackTraceContaining("Esquema existente no reconocido");
+        assertThat(jdbc.queryForObject("select nombre_club from clubes", String.class)).isEqualTo("Conservar");
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(18);
+        assertThat(jdbc.queryForObject("select to_regclass('public.flyway_schema_history')", String.class)).isNull();
     }
 
     @Test
@@ -208,7 +238,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 8 : 7);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 10 : 9);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -223,11 +253,11 @@ class DatabaseMigrationsPostgresTest {
     }
 
     private void assertCurrent() {
-        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(39);
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(41);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(8);
+                .isEqualTo(9);
     }
 
     private void assertBaseline() {
