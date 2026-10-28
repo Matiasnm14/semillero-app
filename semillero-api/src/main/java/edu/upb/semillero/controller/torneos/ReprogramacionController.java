@@ -3,6 +3,7 @@ package edu.upb.semillero.controller.torneos;
 import edu.upb.semillero.repository.dto.request.torneos.ReprogramacionRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.ReprogramacionResponseDto;
 import edu.upb.semillero.service.torneos.ReprogramacionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * HU 8 - Reprogramar un partido (tareas S3-16 a S3-19). Solo el organizador:
  * la regla está en {@code SeguridadConfiguration}.
  */
+@Tag(name = "Torneos - HU 8", description = "Reprogramar un partido con motivo, historial y aviso")
 @RestController
 @RequestMapping("/api/v1/torneos/partidos/{partidoId}/reprogramaciones")
 public class ReprogramacionController {

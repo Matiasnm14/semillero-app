@@ -4,6 +4,7 @@ import edu.upb.semillero.controller.dto.PageResponse;
 import edu.upb.semillero.repository.dto.request.torneos.TorneoCategoriaRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.TorneoCategoriaResponseDto;
 import edu.upb.semillero.service.torneos.TorneoCategoriaService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+@Tag(name = "Torneos - HU 1", description = "Categorías del torneo con su rango de edad")
 @RestController
 @RequestMapping("/api/v1/torneos/{torneoId}/categorias")
 public class TorneoCategoriaController {

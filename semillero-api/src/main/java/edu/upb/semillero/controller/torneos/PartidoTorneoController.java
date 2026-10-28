@@ -8,6 +8,7 @@ import edu.upb.semillero.repository.dto.response.torneos.EventoPartidoResponseDt
 import edu.upb.semillero.repository.dto.response.torneos.ResultadoPartidoResponseDto;
 import edu.upb.semillero.service.torneos.CierrePartidoService;
 import edu.upb.semillero.service.torneos.EventoPartidoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * S3-09) y reapertura (S3-10). Los eventos y el cierre los carga la mesa de
  * control asignada; reabrir es solo del organizador.
  */
+@Tag(name = "Torneos - HU 10", description = "Eventos del partido, cierre y reapertura")
 @RestController
 @RequestMapping("/api/v1/torneos/partidos/{partidoId}")
 public class PartidoTorneoController {

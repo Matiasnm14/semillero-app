@@ -7,6 +7,7 @@ import edu.upb.semillero.repository.dto.response.torneos.FixturePublicadoRespons
 import edu.upb.semillero.repository.dto.response.torneos.PartidoFixtureResponseDto;
 import edu.upb.semillero.service.torneos.FixtureService;
 import edu.upb.semillero.service.torneos.PdfTorneosService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * HU 7 - Fixture (tareas S2-14 a S2-18). El fixture es por categoría, porque
  * cada categoría tiene el suyo; publicar es por torneo.
  */
+@Tag(name = "Torneos - HU 7", description = "Generar, ajustar, exportar y publicar el fixture")
 @RestController
 public class FixtureController {
     private static final String FIXTURE = "/api/v1/torneos/{torneoId}/categorias/{categoriaId}/fixture";

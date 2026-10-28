@@ -6,6 +6,7 @@ import edu.upb.semillero.repository.dto.response.torneos.AuditoriaResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.ReglamentoDesempateResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.ReglamentoResponseDto;
 import edu.upb.semillero.service.torneos.ReglamentoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+@Tag(name = "Torneos - HU 2", description = "Reglamento, orden de desempates e historial")
 @RestController
 @RequestMapping("/api/v1/torneos/{torneoId}/reglamento")
 public class ReglamentoController {

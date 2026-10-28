@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,11 +34,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li>leer (GET): cualquier usuario con sesión, incluido el rol CONSULTA;</li>
  *   <li>inscribir un equipo y manejar su lista de buena fe: ENTRENADOR, y
  *       también ORGANIZADOR y ADMIN;</li>
+ *   <li>apelar una sanción de su equipo: ENTRENADOR, ORGANIZADOR y ADMIN;</li>
+ *   <li>las notificaciones propias: cualquier usuario con sesión;</li>
  *   <li>llenar la planilla, cargar los eventos y cerrar el partido:
  *       MESA_CONTROL, y también ORGANIZADOR y ADMIN;</li>
  *   <li>todo lo demás que escribe (torneos, categorías, reglamento, sedes,
  *       canchas, estados de inscripción, fixture, reprogramación y reapertura
- *       de un partido cerrado): ORGANIZADOR o ADMIN.</li>
+ *       de un partido cerrado, sanciones manuales y resolución de apelaciones):
+ *       ORGANIZADOR o ADMIN.</li>
  * </ul>
  *
  * <p>Las cuentas solo las modifica su titular o un administrador. Las
@@ -57,6 +61,8 @@ public class SeguridadConfiguration {
             "/api/v1/torneos/partidos/*/planilla/**",
             "/api/v1/torneos/partidos/*/eventos/**",
             "/api/v1/torneos/partidos/*/cerrar"};
+    private static final String[] NOTIFICACIONES = {
+            "/api/v1/torneos/notificaciones", "/api/v1/torneos/notificaciones/**"};
     private static final String ORGANIZA = Roles.ORGANIZADOR;
     private static final String ADMINISTRA = Roles.ADMIN;
 
@@ -102,6 +108,13 @@ public class SeguridadConfiguration {
                         // (HU 9 y 10); qué partido puede tocar lo controla AccesoTorneos.
                         .requestMatchers(MESA_DE_CONTROL)
                         .hasAnyRole(Roles.MESA_CONTROL, ORGANIZA, ADMINISTRA)
+                        // Cada uno maneja sus avisos (HU 14); de quién son lo controla
+                        // AccesoTorneos con el token.
+                        .requestMatchers(NOTIFICACIONES).authenticated()
+                        // El entrenador apela una sanción de su equipo (HU 13); resolverla
+                        // es del organizador.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/torneos/sanciones/*/apelaciones")
+                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
                         .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
                         .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
@@ -123,12 +136,18 @@ public class SeguridadConfiguration {
         return new AuthorizationDecision(permitido);
     }
 
-    /** 401: no vino token, o no servía. */
+    /**
+     * 401: no vino token, o no servía. Tarea S4-10: el error dice cuál de las
+     * dos, porque la app tiene que saber si mandar al login o si renovar.
+     */
     private void sinSesion(HttpServletRequest request, HttpServletResponse response,
             org.springframework.security.core.AuthenticationException excepcion) throws IOException {
-        registrar(request, null, "Sin token válido");
-        responder(request, response, HttpStatus.UNAUTHORIZED,
-                "Hace falta iniciar sesión: mandá el token en Authorization: Bearer");
+        String cabecera = request.getHeader(HttpHeaders.AUTHORIZATION);
+        boolean vinoToken = cabecera != null && !cabecera.isBlank();
+        registrar(request, null, vinoToken ? "Token inválido o vencido" : "Sin token");
+        responder(request, response, HttpStatus.UNAUTHORIZED, vinoToken
+                ? "El token no es válido o ya venció: volvé a iniciar sesión en /api/v1/auth/login"
+                : "Hace falta iniciar sesión: mandá el token en Authorization: Bearer");
     }
 
     /** 403: el token es válido pero al usuario le falta el rol. */

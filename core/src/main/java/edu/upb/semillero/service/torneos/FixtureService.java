@@ -108,6 +108,31 @@ public class FixtureService {
         this.relations = relations;
     }
 
+    /** HU 15: un partido de torneo por su ID, con la cancha y su superficie. */
+    public PartidoFixtureResponseDto findPartido(Long partidoId) {
+        Partido partido = partidos.findById(partidoId)
+                .filter(p -> p.getTorneoCategoria() != null)
+                .orElseThrow(() -> new NotFoundException("Partido de torneo con id " + partidoId
+                        + " no existe"));
+        return toResponse(partido);
+    }
+
+    /**
+     * HU 14: los partidos que vienen de una categoría, PROGRAMADO o EN_CURSO,
+     * del más cercano al más lejano. Con {@code clubId}, solo los de ese equipo.
+     */
+    public List<PartidoFixtureResponseDto> proximos(Long categoriaId, Long clubId, LocalDateTime desde) {
+        return partidos.findByTorneoCategoriaIdOrderByJornadaAscFechaInicioAsc(categoriaId).stream()
+                .filter(p -> p.getEstado() == EstadoPartido.PROGRAMADO
+                        || p.getEstado() == EstadoPartido.EN_CURSO)
+                .filter(p -> !ChoquesDeAgenda.finDe(p).isBefore(desde))
+                .filter(p -> clubId == null || Objects.equals(p.getClubLocal().getId(), clubId)
+                        || Objects.equals(p.getClubVisitante().getId(), clubId))
+                .sorted(Comparator.comparing(Partido::getFechaInicio))
+                .map(this::toResponse)
+                .toList();
+    }
+
     public List<PartidoFixtureResponseDto> findByCategoria(Long torneoId, Long categoriaId) {
         TorneoCategoria categoria = requireCategoria(torneoId, categoriaId);
         return partidos.findByTorneoCategoriaIdOrderByJornadaAscFechaInicioAsc(categoria.getId())

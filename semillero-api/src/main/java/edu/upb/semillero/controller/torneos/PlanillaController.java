@@ -4,6 +4,7 @@ import edu.upb.semillero.repository.dto.request.torneos.PlanillaRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.PlanillaResponseDto;
 import edu.upb.semillero.service.torneos.PdfTorneosService;
 import edu.upb.semillero.service.torneos.PlanillaService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * HU 9 - Planilla del partido (tareas S3-01 a S3-04). La llena la mesa de
  * control asignada al partido, y también el organizador.
  */
+@Tag(name = "Torneos - HU 9", description = "Planilla del partido: precarga, borrador, confirmación y PDF")
 @RestController
 @RequestMapping("/api/v1/torneos/partidos/{partidoId}/planilla")
 public class PlanillaController {

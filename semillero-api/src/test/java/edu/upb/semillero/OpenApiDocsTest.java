@@ -49,4 +49,39 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/v1/partidos']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/jugadores']").exists());
     }
+
+    /** Tarea S4-08: los contratos que consumen el video, la web y la app (HU 15). */
+    @Test
+    void documentaLosContratosDeLosSprints3Y4() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/{torneoId}/categorias/{categoriaId}/tabla']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/{torneoId}/categorias/{categoriaId}/estadisticas']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/{torneoId}/jugadores/{jugadorId}/estadisticas']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/{torneoId}/sanciones']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/jugadores/{jugadorId}/sanciones']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/partidos/{partidoId}']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/partidos/finalizados']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/partidos/{partidoId}/cerrar']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/mi-cuenta']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/torneos/notificaciones']").exists());
+    }
+
+    /** Tarea S4-08: el token se documenta como esquema y lo piden solo las rutas de torneos. */
+    @Test
+    void documentaElTokenSoloEnLasRutasDeTorneos() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+                .andExpect(jsonPath("$.paths['/api/v1/torneos'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/partidos'].get.security").doesNotExist())
+                .andExpect(jsonPath("$.info.title").value("SEMILLERO API"));
+    }
+
+    /** Tarea S4-09: el cuerpo de PartidoFinalizado queda en el contrato aunque no salga de un endpoint. */
+    @Test
+    void documentaElEventoPartidoFinalizado() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.schemas.PartidoFinalizado.properties.partidoId").exists())
+                .andExpect(jsonPath("$.components.schemas.PartidoFinalizado.properties.fechaCierre").exists())
+                .andExpect(jsonPath("$.components.schemas.PartidoFinalizado.required.length()").value(2));
+    }
 }

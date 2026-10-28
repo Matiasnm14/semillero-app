@@ -2,6 +2,7 @@ package edu.upb.semillero.controller.torneos;
 
 import edu.upb.semillero.repository.dto.response.torneos.TablaPosicionesResponseDto;
 import edu.upb.semillero.service.torneos.TablaPosicionesService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
  * HU 11 - Tabla de posiciones (tareas S3-12 a S3-14). La lee cualquier usuario
  * con sesión: entrenador, jugador y familia.
  */
+@Tag(name = "Torneos - HU 11", description = "Tabla de posiciones por categoría y grupo")
 @RestController
 public class TablaPosicionesController {
     private final TablaPosicionesService service;
