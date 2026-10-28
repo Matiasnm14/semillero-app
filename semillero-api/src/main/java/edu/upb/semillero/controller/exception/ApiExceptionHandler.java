@@ -4,6 +4,7 @@ import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.AnalysisConflictException;
 import edu.upb.semillero.service.exception.AnalysisUploadException;
 import edu.upb.semillero.service.exception.ConflictException;
+import edu.upb.semillero.service.exception.ForbiddenException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
 import edu.upb.semillero.service.exception.VideoTooLargeException;
@@ -68,6 +69,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ProblemDetail conflict(ConflictException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    /** Tarea S2-03: tiene sesión, pero no sobre ese registro. */
+    @ExceptionHandler(ForbiddenException.class)
+    public ProblemDetail forbidden(ForbiddenException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

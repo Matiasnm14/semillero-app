@@ -4,7 +4,6 @@ import edu.upb.semillero.repository.entity.Fichado;
 import edu.upb.semillero.repository.entity.Jugador;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.torneos.FichajeConsultaRepository;
-import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.fichatecnica.FichaTecnicaService;
 import edu.upb.semillero.service.fichatecnica.JugadorParaTorneosDto;
 import java.time.LocalDate;
@@ -23,12 +22,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Las implementaciones con las que torneos trabaja mientras ficha técnica no
- * escribe las suyas (puntos 10 y 11 del acuerdo de la S1-04).
+ * La implementación de {@code FichaTecnicaService} con la que torneos trabaja
+ * mientras ficha técnica no escribe la suya (punto 10 del acuerdo de la S1-04).
  *
- * <p>Cada bean se registra solo si no hay otro de su tipo, así que el día que
- * ficha técnica agregue su {@code @Service} real, estos se apagan sin que nadie
- * toque nada. Conviene borrar esta clase cuando las dos estén implementadas.
+ * <p>{@code ComunService} ya no está acá: la tarea S2-02 le dio una
+ * implementación de verdad, {@code service.comun.ComunServiceImpl}, con las
+ * tablas {@code roles} y {@code usuarios_roles} de la migración V008.
+ *
+ * <p>El bean se registra solo si no hay otro de su tipo, así que el día que
+ * ficha técnica agregue su {@code @Service} real, este se apaga sin que nadie
+ * toque nada, y esta clase se puede borrar.
  *
  * <p><strong>Qué es real y qué no</strong>, para que nadie lo confunda:
  *
@@ -42,9 +45,6 @@ import org.springframework.context.annotation.Configuration;
  *       {@code documentos_jugador} es de ficha técnica (punto 7 del acuerdo) y
  *       todavía no existe. Hasta que exista, esas dos validaciones de la HU 5
  *       <strong>no comprueban nada</strong>.</li>
- *   <li>{@code ComunService} sí es un stub completo: {@code tieneRol} responde
- *       siempre {@code true}, o sea que <strong>no hay autorización real</strong>
- *       y la HU 16 no está cubierta.</li>
  * </ul>
  */
 @Configuration
@@ -62,12 +62,6 @@ public class MocksExternosConfiguration {
     FichaTecnicaService fichaTecnicaServiceLecturaDirecta(JugadorRepository jugadores,
             FichajeConsultaRepository fichajes) {
         return new FichaTecnicaLecturaDirecta(jugadores, fichajes);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(ComunService.class)
-    ComunService comunServiceStub() {
-        return new ComunStub();
     }
 
     /**
@@ -155,33 +149,6 @@ public class MocksExternosConfiguration {
                 return false;
             }
             return hasta == null || !hasta.isBefore(fecha.atStartOfDay());
-        }
-    }
-
-    private static class ComunStub implements ComunService {
-        private static final Logger log = LoggerFactory.getLogger(ComunStub.class);
-
-        @Override
-        public boolean usuarioExiste(Long usuarioId) {
-            return usuarioId != null;
-        }
-
-        @Override
-        public boolean clubExiste(Long clubId) {
-            return clubId != null;
-        }
-
-        @Override
-        public boolean tieneRol(Long usuarioId, String codigoRol) {
-            log.warn("ComunService es un stub: se concede el rol {} al usuario {} sin verificar nada",
-                    codigoRol, usuarioId);
-            return true;
-        }
-
-        @Override
-        public Set<Long> clubesDondeTrabaja(Long usuarioId) {
-            log.warn("ComunService es un stub: no sabe en qué clubes trabaja el usuario {}", usuarioId);
-            return Set.of();
         }
     }
 }

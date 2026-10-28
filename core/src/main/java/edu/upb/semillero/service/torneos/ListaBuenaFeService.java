@@ -24,6 +24,7 @@ import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.fichatecnica.FichaTecnicaService;
 import edu.upb.semillero.service.fichatecnica.JugadorParaTorneosDto;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -69,16 +70,19 @@ public class ListaBuenaFeService {
     private final ReglamentoRepository reglamentos;
     private final SancionRepository sanciones;
     private final FichaTecnicaService fichaTecnica;
+    private final AccesoTorneos acceso;
     private final EntityRelations relations;
 
     public ListaBuenaFeService(ListaBuenaFeRepository repository,
             InscripcionEquipoRepository inscripciones, ReglamentoRepository reglamentos,
-            SancionRepository sanciones, FichaTecnicaService fichaTecnica, EntityRelations relations) {
+            SancionRepository sanciones, FichaTecnicaService fichaTecnica, AccesoTorneos acceso,
+            EntityRelations relations) {
         this.repository = repository;
         this.inscripciones = inscripciones;
         this.reglamentos = reglamentos;
         this.sanciones = sanciones;
         this.fichaTecnica = fichaTecnica;
+        this.acceso = acceso;
         this.relations = relations;
     }
 
@@ -182,6 +186,9 @@ public class ListaBuenaFeService {
     }
 
     private void requireListaEditable(InscripcionEquipo inscripcion) {
+        // Tarea S2-03: el entrenador solo toca la lista de un club donde trabaja.
+        acceso.requireClubPropio(inscripcion.getClub().getId(),
+                "/api/v1/torneos/inscripciones/" + inscripcion.getId() + "/lista-buena-fe");
         if (Boolean.TRUE.equals(inscripcion.getListaConfirmada())) {
             throw new ConflictException("La lista de buena fe del equipo " + inscripcion.getId()
                     + " ya está confirmada y no se puede modificar");

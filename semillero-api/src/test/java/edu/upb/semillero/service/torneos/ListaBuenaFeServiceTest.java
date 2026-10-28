@@ -23,6 +23,7 @@ import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.fichatecnica.FichaTecnicaService;
 import edu.upb.semillero.service.fichatecnica.JugadorParaTorneosDto;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +63,7 @@ class ListaBuenaFeServiceTest {
     @Mock ReglamentoRepository reglamentos;
     @Mock SancionRepository sanciones;
     @Mock FichaTecnicaService fichaTecnica;
+    @Mock AccesoTorneos acceso;
     @Mock EntityRelations relations;
     @InjectMocks ListaBuenaFeService service;
 

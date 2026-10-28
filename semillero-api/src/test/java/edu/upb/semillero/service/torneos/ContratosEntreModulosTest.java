@@ -1,13 +1,20 @@
 package edu.upb.semillero.service.torneos;
 
 import edu.upb.semillero.repository.entity.Club;
+import edu.upb.semillero.repository.entity.Rol;
+import edu.upb.semillero.repository.entity.Usuario;
+import edu.upb.semillero.repository.entity.UsuarioRol;
 import edu.upb.semillero.repository.entity.Fichado;
 import edu.upb.semillero.repository.entity.Jugador;
 import edu.upb.semillero.repository.enums.EstadoJugador;
 import edu.upb.semillero.repository.repos.ClubRepository;
 import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
+import edu.upb.semillero.repository.repos.RolRepository;
+import edu.upb.semillero.repository.repos.UsuarioRepository;
+import edu.upb.semillero.repository.repos.UsuarioRolRepository;
 import edu.upb.semillero.service.comun.ComunService;
+import edu.upb.semillero.service.comun.Roles;
 import edu.upb.semillero.service.fichatecnica.FichaTecnicaService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,6 +49,9 @@ class ContratosEntreModulosTest {
     @Autowired JugadorRepository jugadores;
     @Autowired ClubRepository clubes;
     @Autowired FichadoRepository fichados;
+    @Autowired UsuarioRepository usuarios;
+    @Autowired RolRepository roles;
+    @Autowired UsuarioRolRepository usuariosRoles;
 
     @Test
     void lasInterfacesEntreModulosSeInyectan() {
@@ -122,22 +132,55 @@ class ContratosEntreModulosTest {
     }
 
     /**
-     * El stub concede cualquier rol: hasta que exista la implementación real con
-     * `roles` y `usuarios_roles`, la HU 16 no tiene autorización de verdad.
+     * Tarea S2-02: {@code ComunService} ya no es un stub. Sin roles cargados, un
+     * usuario cualquiera no tiene ninguno y queda como CONSULTA: solo lectura.
      */
     @Test
-    void elStubDeComunConcedeCualquierRol() {
-        assertThat(comun.tieneRol(1L, "ORGANIZADOR")).isTrue();
-        assertThat(comun.tieneRol(1L, "ROL_QUE_NO_EXISTE")).isTrue();
+    void comunNoConcedeRolesQueElUsuarioNoTiene() {
+        assertThat(comun.tieneRol(1L, Roles.ORGANIZADOR)).isFalse();
+        assertThat(comun.tieneRol(1L, "ROL_QUE_NO_EXISTE")).isFalse();
+        assertThat(comun.tieneRol(null, Roles.ADMIN)).isFalse();
         assertThat(comun.clubesDondeTrabaja(1L)).isEmpty();
     }
 
     @Test
-    void elStubDeComunValidaQueLosIdsNoSeanNulos() {
-        assertThat(comun.usuarioExiste(1L)).isTrue();
+    void comunDaElRolQueEstaEnUsuariosRoles() {
+        Usuario usuario = usuario();
+        Rol organizador = roles.findByCodigo(Roles.ORGANIZADOR).orElseThrow();
+        UsuarioRol asignacion = new UsuarioRol();
+        asignacion.setUsuario(usuario);
+        asignacion.setRol(organizador);
+        asignacion.setFechaAlta(LocalDateTime.now());
+        usuariosRoles.saveAndFlush(asignacion);
+
+        assertThat(comun.tieneRol(usuario.getId(), Roles.ORGANIZADOR)).isTrue();
+        assertThat(comun.rolesDe(usuario.getId())).contains(Roles.ORGANIZADOR);
+    }
+
+    /** Sin ningún rol asignado, el usuario solo puede consultar. */
+    @Test
+    void sinRolesAsignadosElUsuarioQuedaEnConsulta() {
+        assertThat(comun.rolesDe(usuario().getId())).containsExactly(Roles.CONSULTA);
+    }
+
+    @Test
+    void comunValidaQueLosIdsNoSeanNulos() {
+        Usuario usuario = usuario();
+        assertThat(comun.usuarioExiste(usuario.getId())).isTrue();
         assertThat(comun.usuarioExiste(null)).isFalse();
-        assertThat(comun.clubExiste(1L)).isTrue();
+        assertThat(comun.usuarioExiste(Long.MAX_VALUE)).isFalse();
+        assertThat(comun.clubExiste(club("Club comun").getId())).isTrue();
         assertThat(comun.clubExiste(null)).isFalse();
+    }
+
+    private Usuario usuario() {
+        Usuario usuario = new Usuario();
+        usuario.setName("u" + System.nanoTime());
+        usuario.setNombres("Test");
+        usuario.setApellidos("Test");
+        usuario.setEmail("contratos" + System.nanoTime() + "@example.com");
+        usuario.setPasswordHash("x");
+        return usuarios.saveAndFlush(usuario);
     }
 
     private Jugador jugador(LocalDate fechaNacimiento) {

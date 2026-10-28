@@ -22,6 +22,12 @@ public interface ComunService {
 
     boolean tieneRol(Long usuarioId, String codigoRol);
 
+    /**
+     * Todos los roles del usuario, que es lo que el login mete en el token
+     * (tarea S2-01). Si no tiene ninguno, devuelve CONSULTA: leer y nada m&aacute;s.
+     */
+    Set<String> rolesDe(Long usuarioId);
+
     /** Para la restricci&oacute;n por propiedad: el entrenador solo maneja su club. */
     Set<Long> clubesDondeTrabaja(Long usuarioId);
 }
