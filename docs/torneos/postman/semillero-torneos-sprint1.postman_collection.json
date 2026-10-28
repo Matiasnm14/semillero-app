@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "SEMILLERO - Torneos - Sprints 1 y 2",
+    "name": "SEMILLERO - Torneos - Sprints 1, 2 y 3",
     "description": "Prueba de punta a punta del sprint 1 del modulo de Torneos (Grupo 4).\n\nCubre HU 1 (S1-08, S1-09, S1-10), HU 2 (S1-12, S1-13), HU 3 (S1-16, S1-17) y HU 4 (S1-20, S1-21), con sus casos de error.\n\nCorrela entera con Run collection: cada carpeta deja en variables los IDs que usa la siguiente. Las fechas se calculan solas respecto de hoy, asi que no se vence.\n\nRequiere la API levantada con el perfil dev en {{baseUrl}}.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -14,12 +14,60 @@
       "value": ""
     },
     {
-      "key": "adminEmail",
-      "value": "admin@example.com"
+      "key": "s2TorneoId",
+      "value": ""
     },
     {
-      "key": "adminPassword",
-      "value": "secreto123"
+      "key": "s2CategoriaId",
+      "value": ""
+    },
+    {
+      "key": "s2ClubAId",
+      "value": ""
+    },
+    {
+      "key": "s2ClubBId",
+      "value": ""
+    },
+    {
+      "key": "s2InscAId",
+      "value": ""
+    },
+    {
+      "key": "s2InscBId",
+      "value": ""
+    },
+    {
+      "key": "s2PartidoId",
+      "value": ""
+    },
+    {
+      "key": "jugadorA1",
+      "value": ""
+    },
+    {
+      "key": "jugadorA2",
+      "value": ""
+    },
+    {
+      "key": "jugadorB1",
+      "value": ""
+    },
+    {
+      "key": "jugadorB2",
+      "value": ""
+    },
+    {
+      "key": "organizadorEmail",
+      "value": ""
+    },
+    {
+      "key": "s2SedeId",
+      "value": ""
+    },
+    {
+      "key": "s2CanchaId",
+      "value": ""
     }
   ],
   "event": [
@@ -36,7 +84,14 @@
           "pm.collectionVariables.set('fechaInicio', masDias(20));",
           "pm.collectionVariables.set('fechaFin', masDias(120));",
           "pm.collectionVariables.set('temporada', String(new Date(hoy.getTime() + 20 * 86400000).getFullYear()));",
-          "pm.collectionVariables.set('sufijo', String(Date.now()));"
+          "pm.collectionVariables.set('sufijo', String(Date.now()));",
+          "const temporada = new Date(hoy.getTime() + 20 * 86400000).getFullYear();",
+          "pm.collectionVariables.set('fechaCorte', temporada + '-12-31');",
+          "pm.collectionVariables.set('fechaNacimientoSub14', (temporada - 13) + '-06-01');",
+          "pm.collectionVariables.set('fechaNacimientoGrande', (temporada - 25) + '-06-01');",
+          "pm.collectionVariables.set('fechaFichaje', masDias(-30) + 'T00:00:00');",
+          "pm.collectionVariables.set('fechaFixture', masDias(30));",
+          "pm.collectionVariables.set('fechaReprogramada', masDias(45) + 'T17:00:00');"
         ]
       }
     }
@@ -249,7 +304,9 @@
                   "  pm.expect(pm.response.json()).to.not.have.property('password');",
                   "  pm.expect(pm.response.json()).to.not.have.property('passwordHash');",
                   "});",
-                  "pm.collectionVariables.set('organizadorId', pm.response.json().id);"
+                  "pm.collectionVariables.set('organizadorId', pm.response.json().id);",
+                  "// El sufijo se recalcula en cada request: hay que guardar el email para el login.",
+                  "pm.collectionVariables.set('organizadorEmail', JSON.parse(pm.request.body.raw).email);"
                 ]
               }
             }
@@ -284,6 +341,133 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "pm.collectionVariables.set('entrenadorId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-01 dar de alta al organizador como administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/administradores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "// Con esto el login le da el rol ADMIN (punto 21 del acuerdo: sale de la",
+                  "// tabla administrador), y desde ahi se puede usar toda la API de torneos."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-01 login y guardar el token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificador\": \"{{organizadorEmail}}\",\n  \"password\": \"secreto123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y trae token', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.token, 'token').to.be.a('string');",
+                  "    pm.expect(body.token.split('.').length, 'el JWT tiene tres partes').to.eql(3);",
+                  "    pm.expect(body.roles, 'roles').to.include('ADMIN');",
+                  "    pm.collectionVariables.set('token', body.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-02 sin token no se entra a torneos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/sedes",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 sin token', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-02 el rol se verifica, el token no alcanza con cualquier texto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer no.es.un.token"
+              }
+            ],
+            "url": "{{baseUrl}}/torneos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 con un token inventado', () => pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -1738,10 +1922,10 @@
       ]
     },
     {
-      "name": "07 - Sprint 2 (HU 5, HU 6, HU 7, HU 16)",
+      "name": "07 - Sprint 2 (HU 5 lista de buena fe, HU 6 inscripciones, HU 7 fixture)",
       "item": [
         {
-          "name": "S2-01 login y guardar el token",
+          "name": "Crear la sede del torneo",
           "request": {
             "method": "POST",
             "header": [
@@ -1752,22 +1936,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identificador\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "raw": "{\n  \"nombre\": \"Sede Sprint 2-3 {{sufijo}}\",\n  \"direccion\": \"Av. Busch 500\",\n  \"ciudadId\": \"{{ciudadId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}/auth/login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
+            "url": "{{baseUrl}}/torneos/sedes"
           },
           "event": [
             {
@@ -1775,22 +1951,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y trae token', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.token, 'token').to.be.a('string');",
-                  "    pm.collectionVariables.set('token', body.token);",
-                  "    pm.expect(body.roles, 'roles').to.be.an('array');",
-                  "});"
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('s2SedeId', pm.response.json().id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "S2-11 aprobar la inscripcion del club A",
+          "name": "Crear la cancha donde se juega",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -1799,19 +1970,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"APROBADA\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "raw": "{\n  \"sedeId\": \"{{s2SedeId}}\",\n  \"nombre\": \"Cancha 1\",\n  \"tipoSuperficie\": \"CESPED_SINTETICO\",\n  \"largoM\": 100.0,\n  \"anchoM\": 64.0,\n  \"iluminacion\": true,\n  \"vestuarios\": true,\n  \"descripcion\": \"100x64, iluminada, con vestuarios\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/estado",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/estado"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/canchas"
           },
           "event": [
             {
@@ -1819,10 +1985,279 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y queda APROBADA', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(pm.response.json().estado).to.eql('APROBADA');",
+                  "pm.test('201 y guarda la superficie', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().tipoSuperficie).to.eql('CESPED_SINTETICO');",
+                  "});",
+                  "pm.collectionVariables.set('s2CanchaId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear los dos clubes del torneo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreClub\": \"Liga Local {{sufijo}}\",\n  \"ciudadId\": \"{{ciudadId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/clubes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('s2ClubAId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear el club rival",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreClub\": \"Liga Visita {{sufijo}}\",\n  \"ciudadId\": \"{{ciudadId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/clubes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('s2ClubBId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear el torneo de liga del sprint 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Copa Sprint 2-3 {{sufijo}}\",\n  \"temporada\": \"{{temporada}}\",\n  \"tipo\": \"OFICIAL\",\n  \"ambito\": \"INTERNO\",\n  \"formato\": \"LIGA\",\n  \"fechaInicio\": \"{{fechaInicio}}\",\n  \"fechaFin\": \"{{fechaFin}}\",\n  \"fechaLimiteInscripcion\": \"{{fechaLimite}}\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y nace en BORRADOR', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().estado).to.eql('BORRADOR');",
+                  "});",
+                  "pm.collectionVariables.set('s2TorneoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear la categoria Sub-14",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sub-14\",\n  \"edadMinima\": 12,\n  \"edadMaxima\": 14,\n  \"cupoMaximo\": 4,\n  \"duracionTiempoMin\": 35,\n  \"jugadoresEnCancha\": 5,\n  \"maxSustituciones\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('s2CategoriaId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S1-12 reglamento con fecha de corte y minimo de jugadores",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"umbralAmarillas\": 3,\n  \"fechaCorte\": \"{{fechaCorte}}\",\n  \"minJugadores\": 2,\n  \"maxJugadores\": 10,\n  \"descansoMinimoMin\": 60,\n  \"desempates\": [\n    \"DIF_GOLES\",\n    \"GOLES_FAVOR\",\n    \"ENFRENTAMIENTO\",\n    \"FAIR_PLAY\",\n    \"SORTEO\"\n  ],\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/reglamento"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y guarda la fecha de corte', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().fechaCorte).to.eql(pm.collectionVariables.get('fechaCorte'));",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S1-10 abrir inscripciones",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/abrir-inscripciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y queda INSCRIPCIONES_ABIERTAS', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('INSCRIPCIONES_ABIERTAS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S1-20 inscribir el equipo local",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"torneoCategoriaId\": \"{{s2CategoriaId}}\",\n  \"clubId\": \"{{s2ClubAId}}\",\n  \"usuarioId\": \"{{entrenadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y queda PENDIENTE', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().estado).to.eql('PENDIENTE');",
+                  "});",
+                  "pm.collectionVariables.set('s2InscAId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S1-20 inscribir el equipo rival",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"torneoCategoriaId\": \"{{s2CategoriaId}}\",\n  \"clubId\": \"{{s2ClubBId}}\",\n  \"usuarioId\": \"{{entrenadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('s2InscBId', pm.response.json().id);"
                 ]
               }
             }
@@ -1847,12 +2282,7 @@
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/estado",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/estado"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/estado"
           },
           "event": [
             {
@@ -1860,23 +2290,35 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('400 porque falta el motivo', function () { pm.response.to.have.status(400); });"
+                  "pm.test('400 porque falta el motivo', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().detail).to.include('motivo');",
+                  "});"
                 ]
               }
             }
           ]
         },
         {
-          "name": "S2-12 historial de estados",
+          "name": "S2-11 observar con motivo",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/historial",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/historial"
-              ]
-            }
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"OBSERVADA\",\n  \"motivo\": \"Falta la lista de buena fe\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/estado"
           },
           "event": [
             {
@@ -1884,11 +2326,108 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y el ultimo cambio primero', function () {",
+                  "pm.test('200 y guarda el motivo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('OBSERVADA');",
+                  "    pm.expect(pm.response.json().motivo).to.eql('Falta la lista de buena fe');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-11 aprobar al local y limpiar el motivo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"APROBADA\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/estado"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, APROBADA y sin motivo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('APROBADA');",
+                  "    pm.expect(pm.response.json().motivo).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-11 aprobar al rival",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"APROBADA\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscBId}}/estado"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 Ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-12 historial de estados de la inscripcion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/historial"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y los dos cambios, del mas nuevo al mas viejo', function () {",
                   "    pm.response.to.have.status(200);",
                   "    const historial = pm.response.json();",
-                  "    pm.expect(historial.length).to.be.above(0);",
+                  "    pm.expect(historial.length, 'observar y aprobar').to.eql(2);",
                   "    pm.expect(historial[0].accion).to.eql('CAMBIO_ESTADO');",
+                  "    pm.expect(historial[0].valorNuevo).to.include('APROBADA');",
+                  "    pm.expect(historial[1].valorNuevo).to.include('OBSERVADA');",
+                  "    pm.expect(historial[1].motivo).to.include('lista de buena fe');",
+                  "    pm.expect(historial[0].usuarioId).to.eql(Number(pm.collectionVariables.get('organizadorId')));",
                   "});"
                 ]
               }
@@ -1896,16 +2435,11 @@
           ]
         },
         {
-          "name": "S2-10 listar inscripciones aprobadas del torneo",
+          "name": "S2-10 listar solo las inscripciones aprobadas del torneo",
           "request": {
             "method": "GET",
             "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones?torneoId={{torneoId}}&estado=APROBADA",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones?torneoId={{torneoId}}&estado=APROBADA"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/inscripciones?torneoId={{s2TorneoId}}&estado=APROBADA"
           },
           "event": [
             {
@@ -1913,11 +2447,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y solo aprobadas', function () {",
+                  "pm.test('200 y las dos aprobadas', function () {",
                   "    pm.response.to.have.status(200);",
-                  "    pm.response.json().content.forEach(function (i) {",
-                  "        pm.expect(i.estado).to.eql('APROBADA');",
-                  "    });",
+                  "    pm.expect(pm.response.json().totalElements).to.eql(2);",
+                  "    pm.response.json().content.forEach((i) => pm.expect(i.estado).to.eql('APROBADA'));",
                   "});"
                 ]
               }
@@ -1925,7 +2458,7 @@
           ]
         },
         {
-          "name": "S2-06 agregar un jugador a la lista de buena fe",
+          "name": "S2-05 crear jugador A1",
           "request": {
             "method": "POST",
             "header": [
@@ -1936,19 +2469,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"jugadorId\": \"{{jugadorId}}\",\n  \"dorsal\": 10\n}",
+              "raw": "{\n  \"piernaHabil\": \"D\",\n  \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe"
-              ]
-            }
+            "url": "{{baseUrl}}/jugadores"
           },
           "event": [
             {
@@ -1956,9 +2484,77 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 y habilitado', function () {",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorA1', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-05 ficharlo en su club",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"clubId\": \"{{s2ClubAId}}\",\n  \"fechaFichaje\": \"{{fechaFichaje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/fichados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-06 agregarlo a la lista de buena fe con el dorsal 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"dorsal\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y entra habilitado', function () {",
                   "    pm.response.to.have.status(201);",
                   "    pm.expect(pm.response.json().habilitado).to.eql(true);",
+                  "    pm.expect(pm.response.json().dorsal).to.eql(10);",
                   "});"
                 ]
               }
@@ -1966,7 +2562,7 @@
           ]
         },
         {
-          "name": "S2-07 el mismo dorsal otra vez da 409",
+          "name": "S2-05 crear jugador A2",
           "request": {
             "method": "POST",
             "header": [
@@ -1977,19 +2573,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"jugadorId\": \"{{otroJugadorId}}\",\n  \"dorsal\": 10\n}",
+              "raw": "{\n  \"piernaHabil\": \"D\",\n  \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe"
-              ]
-            }
+            "url": "{{baseUrl}}/jugadores"
           },
           "event": [
             {
@@ -1997,14 +2588,503 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('409 por el dorsal repetido', function () { pm.response.to.have.status(409); });"
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorA2', pm.response.json().id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "S2-08 confirmar la lista",
+          "name": "S2-05 ficharlo en su club",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA2}}\",\n  \"clubId\": \"{{s2ClubAId}}\",\n  \"fechaFichaje\": \"{{fechaFichaje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/fichados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-06 agregarlo a la lista de buena fe con el dorsal 11",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA2}}\",\n  \"dorsal\": 11\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y entra habilitado', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().habilitado).to.eql(true);",
+                  "    pm.expect(pm.response.json().dorsal).to.eql(11);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-05 crear jugador B1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"piernaHabil\": \"D\",\n  \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/jugadores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorB1', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-05 ficharlo en su club",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorB1}}\",\n  \"clubId\": \"{{s2ClubBId}}\",\n  \"fechaFichaje\": \"{{fechaFichaje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/fichados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-06 agregarlo a la lista de buena fe con el dorsal 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorB1}}\",\n  \"dorsal\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscBId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y entra habilitado', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().habilitado).to.eql(true);",
+                  "    pm.expect(pm.response.json().dorsal).to.eql(10);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-05 crear jugador B2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"piernaHabil\": \"D\",\n  \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/jugadores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorB2', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-05 ficharlo en su club",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorB2}}\",\n  \"clubId\": \"{{s2ClubBId}}\",\n  \"fechaFichaje\": \"{{fechaFichaje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/fichados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-06 agregarlo a la lista de buena fe con el dorsal 11",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorB2}}\",\n  \"dorsal\": 11\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscBId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y entra habilitado', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().habilitado).to.eql(true);",
+                  "    pm.expect(pm.response.json().dorsal).to.eql(11);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 el dorsal repetido en el equipo da 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"dorsal\": 12\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque el jugador ya esta en la lista', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('ya está en la lista');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 un jugador de otro torneo no entra con edad fuera de rango",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"piernaHabil\": \"I\",\n  \"fechaNacimiento\": \"{{fechaNacimientoGrande}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/jugadores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorGrande', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 ficharlo para que solo falle por la edad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorGrande}}\",\n  \"clubId\": \"{{s2ClubAId}}\",\n  \"fechaFichaje\": \"{{fechaFichaje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/fichados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 la edad se valida a la fecha de corte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorGrande}}\",\n  \"dorsal\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 y el motivo dice la edad y la fecha de corte', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().detail).to.include('años al ' + pm.collectionVariables.get('fechaCorte'));",
+                  "    pm.expect(pm.response.json().detail).to.include('Sub-14');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 sin fichaje en el club no entra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"piernaHabil\": \"D\",\n  \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/jugadores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('jugadorSinFichaje', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-07 el jugador sin fichaje da 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorSinFichaje}}\",\n  \"dorsal\": 21\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 y el motivo habla del fichaje', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().detail).to.include('no está fichado en el club');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-08 confirmar la lista del local",
           "request": {
             "method": "POST",
             "header": [
@@ -2022,12 +3102,7 @@
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe/confirmar",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe/confirmar"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe/confirmar"
           },
           "event": [
             {
@@ -2035,8 +3110,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 o 400 segun el minimo del reglamento', function () {",
-                  "    pm.expect([200, 400]).to.include(pm.response.code);",
+                  "pm.test('200 y queda confirmada con sus dos jugadores', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().listaConfirmada).to.eql(true);",
+                  "    pm.expect(pm.response.json().totalJugadores).to.eql(2);",
                   "});"
                 ]
               }
@@ -2044,16 +3121,80 @@
           ]
         },
         {
-          "name": "S2-08 lista de buena fe en PDF",
+          "name": "S2-08 una lista confirmada ya no se modifica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorSinFichaje}}\",\n  \"dorsal\": 22\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque la lista esta confirmada', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('confirmada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-08 confirmar la lista del rival",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscBId}}/lista-buena-fe/confirmar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 Ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-08 la lista de buena fe en PDF",
           "request": {
             "method": "GET",
             "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe/pdf",
-              "host": [
-                "{{baseUrl}}/torneos/inscripciones/{{inscripcionId}}/lista-buena-fe/pdf"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/inscripciones/{{s2InscAId}}/lista-buena-fe/pdf"
           },
           "event": [
             {
@@ -2064,6 +3205,7 @@
                   "pm.test('200 y es un PDF', function () {",
                   "    pm.response.to.have.status(200);",
                   "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "    pm.expect(pm.response.stream.length).to.be.above(800);",
                   "});"
                 ]
               }
@@ -2082,19 +3224,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fechaPrimeraJornada\": \"2026-11-08\",\n  \"horaPrimerPartido\": \"09:00:00\",\n  \"diasEntreJornadas\": 7,\n  \"canchaIds\": [\n    \"{{canchaId}}\"\n  ],\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "raw": "{\n  \"fechaPrimeraJornada\": \"{{fechaFixture}}\",\n  \"horaPrimerPartido\": \"09:00:00\",\n  \"diasEntreJornadas\": 7,\n  \"canchaIds\": [\n    \"{{s2CanchaId}}\"\n  ],\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture/liga",
-              "host": [
-                "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture/liga"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/fixture/liga"
           },
           "event": [
             {
@@ -2102,9 +3239,19 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 y trae partidos', function () {",
+                  "pm.test('201 y con dos equipos sale un solo partido', function () {",
                   "    pm.response.to.have.status(201);",
-                  "    pm.expect(pm.response.json().length).to.be.above(0);",
+                  "    const partidos = pm.response.json();",
+                  "    pm.expect(partidos.length).to.eql(1);",
+                  "    const partido = partidos[0];",
+                  "    pm.expect(partido.jornada).to.eql(1);",
+                  "    pm.expect(partido.fase).to.eql('LIGA');",
+                  "    pm.expect(partido.estado).to.eql('PROGRAMADO');",
+                  "    pm.expect(partido.canchaId, 'S2-16: le asigno cancha').to.not.eql(null);",
+                  "    pm.expect(partido.canchaSuperficie, 'HU 3: la superficie viaja en el fixture').to.be.a('string');",
+                  "    pm.collectionVariables.set('s2PartidoId', partido.id);",
+                  "    pm.collectionVariables.set('s2LocalId', partido.clubLocalId);",
+                  "    pm.collectionVariables.set('s2VisitanteId', partido.clubVisitanteId);",
                   "});"
                 ]
               }
@@ -2112,16 +3259,25 @@
           ]
         },
         {
-          "name": "S2-16 ver el fixture con cancha y superficie",
+          "name": "S2-14 generarlo dos veces da 409",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture",
-              "host": [
-                "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture"
-              ]
-            }
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaPrimeraJornada\": \"{{fechaFixture}}\",\n  \"canchaIds\": [\n    \"{{s2CanchaId}}\"\n  ],\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/fixture/liga"
           },
           "event": [
             {
@@ -2129,11 +3285,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y cada partido tiene cancha', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.response.json().forEach(function (p) {",
-                  "        pm.expect(p.canchaId, 'canchaId').to.not.eql(null);",
-                  "    });",
+                  "pm.test('409 porque la categoria ya tiene fixture', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('ya tiene fixture');",
                   "});"
                 ]
               }
@@ -2141,16 +3295,11 @@
           ]
         },
         {
-          "name": "S2-18 exportar el fixture en PDF",
+          "name": "S2-18 el fixture en PDF",
           "request": {
             "method": "GET",
             "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture/pdf",
-              "host": [
-                "{{baseUrl}}/torneos/{{torneoId}}/categorias/{{categoriaId}}/fixture/pdf"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/fixture/pdf"
           },
           "event": [
             {
@@ -2172,12 +3321,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/{{torneoId}}/fixture/publicar?usuarioId={{organizadorId}}",
-              "host": [
-                "{{baseUrl}}/torneos/{{torneoId}}/fixture/publicar?usuarioId={{organizadorId}}"
-              ]
-            }
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/fixture/publicar?usuarioId={{organizadorId}}"
           },
           "event": [
             {
@@ -2185,7 +3329,324 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 y el torneo queda EN_CURSO', function () {",
+                  "pm.test('200, el torneo queda EN_CURSO y cuenta el partido', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('EN_CURSO');",
+                  "    pm.expect(pm.response.json().totalPartidos).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2-18 publicar dos veces da 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/fixture/publicar?usuarioId={{organizadorId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque ya esta publicado', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 - Sprint 3 (HU 8 reprogramar, HU 9 planilla, HU 10 eventos, HU 11 tabla)",
+      "item": [
+        {
+          "name": "S3-17 reprogramar sin motivo da 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaInicio\": \"{{fechaReprogramada}}\",\n  \"canchaId\": \"{{s2CanchaId}}\",\n  \"motivo\": \"\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reprogramaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 porque el motivo es obligatorio', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-16 reprogramar el partido con motivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaInicio\": \"{{fechaReprogramada}}\",\n  \"canchaId\": \"{{s2CanchaId}}\",\n  \"motivo\": \"Lluvia en la fecha original\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reprogramaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201, guarda la fecha anterior y avisa a los equipos', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const cambio = pm.response.json();",
+                  "    pm.expect(cambio.fechaInicioAnterior, 'S3-18').to.be.a('string');",
+                  "    pm.expect(cambio.fechaInicioNueva).to.include(pm.collectionVariables.get('fechaReprogramada').slice(0, 10));",
+                  "    pm.expect(cambio.motivo).to.eql('Lluvia en la fecha original');",
+                  "    pm.expect(cambio.usuariosNotificados, 'S3-19').to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-18 historial de reprogramaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reprogramaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y queda la reprogramacion', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-01 la planilla viene precargada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y trae torneo, cancha y los dos equipos', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const planilla = pm.response.json();",
+                  "    pm.expect(planilla.torneoNombre).to.be.a('string');",
+                  "    pm.expect(planilla.categoriaNombre).to.eql('Sub-14');",
+                  "    pm.expect(planilla.canchaSuperficie, 'HU 9: la cancha con su superficie').to.be.a('string');",
+                  "    pm.expect(planilla.local.jugadores.length, 'los de la lista de buena fe').to.eql(2);",
+                  "    pm.expect(planilla.visitante.jugadores.length).to.eql(2);",
+                  "    pm.expect(planilla.local.jugadores[0].bloqueado).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-02 confirmar sin titulares da 400",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla/confirmar?usuarioId={{organizadorId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 porque todavia no hay planilla cargada', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-02 S3-03 guardar la planilla como borrador",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadores\": [\n    {\"jugadorId\": {{jugadorA1}}, \"esTitular\": true, \"capitan\": true},\n    {\"jugadorId\": {{jugadorA2}}, \"esTitular\": false},\n    {\"jugadorId\": {{jugadorB1}}, \"esTitular\": true, \"capitan\": true},\n    {\"jugadorId\": {{jugadorB2}}, \"esTitular\": false}\n  ],\n  \"cuerpoTecnico\": [\n    {\"clubId\": {{s2ClubAId}}, \"nombreCompleto\": \"Ana Perez\", \"cargo\": \"DT\"}\n  ],\n  \"observacionesArbitro\": \"Sin incidentes antes del partido\",\n  \"usuarioId\": {{organizadorId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, queda BORRADOR y con un titular por equipo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const planilla = pm.response.json();",
+                  "    pm.expect(planilla.estado).to.eql('BORRADOR');",
+                  "    pm.expect(planilla.local.titulares).to.eql(1);",
+                  "    pm.expect(planilla.local.suplentes).to.eql(1);",
+                  "    pm.expect(planilla.visitante.titulares).to.eql(1);",
+                  "    pm.expect(planilla.local.cuerpoTecnico.length, 'S3-03').to.eql(1);",
+                  "    pm.expect(planilla.observacionesArbitro).to.include('Sin incidentes');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-02 confirmar la planilla",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla/confirmar?usuarioId={{organizadorId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y queda CONFIRMADA', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('CONFIRMADA');",
+                  "    pm.expect(pm.response.json().fechaConfirmacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-04 la planilla en PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla/pdf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y es un PDF', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "    pm.expect(pm.response.stream.length).to.be.above(800);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-06 gol del capitan local en el minuto 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"GOL\",\n  \"minuto\": 10,\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"tipoGol\": \"JUGADA\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y el gol queda a favor del club del autor', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().tipo).to.eql('GOL');",
+                  "    pm.expect(pm.response.json().clubId).to.eql(Number(pm.collectionVariables.get('s2ClubAId')));",
+                  "});",
+                  "pm.collectionVariables.set('s2EventoGolId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-06 el partido arranca solo con el primer evento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/resultado"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y el partido quedo EN_CURSO', function () {",
                   "    pm.response.to.have.status(200);",
                   "    pm.expect(pm.response.json().estado).to.eql('EN_CURSO');",
                   "});"
@@ -2195,19 +3656,25 @@
           ]
         },
         {
-          "name": "S2-02 sin token no se entra",
+          "name": "S3-07 amarilla sin motivo da 400",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/torneos/sedes",
-              "host": [
-                "{{baseUrl}}/torneos/sedes"
-              ]
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"AMARILLA\",\n  \"minuto\": 15,\n  \"jugadorId\": \"{{jugadorB1}}\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "auth": {
-              "type": "noauth"
-            }
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
           },
           "event": [
             {
@@ -2215,7 +3682,393 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('401 sin token', function () { pm.response.to.have.status(401); });"
+                  "pm.test('400 porque la tarjeta lleva motivo', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().detail).to.include('motivo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-07 amarilla con motivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"AMARILLA\",\n  \"minuto\": 20,\n  \"jugadorId\": \"{{jugadorB1}}\",\n  \"motivo\": \"Juego brusco\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-07 cambio: sale el titular local y entra su suplente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"CAMBIO\",\n  \"minuto\": 60,\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"jugadorRelacionadoId\": \"{{jugadorA2}}\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-06 el que ya salio no puede hacer un gol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"GOL\",\n  \"minuto\": 70,\n  \"jugadorId\": \"{{jugadorA1}}\",\n  \"tipoGol\": \"JUGADA\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 porque no esta en cancha en ese minuto', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().detail).to.include('cancha');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-06 los eventos cargados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y los tres eventos en orden de minuto', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const eventos = pm.response.json();",
+                  "    pm.expect(eventos.length).to.eql(3);",
+                  "    pm.expect(eventos[0].minuto).to.eql(10);",
+                  "    pm.expect(eventos[2].tipo).to.eql('CAMBIO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-09 cerrar el partido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacionesArbitro\": \"Partido normal\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/cerrar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, FINALIZADO, 1-0 para el club del gol y minutos calculados', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const resultado = pm.response.json();",
+                  "    pm.expect(resultado.estado).to.eql('FINALIZADO');",
+                  "    pm.expect(resultado.fechaCierre).to.be.a('string');",
+                  "    const clubA = Number(pm.collectionVariables.get('s2ClubAId'));",
+                  "    const golesDeA = resultado.clubLocalId === clubA",
+                  "        ? resultado.golesLocal : resultado.golesVisitante;",
+                  "    const golesDelOtro = resultado.clubLocalId === clubA",
+                  "        ? resultado.golesVisitante : resultado.golesLocal;",
+                  "    pm.expect(golesDeA, 'el gol de los eventos').to.eql(1);",
+                  "    pm.expect(golesDelOtro).to.eql(0);",
+                  "    const minutos = {};",
+                  "    resultado.jugadores.forEach((j) => { minutos[j.jugadorId] = j.minutosJugados; });",
+                  "    const a1 = Number(pm.collectionVariables.get('jugadorA1'));",
+                  "    const a2 = Number(pm.collectionVariables.get('jugadorA2'));",
+                  "    const b2 = Number(pm.collectionVariables.get('jugadorB2'));",
+                  "    pm.expect(minutos[a1], 'S3-08: titular que sale en el 60').to.eql(60);",
+                  "    pm.expect(minutos[a2], 'S3-08: entra en el 60 de un partido de 70').to.eql(10);",
+                  "    pm.expect(minutos[b2], 'S3-08: suplente que no entro').to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-09 cerrarlo dos veces da 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/cerrar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque ya esta cerrado', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-12 la tabla de posiciones de la categoria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/tabla"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, el ganador primero con 3 puntos', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const tablas = pm.response.json();",
+                  "    pm.expect(tablas.length).to.eql(1);",
+                  "    const tabla = tablas[0];",
+                  "    pm.expect(tabla.partidosCerrados).to.eql(1);",
+                  "    pm.expect(tabla.desempates, 'S3-13').to.include('DIF_GOLES');",
+                  "    pm.expect(tabla.filas.length).to.eql(2);",
+                  "    const primera = tabla.filas[0];",
+                  "    pm.expect(primera.clubId).to.eql(Number(pm.collectionVariables.get('s2ClubAId')));",
+                  "    pm.expect(primera.puntos).to.eql(3);",
+                  "    pm.expect(primera.golesFavor).to.eql(1);",
+                  "    pm.expect(primera.diferenciaGoles).to.eql(1);",
+                  "    pm.expect(tabla.filas[1].puntos).to.eql(0);",
+                  "    pm.expect(tabla.filas[1].fairPlay, 'la amarilla pesa en fair play').to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-10 reabrir el partido con motivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"El acta tenia un gol mal cargado\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reabrir"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, vuelve a EN_CURSO y se borra el resultado', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const resultado = pm.response.json();",
+                  "    pm.expect(resultado.estado).to.eql('EN_CURSO');",
+                  "    pm.expect(resultado.golesLocal).to.eql(null);",
+                  "    pm.expect(resultado.fechaCierre).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-10 el cierre y la reapertura quedan en el historial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/historial"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, la reapertura primero y con su motivo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const historial = pm.response.json();",
+                  "    pm.expect(historial.length).to.eql(2);",
+                  "    pm.expect(historial[0].accion).to.eql('REABRIR');",
+                  "    pm.expect(historial[0].motivo).to.include('mal cargado');",
+                  "    pm.expect(historial[1].accion).to.eql('CERRAR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-09 volver a cerrarlo deja el torneo consistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/cerrar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y FINALIZADO otra vez', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('FINALIZADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-16 un partido cerrado no se reprograma",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaInicio\": \"{{fechaReprogramada}}\",\n  \"canchaId\": \"{{s2CanchaId}}\",\n  \"motivo\": \"Intento sobre un partido cerrado\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reprogramaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque el partido ya esta cerrado', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
                 ]
               }
             }

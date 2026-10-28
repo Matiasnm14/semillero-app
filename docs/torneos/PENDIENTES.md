@@ -424,5 +424,25 @@ anteriores y 45 nuevas:
 `EscenarioTorneo` arma por la API un torneo con reglamento, equipos aprobados y listas de buena fe;
 lo comparten las pruebas de API del sprint 3.
 
-**Falta**: probar el sprint 3 contra PostgreSQL de verdad y sumarlo a la colección de Postman, como
-se hizo con los sprints 1 y 2.
+### Probado contra PostgreSQL y en la colección de Postman
+
+Hecho el 28/10/2026, que era lo que faltaba. La colección pasó a **123 requests y 162 aserciones en
+9 carpetas**, con una nueva (`08 · Sprint 3`) que hace el flujo completo contra la API levantada con
+el perfil `dev`: reprogramar con motivo y ver el historial, la planilla en borrador y confirmada con
+su PDF, un gol, una amarilla y un cambio, el cierre con los minutos de cada jugador, la tabla de
+posiciones y la reapertura. Se corrió tres veces seguidas sin limpiar la base: **162 de 162**.
+
+Dos cosas que hubo que arreglar para que la colección corriera entera, y que conviene saber:
+
+1. **Ya no hace falta cargar roles por SQL.** La carpeta 00 crea el usuario organizador, lo da de
+   alta en `administrador` con `POST /api/v1/administradores` y se loguea: de ahí sale el rol ADMIN
+   por el punto 21 del acuerdo. El `{{sufijo}}` del `prerequest` se recalcula en cada request, así
+   que el email del organizador se guarda en una variable para poder iniciar sesión con él.
+2. **Las carpetas 07 y 08 crean su propia sede, cancha, clubes, torneo y jugadores.** No pueden usar
+   los IDs del sprint 1 porque la carpeta 04 termina borrando su cancha, y el fixture la necesita
+   viva.
+
+Lo que la colección deja comprobado del sprint 3, además de lo que ya cubren las pruebas con H2: los
+minutos jugados salen 60, 10, 70 y 0 en un partido de 70 minutos con un cambio en el 60; la tabla da
+3 puntos al que ganó y 1 de fair play al amonestado; y los dos PDF nuevos salen con su
+`Content-Type` y con contenido.
