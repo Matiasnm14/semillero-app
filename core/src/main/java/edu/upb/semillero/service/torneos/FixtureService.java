@@ -32,7 +32,6 @@ import edu.upb.semillero.service.EntityRelations;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -629,7 +628,7 @@ public class FixtureService {
                 partido.setCancha(cancha);
                 partido.setFechaInicio(inicio);
                 partido.setFechaFin(fin);
-                if (sinChoques(partido, ocupados, agenda.descansoMin())) {
+                if (ChoquesDeAgenda.sinChoques(partido, ocupados, agenda.descansoMin())) {
                     return;
                 }
             }
@@ -648,55 +647,10 @@ public class FixtureService {
     }
 
     private void validarSinChoques(Partido partido, List<Partido> ocupados, int descansoMin) {
-        if (!sinChoques(partido, ocupados, descansoMin)) {
+        if (!ChoquesDeAgenda.sinChoques(partido, ocupados, descansoMin)) {
             throw new ConflictException("El partido choca con otro ya programado: revisá la cancha,"
                     + " el horario y el descanso mínimo entre partidos del mismo equipo");
         }
-    }
-
-    private boolean sinChoques(Partido partido, List<Partido> ocupados, int descansoMin) {
-        for (Partido otro : ocupados) {
-            if (partido.getId() != null && Objects.equals(otro.getId(), partido.getId())) {
-                continue;
-            }
-            if (mismaCancha(partido, otro) && seCruzan(partido, otro)) {
-                return false;
-            }
-            if (compartenEquipo(partido, otro)
-                    && (seCruzan(partido, otro) || sinDescanso(partido, otro, descansoMin))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean mismaCancha(Partido uno, Partido otro) {
-        return uno.getCancha() != null && otro.getCancha() != null
-                && Objects.equals(uno.getCancha().getId(), otro.getCancha().getId());
-    }
-
-    private boolean compartenEquipo(Partido uno, Partido otro) {
-        List<Long> clubes = List.of(otro.getClubLocal().getId(), otro.getClubVisitante().getId());
-        return clubes.contains(uno.getClubLocal().getId())
-                || clubes.contains(uno.getClubVisitante().getId());
-    }
-
-    private boolean seCruzan(Partido uno, Partido otro) {
-        return uno.getFechaInicio().isBefore(finDe(otro)) && otro.getFechaInicio().isBefore(finDe(uno));
-    }
-
-    /** Minutos entre el final de uno y el comienzo del otro, en el orden que vengan. */
-    private boolean sinDescanso(Partido uno, Partido otro, int descansoMin) {
-        long minutos = uno.getFechaInicio().isAfter(otro.getFechaInicio())
-                ? Duration.between(finDe(otro), uno.getFechaInicio()).toMinutes()
-                : Duration.between(finDe(uno), otro.getFechaInicio()).toMinutes();
-        return minutos < descansoMin;
-    }
-
-    private LocalDateTime finDe(Partido partido) {
-        return partido.getFechaFin() == null
-                ? partido.getFechaInicio().plusMinutes(90)
-                : partido.getFechaFin();
     }
 
     private void registrar(String accion, Long registroId, int cantidad, Long usuarioId) {
