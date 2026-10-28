@@ -1,6 +1,6 @@
 # Pendientes del módulo de Torneos para acordar con los otros grupos
 
-Grupo 4 (Torneos). Actualizado: 26/10/2026.
+Grupo 4 (Torneos). Actualizado: 28/10/2026. El backend del sprint 3 está en la sección 8.
 
 El módulo de Torneos ya tiene sus 16 tablas propias como entidades JPA (tareas S1-05 y S1-06).
 La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
@@ -330,3 +330,99 @@ revisión de otro integrante.
 Las 16 tablas propias, la HU 1 (crear torneo y categorías, S1-08 a S1-10), la HU 2 (reglamento y
 orden de desempates, S1-12 y S1-13), la HU 3 (sedes y canchas, S1-16 y S1-17) y la HU 4
 (inscripción de equipo con duplicado y cupo, S1-20 y S1-21).
+
+## 8. Estado del sprint 3
+
+Hecho el 28/10/2026 en la rama `torneos`: todo el backend del sprint 3. Faltan las cuatro pantallas
+(S3-05, S3-11, S3-15 y S3-20), que van en Flutter. **Ninguna tarea está Completada** según la
+definición de terminado: falta el PR, la revisión de otro integrante y probarlo contra PostgreSQL.
+
+| HU | Tareas | Endpoints (todos bajo `/api/v1/torneos`) |
+| --- | --- | --- |
+| 8 Reprogramar | S3-16 a S3-19 | `POST /partidos/{id}/reprogramaciones` y `GET` del mismo, el historial |
+| 9 Planilla | S3-01 a S3-04 | `GET` y `PUT /partidos/{id}/planilla`, `POST .../planilla/confirmar?usuarioId=`, `GET .../planilla/pdf` |
+| 10 Eventos y cierre | S3-06 a S3-10 | `GET` y `POST /partidos/{id}/eventos`, `DELETE .../eventos/{eventoId}`, `POST .../cerrar`, `POST .../reabrir`, `GET .../resultado`, `GET .../historial` |
+| 11 Tabla | S3-12 a S3-14 | `GET /{torneoId}/categorias/{categoriaId}/tabla?grupoId=` |
+| — | S3-21 y S3-22 | `FlujoCompletoPartidoApiTest` y 44 pruebas más (ver abajo) |
+
+**No hizo falta ninguna migración**: el sprint 3 usa solo tablas y columnas que ya estaban en la
+`V007`. Tampoco se tocó ninguna entidad.
+
+### Permisos (HU 16)
+
+`SeguridadConfiguration` suma una regla: la planilla, los eventos y el cierre admiten
+`MESA_CONTROL`, además de `ORGANIZADOR` y `ADMIN`. Que la mesa toque solo el partido que tiene
+asignado (`partidos.mesa_control_id`) lo controla `AccesoTorneos.requirePartidoAsignado`, que ya
+estaba escrito desde la S2-03. Reprogramar y reabrir quedan solo para el organizador. **Ojo al
+mergear**: el commit `7444f0e` de la rama `video-data-analysis` también cambia
+`SeguridadConfiguration`.
+
+### Decisiones que tomamos al implementarlo y hay que validar con el grupo
+
+Los criterios de aceptación no dicen todo. Lo que sigue se decidió para poder escribir el código;
+si el grupo decide otra cosa, se cambia:
+
+1. **Reprogramación.** Un partido EN_CURSO también se reprograma (el partido suspendido que se
+   termina otro día) y vuelve a PROGRAMADO conservando su planilla y sus eventos. La nueva fecha
+   no puede estar en el pasado. "Avisar a los equipos" es dejar una fila en `notificaciones` para
+   los usuarios del club (`usuario_trabaja`), el entrenador que inscribió al equipo y los jugadores
+   de su lista que tienen cuenta, una sola vez por usuario. Falta el endpoint para leerlas, que es
+   la S4-16.
+2. **Planilla.** Se guarda incompleta como BORRADOR. Para confirmar, cada equipo con lista de buena
+   fe necesita entre 1 y `jugadores_en_cancha` titulares y exactamente un capitán; el rival de un
+   campeonato externo no tiene lista y no se controla. Aparece bloqueado el jugador con
+   `habilitado = false` en la lista, con una sanción VIGENTE en el torneo o que no está ACTIVO en
+   ficha técnica. Confirmada se puede seguir corrigiendo hasta que se cierra el partido, pero no se
+   saca a un jugador que ya tiene eventos.
+3. **Eventos.** Solo con la planilla confirmada; el primero pone el partido EN_CURSO. El autor de un
+   gol, la asistencia y el que sale en un cambio tienen que estar en cancha en ese minuto; entra
+   solo un suplente que todavía no jugó, sin pasar `max_sustituciones`. Las tarjetas piden motivo.
+   Como mucho dos amarillas por jugador: la tercera se rechaza y hay que cargar la roja (no se
+   genera sola). Un expulsado no tiene más eventos.
+4. **Minutos (S3-08).** Se cuentan dentro del tiempo reglamentario (los dos tiempos de la
+   categoría). Se calculan recién al cerrar, desde los eventos, así un evento mal cargado se borra
+   sin dejar nada a medias.
+5. **Cierre (S3-09).** En un torneo interno los goles salen de los eventos. En un campeonato
+   externo el rival no tiene planilla, así que el resultado se manda a mano y no puede tener menos
+   goles que los eventos cargados. Los penales van solo en un partido de eliminación que terminó
+   empatado, y ahí son obligatorios, porque `/fixture/avanzar` necesita un ganador. El W.O. no pide
+   planilla, no admite eventos y le da al ganador los `goles_walkover` del reglamento.
+6. **Reapertura (S3-10).** Solo un partido FINALIZADO, con motivo, y queda en `auditoria` con la
+   acción `REABRIR` y el resultado anterior. Se borran el resultado y los minutos; un W.O. vuelve a
+   PROGRAMADO. No se reabre si la ronda siguiente de las llaves ya se armó con su ganador.
+7. **Tabla (S3-12 a S3-14).** Pide reglamento, por los puntos. No hay tabla en un campeonato externo
+   ni en eliminación directa. Fair play: 1 punto por amarilla y 3 por roja, menos es mejor. El
+   enfrentamiento directo es una mini tabla entre los empatados, con puntos y después diferencia
+   de goles. El sorteo es reproducible (un número fijo por categoría y club), para que la tabla no
+   cambie en cada consulta. Si se terminan los criterios, desempata el id del club.
+
+### Lo que el cierre todavía no hace
+
+La regla 7 dice que el cierre también guarda las sanciones y avisa al microservicio de video. Son
+del sprint 4 y tienen su lugar marcado en `CierrePartidoService`:
+
+- **S4-01 y S4-02**, acumulación de tarjetas y suspensión automática. Hoy la planilla ya bloquea a
+  un suspendido, pero las sanciones no se crean solas.
+- **S4-03**, descontar las fechas cumplidas.
+- **S4-09**, el evento `PartidoFinalizado`. Mientras tanto el microservicio puede leer los partidos
+  FINALIZADO por `fecha_cierre`, como dice el punto 13 del acuerdo.
+
+### Pruebas
+
+`clean verify` (sin `VideoPartidoIntegrationTest`, que necesita FFmpeg) pasa con todas las pruebas
+anteriores y 45 nuevas:
+
+| Clase | Qué cubre |
+| --- | --- |
+| `FlujoCompletoPartidoApiTest` | S3-21: fixture, planilla, eventos, cierre con minutos, tabla, PDF, reapertura y reprogramación |
+| `ReprogramacionApiTest`, `ReprogramacionServiceTest` | HU 8: historial, aviso, motivo, choques de cancha, equipo y descanso, partido cerrado |
+| `PlanillaApiTest` | HU 9: borrador y confirmación, validaciones, bloqueados, PDF |
+| `EventosYCierreApiTest`, `MinutosJugadosTest` | HU 10: goles, tarjetas, cambios, borrado, cierre interno, externo, W.O., penales, reapertura y minutos |
+| `TablaPosicionesApiTest`, `TablaPosicionesServiceTest` | HU 11: cálculo, grupos, y cada criterio de desempate |
+| `SeguridadPartidoApiTest` | HU 16 con token: la mesa asignada sí, otra mesa no, y la mesa no reprograma ni reabre |
+
+`EscenarioTorneo` arma por la API un torneo con reglamento, equipos aprobados y listas de buena fe;
+lo comparten las pruebas de API del sprint 3.
+
+**Falta**: probar el sprint 3 contra PostgreSQL de verdad y sumarlo a la colección de Postman, como
+se hizo con los sprints 1 y 2.

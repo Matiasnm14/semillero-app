@@ -2,7 +2,7 @@
 
 Este archivo es el contexto para cualquier IA (o persona) que trabaje en el módulo de Torneos. Hay que leerlo completo antes de escribir código. Si algo de este archivo no coincide con el código del repositorio, manda el repositorio y hay que avisar al grupo.
 
-Actualizado: 21/10/2026.
+Actualizado: 28/10/2026.
 
 ---
 
@@ -241,7 +241,7 @@ Roles del sistema: administrador, organizador, entrenador, mesa de control y con
 
 El documento oficial es el **Sprint Backlog** (Google Doc "Sprint Backlog - Módulo de Torneos", versión de entrega 04/11). Esta es la lista resumida para saber qué hacer y en qué orden.
 
-**Estado real al 21/10/2026:** el repositorio todavía no tiene código de torneos. Las tareas de los sprints 1 y 2 están atrasadas y hay que hacerlas primero, porque las del sprint 3 dependen de ellas. Respetar la columna "Depende de".
+**Estado real al 28/10/2026:** el backend de los sprints 1, 2 y 3 está en la rama `torneos`; faltan las pantallas, que van en Flutter, y todo el sprint 4. Qué se hizo en cada sprint, y las decisiones que se tomaron al implementarlo, está en `PENDIENTES.md` (secciones 7 y 8). Respetar la columna "Depende de".
 
 ### Sprint 1 (01/10 al 09/10) - base, torneo, reglamento, canchas, inscripción
 
