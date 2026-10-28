@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,6 +24,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 import static org.assertj.core.api.Assertions.*;
@@ -66,35 +66,9 @@ class AnalysisPostgresIntegrationTest {
         remote.start();
         long completedId, pendingId, crashedId;
         try {
-            try (var context = start("none", remote.getAddress().getPort())) {
-                var jdbc = context.getBean(JdbcTemplate.class);
-                jdbc.execute("drop schema public cascade");
-                jdbc.execute("create schema public");
-                try (var connection = context.getBean(DataSource.class).getConnection()) {
-                    for (String name : new String[]{"000_base.sql", "001_videos_partido.sql", "002_analysis_jobs.sql",
-                            "003_player_match_metrics.sql"}) {
-                        ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/" + name));
-                    }
-                    // Preserve a completed job from the former snapshot protocol across migration 004.
-                    jdbc.update("insert into clubes(id, nombre_club) values (501,'Legacy Local'),(502,'Legacy Visita')");
-                    jdbc.update("insert into partidos(id, fecha_inicio, club_local_id, club_visitante_id, estado) values (501,current_timestamp,501,502,'FINALIZADO')");
-                    jdbc.update("""
-                            insert into videos_partido(id, partido_id, storage_id, nombre_original, formato, tamano_bytes,
-                            sha256, fecha_carga, titulo_youtube, estado_youtube)
-                            values (501,501,'00000000-0000-0000-0000-000000000501','legacy.mp4','mp4',1,
-                            repeat('a',64),current_timestamp,'2026-10-21','DESHABILITADO')
-                            """);
-                    jdbc.update("""
-                            insert into analysis_jobs(id, video_partido_id, estado, fecha_solicitud, fecha_inicio,
-                            fecha_fin, fecha_actualizacion, resultados_disponibles, resultado_ref)
-                            values (501,501,'COMPLETADO',current_timestamp,current_timestamp,current_timestamp,
-                            current_timestamp,true,'legacy:501')
-                            """);
-                    ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/004_analysis_future_response.sql"));
-                }
-            }
+            prepareLegacySchema();
             long match;
-            try (var context = start("validate", remote.getAddress().getPort())) {
+            try (var context = start(remote.getAddress().getPort())) {
                 match = match(context);
                 long video = upload(context, match);
                 var service = context.getBean(AnalysisJobService.class);
@@ -124,7 +98,7 @@ class AnalysisPostgresIntegrationTest {
                         """, pendingId)).isInstanceOf(DuplicateKeyException.class);
             }
             hold.set(true);
-            try (var context = start("validate", remote.getAddress().getPort())) {
+            try (var context = start(remote.getAddress().getPort())) {
                 var service = context.getBean(AnalysisJobService.class);
                 assertThat(service.findById(completedId).respuestaRecibida()).isTrue();
                 assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
@@ -134,7 +108,7 @@ class AnalysisPostgresIntegrationTest {
                 // Closing the context cannot resume the same network Future in a later process.
             }
             release.countDown();
-            try (var context = start("validate", remote.getAddress().getPort())) {
+            try (var context = start(remote.getAddress().getPort())) {
                 var service = context.getBean(AnalysisJobService.class);
                 assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.ERROR);
                 assertThat(service.findById(pendingId).codigoError()).isEqualTo("EVALUACION_INTERRUMPIDA");
@@ -148,7 +122,7 @@ class AnalysisPostgresIntegrationTest {
                         proxima_ejecucion=current_timestamp - interval '1 minute' where id=?
                         """, crashedId);
             }
-            try (var context = start("validate", remote.getAddress().getPort())) {
+            try (var context = start(remote.getAddress().getPort())) {
                 context.getBean(AnalysisWorker.class).processNext();
                 assertThat(context.getBean(AnalysisJobService.class).findById(crashedId).codigoError())
                         .isEqualTo("EVALUACION_INTERRUMPIDA");
@@ -197,12 +171,41 @@ class AnalysisPostgresIntegrationTest {
         }
     }
 
-    private ConfigurableApplicationContext start(String ddl, int remotePort) {
+    private void prepareLegacySchema() throws Exception {
+        // Prepare the pre-Flyway fixture before bootstrapping JPA or ApplicationRunner seeders.
+        var source = new DriverManagerDataSource(System.getenv("ANALYSIS_PG_TEST_URL"), "analysis_test", "");
+        var jdbc = new JdbcTemplate(source);
+        jdbc.execute("drop schema public cascade");
+        jdbc.execute("create schema public");
+        try (var connection = source.getConnection()) {
+            for (String name : new String[]{"000_base.sql", "001_videos_partido.sql", "002_analysis_jobs.sql",
+                    "003_player_match_metrics.sql"}) {
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/" + name));
+            }
+            // Preserve a completed job from the former snapshot protocol across migration 004.
+            jdbc.update("insert into clubes(id, nombre_club) values (501,'Legacy Local'),(502,'Legacy Visita')");
+            jdbc.update("insert into partidos(id, fecha_inicio, club_local_id, club_visitante_id, estado) values (501,current_timestamp,501,502,'FINALIZADO')");
+            jdbc.update("""
+                    insert into videos_partido(id, partido_id, storage_id, nombre_original, formato, tamano_bytes,
+                    sha256, fecha_carga, titulo_youtube, estado_youtube)
+                    values (501,501,'00000000-0000-0000-0000-000000000501','legacy.mp4','mp4',1,
+                    repeat('a',64),current_timestamp,'2026-10-21','DESHABILITADO')
+                    """);
+            jdbc.update("""
+                    insert into analysis_jobs(id, video_partido_id, estado, fecha_solicitud, fecha_inicio,
+                    fecha_fin, fecha_actualizacion, resultados_disponibles, resultado_ref)
+                    values (501,501,'COMPLETADO',current_timestamp,current_timestamp,current_timestamp,
+                    current_timestamp,true,'legacy:501')
+                    """);
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/legacy/004_analysis_future_response.sql"));
+        }
+    }
+
+    private ConfigurableApplicationContext start(int remotePort) {
         return new SpringApplicationBuilder(SemilleroApplication.class).profiles("test").run(
                 "--spring.datasource.url=" + System.getenv("ANALYSIS_PG_TEST_URL"),
                 "--spring.datasource.username=analysis_test", "--spring.datasource.password=",
-                "--spring.flyway.enabled=" + "validate".equals(ddl),
-                "--spring.jpa.hibernate.ddl-auto=" + ddl,
+                "--spring.flyway.enabled=true", "--spring.jpa.hibernate.ddl-auto=validate",
                 "--server.port=0", "--spring.main.banner-mode=off", "--logging.level.root=WARN",
                 "--analysis.enabled=true", "--analysis.base-url=http://127.0.0.1:" + remotePort,
                 "--analysis.connect-timeout=1s", "--analysis.request-timeout=5s",

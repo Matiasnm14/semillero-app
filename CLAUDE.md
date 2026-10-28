@@ -59,8 +59,11 @@ Documentación OpenAPI en `/v3/api-docs` y Swagger UI en `/swagger-ui.html`.
 
 **Desde el sprint 2 de Torneos hay seguridad.** Los endpoints bajo `/api/v1/torneos` piden un JWT
 con el rol que corresponda (HU 16); el token lo da `POST /api/v1/auth/login` y se manda en
-`Authorization: Bearer <token>`. Las rutas de los otros tres módulos siguen abiertas, igual que
-antes. El secreto de firma va en `semillero.jwt.secret`, por la variable de entorno `JWT_SECRET` en
+`Authorization: Bearer <token>`. El CRUD de administradores y las asignaciones de vínculos con
+clubes requieren ADMIN; PUT/DELETE de usuarios requieren ser el titular con JWT o ADMIN.
+El registro de usuarios y los demás CRUD compartidos siguen públicos para desarrollo. CORS
+se procesa antes de la autenticación para permitir los preflights de Flutter Web local.
+El secreto de firma va en `semillero.jwt.secret`, por la variable de entorno `JWT_SECRET` en
 producción, y los cinco roles los siembra la migración `V008`. El detalle está en
 `docs/torneos/PENDIENTES.md`, sección "Lo que el sprint 2 agregó fuera de torneos".
 

@@ -6,11 +6,14 @@ import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -33,10 +37,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *       canchas, estados de inscripción y fixture): ORGANIZADOR o ADMIN.</li>
  * </ul>
  *
- * <p>Las rutas de los otros tres módulos quedan abiertas, igual que antes: esta
- * configuración es de la HU 16 de torneos y no cambia el comportamiento del
- * código de los demás grupos. Cuando ellos quieran cerrar las suyas, se agregan
- * acá.
+ * <p>Las cuentas solo las modifica su titular o un administrador. Las
+ * asignaciones de administradores y vínculos con clubes requieren ADMIN porque
+ * determinan los roles y la propiedad que usa torneos. El registro de usuarios
+ * y el resto de las rutas compartidas conservan su acceso público.
  *
  * <p>Sin sesión de servidor y sin CSRF porque la API es stateless y se usa con
  * token (tarea S2-01). Cada rechazo queda en {@code auditoria} (tarea S2-04).
@@ -58,6 +62,7 @@ public class SeguridadConfiguration {
     @Bean
     SecurityFilterChain seguridad(HttpSecurity http, JwtAutenticacionFilter jwt) throws Exception {
         return http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
@@ -70,6 +75,17 @@ public class SeguridadConfiguration {
                         // Los roles los asigna el administrador y nadie más.
                         .requestMatchers("/api/v1/roles", "/api/v1/usuarios/*/roles")
                         .hasRole(ADMINISTRA)
+                        .requestMatchers("/api/v1/administradores", "/api/v1/administradores/**")
+                        .hasRole(ADMINISTRA)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios-club/**",
+                                "/api/v1/usuarios-trabaja/**").permitAll()
+                        .requestMatchers("/api/v1/usuarios-club", "/api/v1/usuarios-club/**",
+                                "/api/v1/usuarios-trabaja", "/api/v1/usuarios-trabaja/**")
+                        .hasRole(ADMINISTRA)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/{id}")
+                        .access(this::usuarioPropioOAdministrador)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/{id}")
+                        .access(this::usuarioPropioOAdministrador)
                         .requestMatchers(HttpMethod.GET, TORNEOS).authenticated()
                         .requestMatchers(LISTA_BUENA_FE)
                         .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
@@ -82,6 +98,18 @@ public class SeguridadConfiguration {
                         .accessDeniedHandler(sinPermiso()))
                 .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    private AuthorizationDecision usuarioPropioOAdministrador(
+            Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
+        Authentication actual = autenticacion.get();
+        boolean permitido = actual != null && actual.isAuthenticated()
+                && (actual.getAuthorities().stream()
+                        .anyMatch(rol -> ("ROLE_" + ADMINISTRA).equals(rol.getAuthority()))
+                    || actual.getPrincipal() instanceof UsuarioAutenticado usuario
+                        && usuario.usuarioId() != null
+                        && usuario.usuarioId().toString().equals(contexto.getVariables().get("id")));
+        return new AuthorizationDecision(permitido);
     }
 
     /** 401: no vino token, o no servía. */
