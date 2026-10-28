@@ -114,9 +114,15 @@ dependencia menos en un `pom.xml` compartido, y se evita el choque entre el Jack
 `jjwt-jackson` y el Jackson 3 que usa Spring Boot 4. El secreto va en `semillero.jwt.secret`, con la
 variable de entorno `JWT_SECRET` en producción: **nunca en Git**.
 
-**Lo que la seguridad NO cambia**: las rutas de los otros tres módulos siguen abiertas, exactamente
-como antes. Solo `/api/v1/torneos/**` y `/api/v1/usuarios/*/roles` piden token. Cuando los otros
-grupos quieran cerrar las suyas, se agregan reglas en `SeguridadConfiguration`.
+**Corrección de integración del 28/10/2026:** además de torneos y la asignación de roles,
+el CRUD de `/api/v1/administradores` requiere ADMIN, y también las escrituras de
+`/api/v1/usuarios-club` y `/api/v1/usuarios-trabaja`. Esos vínculos determinan permisos y
+propiedad de los clubes: dejarlos públicos permitía obtener ADMIN o ENTRENADOR desde una
+cuenta recién registrada. PUT y DELETE de `/api/v1/usuarios/{id}` requieren el JWT del titular
+o ADMIN, para impedir cambios de contraseña de otra cuenta. El registro de usuarios, las
+consultas de vínculos con clubes y los demás CRUD compartidos siguen públicos para desarrollo.
+Spring Security también aplica la política CORS de MVC antes de autenticar, de modo que
+Flutter Web local puede completar el preflight y leer los errores 401/403.
 
 **Cómo se crea el primer usuario con rol**, porque el endpoint de asignación lo puede usar solo un
 administrador: se le inserta el rol a mano una vez.
