@@ -111,6 +111,49 @@ final class EscenarioTorneo {
         return equipo;
     }
 
+    /**
+     * Suma a la lista de buena fe del equipo un jugador con cuenta de usuario,
+     * que es con la que entra a la app (HU 14). Devuelve el ID del jugador.
+     */
+    long jugadorConCuenta(Equipo equipo, long usuarioDelJugador, int dorsal) throws Exception {
+        Map<String, Object> jugador = new LinkedHashMap<>();
+        jugador.put("usuarioId", usuarioDelJugador);
+        jugador.put("piernaHabil", "I");
+        jugador.put("fechaNacimiento", LocalDate.of(temporada - 13, 3, 1).toString());
+        long jugadorId = create("/api/v1/jugadores", jugador);
+        Map<String, Object> fichaje = new LinkedHashMap<>();
+        fichaje.put("fechaFichaje", LocalDate.of(temporada - 1, 1, 10).atStartOfDay().toString());
+        fichaje.put("jugadorId", jugadorId);
+        fichaje.put("clubId", equipo.clubId());
+        create("/api/v1/fichados", fichaje);
+        create(INSCRIPCIONES + "/" + equipo.inscripcionId() + "/lista-buena-fe",
+                Map.of("jugadorId", jugadorId, "dorsal", dorsal));
+        equipo.jugadores().add(jugadorId);
+        return jugadorId;
+    }
+
+    /** El primer partido del fixture donde juega el club, después de {@code despuesDe}. */
+    JsonNode partidoDe(JsonNode fixture, long clubId, long despuesDe) {
+        for (JsonNode partido : fixture) {
+            long id = partido.get("id").asLong();
+            if (id != despuesDe && (partido.get("clubLocalId").asLong() == clubId
+                    || partido.get("clubVisitanteId").asLong() == clubId)
+                    && (despuesDe == 0 || partido.get("jornada").asInt() > jornadaDe(fixture, despuesDe))) {
+                return partido;
+            }
+        }
+        throw new AssertionError("El club " + clubId + " no tiene otro partido en el fixture");
+    }
+
+    private int jornadaDe(JsonNode fixture, long partidoId) {
+        for (JsonNode partido : fixture) {
+            if (partido.get("id").asLong() == partidoId) {
+                return partido.get("jornada").asInt();
+            }
+        }
+        return 0;
+    }
+
     /** Club que juega pero no está inscrito: el rival de un campeonato externo. */
     long clubSinInscribir() throws Exception {
         return club("Rival " + System.nanoTime() % 100000);

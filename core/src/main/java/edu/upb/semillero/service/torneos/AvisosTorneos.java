@@ -1,6 +1,7 @@
 package edu.upb.semillero.service.torneos;
 
 import edu.upb.semillero.repository.entity.Club;
+import edu.upb.semillero.repository.entity.Jugador;
 import edu.upb.semillero.repository.entity.Notificacion;
 import edu.upb.semillero.repository.entity.Partido;
 import edu.upb.semillero.repository.entity.Usuario;
@@ -22,7 +23,8 @@ import org.springframework.stereotype.Component;
 /**
  * Los avisos que torneos deja en {@code notificaciones} para la web y la app
  * móvil (punto 9 del acuerdo de la S1-04). Hoy lo usa la reprogramación (tarea
- * S3-19); la HU 14 suma el aviso de resultado publicado (tarea S4-16).
+ * S3-19), el cierre para el resultado publicado y la HU 13 para la suspensión
+ * (tarea S4-16).
  *
  * <p>"Avisar a un equipo" es avisar a:
  *
@@ -63,17 +65,34 @@ public class AvisosTorneos {
         }
         LocalDateTime ahora = LocalDateTime.now();
         for (Usuario usuario : destinatarios.values()) {
-            Notificacion aviso = new Notificacion();
-            aviso.setUsuario(usuario);
-            aviso.setModulo(MODULO);
-            aviso.setTitulo(recortar(titulo, MAX_TITULO));
-            aviso.setMensaje(recortar(mensaje, MAX_MENSAJE));
-            aviso.setLeida(false);
-            aviso.setFecha(ahora);
-            notificaciones.save(aviso);
+            guardar(usuario, titulo, mensaje, ahora);
         }
         notificaciones.flush();
         return destinatarios.size();
+    }
+
+    /**
+     * Avisa solo al jugador, si tiene cuenta: la suspensión de la HU 13, que la
+     * app le muestra (HU 14). Devuelve si se avisó.
+     */
+    public boolean avisarAlJugador(Jugador jugador, String titulo, String mensaje) {
+        if (jugador == null || jugador.getUsuario() == null) {
+            return false;
+        }
+        guardar(jugador.getUsuario(), titulo, mensaje, LocalDateTime.now());
+        notificaciones.flush();
+        return true;
+    }
+
+    private void guardar(Usuario usuario, String titulo, String mensaje, LocalDateTime fecha) {
+        Notificacion aviso = new Notificacion();
+        aviso.setUsuario(usuario);
+        aviso.setModulo(MODULO);
+        aviso.setTitulo(recortar(titulo, MAX_TITULO));
+        aviso.setMensaje(recortar(mensaje, MAX_MENSAJE));
+        aviso.setLeida(false);
+        aviso.setFecha(fecha);
+        notificaciones.save(aviso);
     }
 
     private List<Usuario> destinatariosDe(Partido partido, Club club) {

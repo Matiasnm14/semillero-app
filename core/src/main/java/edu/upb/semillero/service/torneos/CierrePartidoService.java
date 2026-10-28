@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,10 +56,11 @@ import org.springframework.transaction.annotation.Transactional;
  *       con motivo, y queda en {@code auditoria}.</li>
  * </ul>
  *
- * <p>Dentro de esta misma transacción se van a sumar las sanciones por
- * tarjetas (tareas S4-01 y S4-02) y el aviso {@code PartidoFinalizado} al
- * microservicio de video (tarea S4-09). Mientras tanto, el microservicio puede
- * leer los partidos FINALIZADO por {@code fecha_cierre} (punto 13 del acuerdo).
+ * <p>En la misma transacción el cierre descuenta fechas de suspensión y genera
+ * las sanciones por tarjetas ({@link SancionesAutomaticas}, tareas S4-01 a
+ * S4-03), y avisa el resultado a los dos equipos (tarea S4-16). Al final
+ * publica {@link PartidoFinalizado} (tarea S4-09), que sale hacia el
+ * microservicio de video recién cuando la transacción se confirmó.
  */
 @Service
 @Transactional(readOnly = true)
@@ -76,12 +78,16 @@ public class CierrePartidoService {
     private final ReglamentoRepository reglamentos;
     private final AuditoriaRepository auditoria;
     private final AccesoTorneos acceso;
+    private final SancionesAutomaticas sanciones;
+    private final AvisosTorneos avisos;
+    private final ApplicationEventPublisher publicador;
     private final EntityRelations relations;
 
     public CierrePartidoService(PartidoFixtureRepository partidos, PlanillaRepository planillas,
             ParticipacionPlanillaRepository participaciones, EventoPartidoRepository eventos,
             ReglamentoRepository reglamentos, AuditoriaRepository auditoria, AccesoTorneos acceso,
-            EntityRelations relations) {
+            SancionesAutomaticas sanciones, AvisosTorneos avisos,
+            ApplicationEventPublisher publicador, EntityRelations relations) {
         this.partidos = partidos;
         this.planillas = planillas;
         this.participaciones = participaciones;
@@ -89,6 +95,9 @@ public class CierrePartidoService {
         this.reglamentos = reglamentos;
         this.auditoria = auditoria;
         this.acceso = acceso;
+        this.sanciones = sanciones;
+        this.avisos = avisos;
+        this.publicador = publicador;
         this.relations = relations;
     }
 
@@ -131,7 +140,24 @@ public class CierrePartidoService {
         partido.setCerradoPor(relations.find(Usuario.class, request.usuarioId()));
         Partido cerrado = partidos.saveAndFlush(partido);
         registrar("CERRAR", cerrado, anterior, null, request.usuarioId());
+        sanciones.alCerrar(cerrado, request.usuarioId());
+        avisos.avisarALosEquipos(cerrado, "Resultado publicado", resultado(cerrado));
+        publicador.publishEvent(new PartidoFinalizado(cerrado.getId(), cerrado.getFechaCierre()));
         return toResponse(cerrado);
+    }
+
+    /** Tarea S4-16: el resultado que se avisa, con los clubes y nunca datos personales. */
+    private String resultado(Partido partido) {
+        TorneoCategoria categoria = partido.getTorneoCategoria();
+        String marcador = partido.getClubLocal().getNombreClub() + " " + partido.getGolesLocal()
+                + " - " + partido.getGolesVisitante() + " " + partido.getClubVisitante().getNombreClub();
+        String detalle = partido.getGanadorWalkover() != null
+                ? " (por W.O.)"
+                : partido.getPenalesLocal() == null ? ""
+                        : " (penales " + partido.getPenalesLocal() + " - " + partido.getPenalesVisitante() + ")";
+        return "Terminó " + marcador + detalle + ". " + categoria.getTorneo().getNombre() + ", "
+                + categoria.getNombre() + (partido.getJornada() == null ? "" : ", fecha " + partido.getJornada())
+                + ".";
     }
 
     /**
@@ -169,6 +195,8 @@ public class CierrePartidoService {
         participaciones.flush();
         Partido reabierto = partidos.saveAndFlush(partido);
         registrar("REABRIR", reabierto, anterior, request.motivo().trim(), request.usuarioId());
+        // Tarea S4-03: las fechas de suspensión que había descontado este partido vuelven.
+        sanciones.alReabrir(reabierto, request.usuarioId());
         return toResponse(reabierto);
     }
 
