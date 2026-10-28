@@ -11,6 +11,10 @@ import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import edu.upb.semillero.repository.dto.response.torneos.CuerpoTecnicoResponseDto;
+import edu.upb.semillero.repository.dto.response.torneos.EquipoPlanillaResponseDto;
+import edu.upb.semillero.repository.dto.response.torneos.JugadorPlanillaResponseDto;
+import edu.upb.semillero.repository.dto.response.torneos.PlanillaResponseDto;
 import edu.upb.semillero.repository.entity.Partido;
 import edu.upb.semillero.repository.entity.torneos.Cancha;
 import edu.upb.semillero.repository.entity.torneos.InscripcionEquipo;
@@ -31,8 +35,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Los dos PDF que piden las HU: la lista de buena fe confirmada (tarea S2-08) y
- * el fixture de una categoría (tarea S2-18).
+ * Los PDF que piden las HU: la lista de buena fe confirmada (tarea S2-08), el
+ * fixture de una categoría (tarea S2-18) y la planilla del partido (tarea
+ * S3-04).
  *
  * <p>Se arman con OpenPDF. Van solo con IDs de jugador: los nombres son datos
  * personales de ficha técnica y torneos no los copia.
@@ -143,6 +148,56 @@ public class PdfTorneosService {
                 celda(tabla, String.valueOf(partido.getEstado()));
             }
             documento.add(tabla);
+        });
+    }
+
+    /**
+     * Tarea S3-04: la planilla del partido en PDF. Sirve también en blanco,
+     * antes de cargar a nadie, para tener la copia en papel en la mesa.
+     */
+    public byte[] planilla(PlanillaResponseDto planilla) {
+        return documento(PageSize.A4, documento -> {
+            documento.add(titulo("Planilla del partido " + planilla.partidoId()));
+            documento.add(subtitulo(planilla.torneoNombre() + " | Categoría: "
+                    + planilla.categoriaNombre() + " | " + planilla.fase()
+                    + (planilla.jornada() == null ? "" : ", fecha " + planilla.jornada())));
+            documento.add(subtitulo("Día y hora: " + planilla.fechaInicio().format(FECHA_Y_HORA)
+                    + " | Cancha: " + (planilla.canchaNombre() == null
+                            ? "a definir"
+                            : planilla.canchaNombre() + " (" + planilla.canchaSuperficie() + ")")));
+            documento.add(subtitulo(planilla.local().clubNombre() + " vs "
+                    + planilla.visitante().clubNombre() + " | Árbitro: "
+                    + (planilla.arbitro() == null ? "-" : planilla.arbitro())));
+            documento.add(subtitulo("Planilla: " + (planilla.estado() == null
+                    ? "sin guardar" : planilla.estado())
+                    + " | Partido: " + planilla.estadoPartido()));
+            for (EquipoPlanillaResponseDto equipo : List.of(planilla.local(), planilla.visitante())) {
+                documento.add(new Paragraph(" "));
+                documento.add(subtitulo(equipo.clubNombre() + ": " + equipo.titulares()
+                        + " titulares y " + equipo.suplentes() + " suplentes"));
+                PdfPTable tabla = tabla(new float[] {1.2f, 2f, 2f, 1.5f, 1.5f, 5f},
+                        "Dorsal", "Jugador", "Rol", "Capitán", "Minutos", "Observación");
+                for (JugadorPlanillaResponseDto jugador : equipo.jugadores()) {
+                    celda(tabla, String.valueOf(jugador.dorsal()));
+                    celda(tabla, String.valueOf(jugador.jugadorId()));
+                    celda(tabla, !jugador.enPlanilla() ? "-"
+                            : Boolean.TRUE.equals(jugador.esTitular()) ? "Titular" : "Suplente");
+                    celda(tabla, Boolean.TRUE.equals(jugador.capitan()) ? "Sí" : "");
+                    celda(tabla, jugador.minutosJugados() == null
+                            ? "" : String.valueOf(jugador.minutosJugados()));
+                    celda(tabla, jugador.bloqueado() ? "Bloqueado: " + jugador.motivoBloqueo() : "");
+                }
+                documento.add(tabla);
+                for (CuerpoTecnicoResponseDto tecnico : equipo.cuerpoTecnico()) {
+                    documento.add(subtitulo(tecnico.cargo() + ": " + tecnico.nombreCompleto()));
+                }
+            }
+            documento.add(new Paragraph(" "));
+            documento.add(subtitulo("Observaciones del árbitro: "
+                    + (planilla.observacionesArbitro() == null ? "-" : planilla.observacionesArbitro())));
+            documento.add(new Paragraph(" "));
+            documento.add(new Paragraph("Los jugadores van por su ID: los datos personales son de"
+                    + " ficha técnica y el módulo de torneos no los guarda.", NOTA));
         });
     }
 

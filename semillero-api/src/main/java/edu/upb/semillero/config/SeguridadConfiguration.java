@@ -29,8 +29,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li>leer (GET): cualquier usuario con sesión, incluido el rol CONSULTA;</li>
  *   <li>inscribir un equipo y manejar su lista de buena fe: ENTRENADOR, y
  *       también ORGANIZADOR y ADMIN;</li>
+ *   <li>llenar la planilla, cargar los eventos y cerrar el partido:
+ *       MESA_CONTROL, y también ORGANIZADOR y ADMIN;</li>
  *   <li>todo lo demás que escribe (torneos, categorías, reglamento, sedes,
- *       canchas, estados de inscripción y fixture): ORGANIZADOR o ADMIN.</li>
+ *       canchas, estados de inscripción, fixture, reprogramación y reapertura
+ *       de un partido cerrado): ORGANIZADOR o ADMIN.</li>
  * </ul>
  *
  * <p>Las rutas de los otros tres módulos quedan abiertas, igual que antes: esta
@@ -46,6 +49,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SeguridadConfiguration {
     private static final String TORNEOS = "/api/v1/torneos/**";
     private static final String LISTA_BUENA_FE = "/api/v1/torneos/inscripciones/*/lista-buena-fe/**";
+    private static final String[] MESA_DE_CONTROL = {
+            "/api/v1/torneos/partidos/*/planilla/**",
+            "/api/v1/torneos/partidos/*/eventos/**",
+            "/api/v1/torneos/partidos/*/cerrar"};
     private static final String ORGANIZA = Roles.ORGANIZADOR;
     private static final String ADMINISTRA = Roles.ADMIN;
 
@@ -75,6 +82,10 @@ public class SeguridadConfiguration {
                         .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")
                         .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
+                        // La planilla, los eventos y el cierre los carga la mesa de control
+                        // (HU 9 y 10); qué partido puede tocar lo controla AccesoTorneos.
+                        .requestMatchers(MESA_DE_CONTROL)
+                        .hasAnyRole(Roles.MESA_CONTROL, ORGANIZA, ADMINISTRA)
                         .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
                         .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
