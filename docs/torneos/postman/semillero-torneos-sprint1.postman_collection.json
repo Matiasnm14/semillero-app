@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "SEMILLERO - Torneos - Sprints 1, 2 y 3",
+    "name": "SEMILLERO - Torneos - Sprints 1 a 4",
     "description": "Prueba de punta a punta del sprint 1 del modulo de Torneos (Grupo 4).\n\nCubre HU 1 (S1-08, S1-09, S1-10), HU 2 (S1-12, S1-13), HU 3 (S1-16, S1-17) y HU 4 (S1-20, S1-21), con sus casos de error.\n\nCorrela entera con Run collection: cada carpeta deja en variables los IDs que usa la siguiente. Las fechas se calculan solas respecto de hoy, asi que no se vence.\n\nRequiere la API levantada con el perfil dev en {{baseUrl}}.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -68,6 +68,30 @@
     {
       "key": "s2CanchaId",
       "value": ""
+    },
+    {
+      "key": "adminEmail",
+      "value": "postman-admin@example.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "secreto123"
+    },
+    {
+      "key": "s4SancionRojaId",
+      "value": ""
+    },
+    {
+      "key": "s4SancionManualId",
+      "value": ""
+    },
+    {
+      "key": "s4ApelacionId",
+      "value": ""
+    },
+    {
+      "key": "rootUrl",
+      "value": ""
     }
   ],
   "event": [
@@ -91,7 +115,9 @@
           "pm.collectionVariables.set('fechaNacimientoGrande', (temporada - 25) + '-06-01');",
           "pm.collectionVariables.set('fechaFichaje', masDias(-30) + 'T00:00:00');",
           "pm.collectionVariables.set('fechaFixture', masDias(30));",
-          "pm.collectionVariables.set('fechaReprogramada', masDias(45) + 'T17:00:00');"
+          "pm.collectionVariables.set('fechaReprogramada', masDias(45) + 'T17:00:00');",
+          "// La raiz del servidor, para /v3/api-docs, que esta fuera de /api/v1.",
+          "pm.collectionVariables.set('rootUrl', String(pm.variables.get('baseUrl')).replace(/\\/api\\/v1\\/?$/, ''));"
         ]
       }
     }
@@ -347,41 +373,6 @@
           ]
         },
         {
-          "name": "S2-01 dar de alta al organizador como administrador",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": "{{baseUrl}}/administradores"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "// Con esto el login le da el rol ADMIN (punto 21 del acuerdo: sale de la",
-                  "// tabla administrador), y desde ahi se puede usar toda la API de torneos."
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "S2-01 login y guardar el token",
           "request": {
             "method": "POST",
@@ -393,7 +384,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identificador\": \"{{organizadorEmail}}\",\n  \"password\": \"secreto123\"\n}",
+              "raw": "{\n  \"identificador\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -416,8 +407,13 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.token, 'token').to.be.a('string');",
                   "    pm.expect(body.token.split('.').length, 'el JWT tiene tres partes').to.eql(3);",
-                  "    pm.expect(body.roles, 'roles').to.include('ADMIN');",
+                  "    pm.expect(body.roles, 'el usuario de las pruebas tiene que ser ADMIN').to.include('ADMIN');",
                   "    pm.collectionVariables.set('token', body.token);",
+                  "    // Desde aca, el que crea torneos y resuelve inscripciones es este usuario.",
+                  "    pm.collectionVariables.set('organizadorId', body.id);",
+                  "});",
+                  "pm.test('si esto falla, falta el paso 1b del README', function () {",
+                  "    pm.expect(pm.response.code, 'cargaste el administrador por SQL?').to.eql(200);",
                   "});"
                 ]
               }
@@ -447,7 +443,7 @@
           ]
         },
         {
-          "name": "S2-02 el rol se verifica, el token no alcanza con cualquier texto",
+          "name": "S2-02 un token inventado tampoco entra",
           "request": {
             "method": "GET",
             "header": [
@@ -467,7 +463,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('401 con un token inventado', () => pm.response.to.have.status(401));"
+                  "pm.test('401 con un token que no firmamos nosotros', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().detail, 'S4-10: el 401 explica que pasa').to.be.a('string');",
+                  "});"
                 ]
               }
             }
@@ -4068,6 +4067,800 @@
                 "exec": [
                   "pm.test('409 porque el partido ya esta cerrado', function () {",
                   "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - Sprint 4 (HU 13 disciplina, HU 12 estadisticas, HU 14 app, HU 15 API)",
+      "item": [
+        {
+          "name": "S3-10 reabrir el partido para corregir el acta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Faltaba cargar la roja del minuto 65\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/reabrir"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y vuelve a EN_CURSO', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('EN_CURSO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3-07 roja al capitan rival en el minuto 65",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"ROJA\",\n  \"minuto\": 65,\n  \"jugadorId\": \"{{jugadorB1}}\",\n  \"motivo\": \"Agresion\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/eventos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-02 al cerrar, la roja genera la suspension",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/cerrar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y FINALIZADO', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('FINALIZADO');",
+                  "    const minutos = {};",
+                  "    pm.response.json().jugadores.forEach((j) => { minutos[j.jugadorId] = j.minutosJugados; });",
+                  "    pm.expect(minutos[Number(pm.collectionVariables.get('jugadorB1'))],",
+                  "        'S3-08: el expulsado sale en el minuto de la roja').to.eql(65);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-02 la suspension quedo registrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/sanciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y hay una sancion por roja, vigente', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const sanciones = pm.response.json();",
+                  "    pm.expect(sanciones.length).to.eql(1);",
+                  "    const sancion = sanciones[0];",
+                  "    pm.expect(sancion.origen).to.eql('ROJA');",
+                  "    pm.expect(sancion.estado).to.eql('VIGENTE');",
+                  "    pm.expect(sancion.jugadorId).to.eql(Number(pm.collectionVariables.get('jugadorB1')));",
+                  "    pm.expect(sancion.fechasSuspension).to.eql(1);",
+                  "    pm.expect(sancion.fechasCumplidas).to.eql(0);",
+                  "    pm.expect(sancion.fechasPendientes).to.eql(1);",
+                  "    pm.expect(sancion.partidoId).to.eql(Number(pm.collectionVariables.get('s2PartidoId')));",
+                  "    pm.collectionVariables.set('s4SancionRojaId', sancion.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-02 filtrar las sanciones por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/sanciones?estado=CUMPLIDA"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y todavia no hay ninguna cumplida', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().length).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-04 el detalle de la sancion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/sanciones/{{s4SancionRojaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y dice de que jornada viene', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const sancion = pm.response.json();",
+                  "    pm.expect(sancion.jornadaOrigen).to.eql(1);",
+                  "    pm.expect(sancion.apelacionPendiente).to.eql(false);",
+                  "    pm.expect(sancion.jornadasSuspendido).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-04 los sancionados de una fecha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/sancionados?jornada=2"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y devuelve la lista de la fecha', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-02 las sanciones vigentes del jugador, para la app",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/jugadores/{{jugadorB1}}/sanciones?vigentes=true"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y aparece su suspension', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().length).to.eql(1);",
+                  "    pm.expect(pm.response.json()[0].origen).to.eql('ROJA');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-03 el suspendido queda bloqueado en la planilla",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}/planilla"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y el expulsado aparece bloqueado con su motivo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const b1 = Number(pm.collectionVariables.get('jugadorB1'));",
+                  "    const planilla = pm.response.json();",
+                  "    const jugadores = planilla.local.jugadores.concat(planilla.visitante.jugadores);",
+                  "    const expulsado = jugadores.find((j) => j.jugadorId === b1);",
+                  "    pm.expect(expulsado.bloqueado, 'S4-03 y S3-02').to.eql(true);",
+                  "    pm.expect(expulsado.motivoBloqueo).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 sancion manual con motivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA2}}\",\n  \"fechasSuspension\": 2,\n  \"motivo\": \"Insultos al arbitro despues del partido\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/sanciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201, origen MANUAL y con sus dos fechas', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const sancion = pm.response.json();",
+                  "    pm.expect(sancion.origen).to.eql('MANUAL');",
+                  "    pm.expect(sancion.fechasSuspension).to.eql(2);",
+                  "    pm.expect(sancion.estado).to.eql('VIGENTE');",
+                  "    pm.collectionVariables.set('s4SancionManualId', sancion.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 la sancion manual sin motivo da 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jugadorId\": \"{{jugadorA2}}\",\n  \"fechasSuspension\": 1,\n  \"motivo\": \"\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/sanciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 porque el motivo es obligatorio', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 apelar la sancion manual",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"El jugador no estaba en el estadio\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/sanciones/{{s4SancionManualId}}/apelaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 y queda PENDIENTE', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().estado).to.eql('PENDIENTE');",
+                  "    pm.collectionVariables.set('s4ApelacionId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 dos apelaciones pendientes a la vez no",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Otra vez\",\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/sanciones/{{s4SancionManualId}}/apelaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 porque ya hay una pendiente', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 resolver la apelacion reduciendo las fechas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"REDUCIDA\",\n  \"resolucion\": \"Se reduce a una fecha por ser la primera\",\n  \"fechasResueltas\": 1,\n  \"usuarioId\": \"{{organizadorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/torneos/apelaciones/{{s4ApelacionId}}/resolucion"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, REDUCIDA y con su resolucion', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const apelacion = pm.response.json();",
+                  "    pm.expect(apelacion.estado).to.eql('REDUCIDA');",
+                  "    pm.expect(apelacion.fechasResueltas).to.eql(1);",
+                  "    pm.expect(apelacion.fechaResolucion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 la sancion quedo con una sola fecha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/sanciones/{{s4SancionManualId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y la reduccion se aplico', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().fechasSuspension).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-05 el historial de la sancion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/sanciones/{{s4SancionManualId}}/historial"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y queda registrado quien la cargo y quien la resolvio', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-11 las cuatro tablas del torneo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/estadisticas?limite=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, goleador, vallas y fair play', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const stats = pm.response.json();",
+                  "    pm.expect(stats.partidosCerrados).to.eql(1);",
+                  "    pm.expect(stats.goleadores.length).to.eql(1);",
+                  "    pm.expect(stats.goleadores[0].jugadorId).to.eql(Number(pm.collectionVariables.get('jugadorA1')));",
+                  "    pm.expect(stats.goleadores[0].cantidad).to.eql(1);",
+                  "    pm.expect(stats.vallasMenosVencidas.length).to.eql(2);",
+                  "    pm.expect(stats.vallasMenosVencidas[0].clubId,",
+                  "        'el que no recibio goles va primero').to.eql(Number(pm.collectionVariables.get('s2ClubAId')));",
+                  "    const fairPlay = stats.fairPlay.find(",
+                  "        (f) => f.clubId === Number(pm.collectionVariables.get('s2ClubBId')));",
+                  "    pm.expect(fairPlay.amarillas).to.eql(1);",
+                  "    pm.expect(fairPlay.rojas).to.eql(1);",
+                  "    pm.expect(fairPlay.puntos, 'una amarilla y una roja: 1 + 3').to.eql(4);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-12 el resumen del goleador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/jugadores/{{jugadorA1}}/estadisticas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con partidos, minutos y goles', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const resumen = pm.response.json();",
+                  "    pm.expect(resumen.partidosJugados).to.eql(1);",
+                  "    pm.expect(resumen.partidosTitular).to.eql(1);",
+                  "    pm.expect(resumen.minutosJugados).to.eql(60);",
+                  "    pm.expect(resumen.goles).to.eql(1);",
+                  "    pm.expect(resumen.rojas).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-12 el resumen del expulsado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/jugadores/{{jugadorB1}}/estadisticas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y cuenta su amarilla y su roja', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const resumen = pm.response.json();",
+                  "    pm.expect(resumen.amarillas).to.eql(1);",
+                  "    pm.expect(resumen.rojas).to.eql(1);",
+                  "    pm.expect(resumen.minutosJugados).to.eql(65);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-07 un partido por su id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/{{s2PartidoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y viene con su cancha y su superficie', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().estado).to.eql('FINALIZADO');",
+                  "    pm.expect(pm.response.json().canchaSuperficie).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-09 los partidos cerrados, para el microservicio de video",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/partidos/finalizados"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y el nuestro esta, con su fecha de cierre', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const partidoId = Number(pm.collectionVariables.get('s2PartidoId'));",
+                  "    const cerrado = pm.response.json().find((p) => p.partidoId === partidoId);",
+                  "    pm.expect(cerrado, 'el partido cerrado').to.not.eql(undefined);",
+                  "    pm.expect(cerrado.fechaCierre).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-15 mi cuenta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/mi-cuenta"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con los roles del token y los avisos sin leer', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const cuenta = pm.response.json();",
+                  "    pm.expect(cuenta.usuarioId).to.eql(Number(pm.collectionVariables.get('organizadorId')));",
+                  "    pm.expect(cuenta.roles).to.include('ADMIN');",
+                  "    pm.expect(cuenta.suspendido).to.eql(false);",
+                  "    pm.expect(cuenta.notificacionesSinLeer).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-16 mis notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/notificaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y devuelve la lista', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-16 marcar todas como leidas",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/notificaciones/leidas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y dice cuantas marco', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-14 proximos partidos de la categoria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/{{s2TorneoId}}/categorias/{{s2CategoriaId}}/proximos-partidos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y no hay proximos: el unico partido ya se jugo', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().length).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-14 proximos partidos de un jugador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/jugadores/{{jugadorA1}}/proximos-partidos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y devuelve la lista', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-10 mi cuenta sin token da 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/torneos/mi-cuenta",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 y el detalle explica que falta el token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().detail).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4-08 OpenAPI documenta los endpoints de torneos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{rootUrl}}/v3/api-docs",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, con bearerAuth y el esquema PartidoFinalizado', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const docs = pm.response.json();",
+                  "    pm.expect(docs.components.securitySchemes.bearerAuth, 'S4-10').to.not.eql(undefined);",
+                  "    pm.expect(docs.components.schemas.PartidoFinalizado, 'S4-09').to.not.eql(undefined);",
+                  "    const rutas = Object.keys(docs.paths);",
+                  "    pm.expect(rutas).to.include('/api/v1/torneos/{torneoId}/sanciones');",
+                  "    pm.expect(rutas).to.include('/api/v1/torneos/{torneoId}/categorias/{categoriaId}/estadisticas');",
                   "});"
                 ]
               }

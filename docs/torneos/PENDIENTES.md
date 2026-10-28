@@ -566,5 +566,25 @@ las 338 de después del merge y 21 nuevas.
 
 El detalle criterio por criterio de las 16 HU está en `PRUEBAS_ACEPTACION.md` (S4-19).
 
-**Falta**: probar el sprint 4 contra PostgreSQL, sumarlo a la colección de Postman y arreglar su
-carpeta 00.
+### Probado contra PostgreSQL y en la colección de Postman
+
+Hecho el 28/10/2026, que era lo que quedaba. La colección pasó a **150 requests y 190 aserciones en
+10 carpetas** y corre entera contra la API con el perfil `dev`: **190 de 190**, tres veces seguidas
+sin limpiar la base.
+
+**La carpeta 00 quedó arreglada.** Ya no da de alta al administrador con `POST /api/v1/administradores`,
+que desde el merge de `main` pide ADMIN. Ahora el login usa las variables `adminEmail` y
+`adminPassword`, y el usuario se prepara una sola vez por base con los dos comandos del paso 1b del
+README: crearlo por la API, que sigue pública, y cargarle el rol por SQL con `docker exec psql`.
+
+**La carpeta 09 cubre el sprint 4** sobre el partido que dejó la 08: lo reabre para cargar la roja
+del minuto 65, lo cierra y comprueba que el cierre generó la suspensión (`origen = ROJA`, una fecha,
+VIGENTE, con su `jornadaOrigen`), que el expulsado queda bloqueado en la planilla, y que sus minutos
+quedaron en 65. Después, sanción manual con su apelación y la resolución que la reduce a una fecha;
+las cuatro tablas de estadísticas (el goleador, las vallas con el club que no recibió goles primero,
+y los 4 puntos de fair play de una amarilla más una roja); el resumen por jugador; el partido por su
+id y los cerrados para el microservicio de video; mi cuenta y las notificaciones; el 401 sin token; y
+que `/v3/api-docs` declare `bearerAuth`, el esquema `PartidoFinalizado` y las rutas nuevas.
+
+Un solo arreglo hizo falta en la colección: el request de OpenAPI apunta a la raíz del servidor, que
+está fuera de `/api/v1`, así que el `prerequest` ahora calcula `rootUrl` a partir de `baseUrl`.
