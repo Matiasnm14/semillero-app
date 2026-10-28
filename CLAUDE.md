@@ -57,6 +57,13 @@ nueva se agrega con una migración `V<n>__<nombre>.sql`, nunca dejando que Hiber
 
 Documentación OpenAPI en `/v3/api-docs` y Swagger UI en `/swagger-ui.html`.
 
+**Desde el sprint 2 de Torneos hay seguridad.** Los endpoints bajo `/api/v1/torneos` piden un JWT
+con el rol que corresponda (HU 16); el token lo da `POST /api/v1/auth/login` y se manda en
+`Authorization: Bearer <token>`. Las rutas de los otros tres módulos siguen abiertas, igual que
+antes. El secreto de firma va en `semillero.jwt.secret`, por la variable de entorno `JWT_SECRET` en
+producción, y los cinco roles los siembra la migración `V008`. El detalle está en
+`docs/torneos/PENDIENTES.md`, sección "Lo que el sprint 2 agregó fuera de torneos".
+
 **IntelliJ:** abrir la carpeta que tiene el `pom.xml`, no la de arriba. En Settings → Build Tools →
 Maven, poner **Maven home path** en `Bundled (Maven 3)`: el wrapper fija Maven 3.10.0 y el
 importador de IntelliJ 2025.3 solo soporta hasta 3.9.x. JDK 21 como Project SDK y como JDK for

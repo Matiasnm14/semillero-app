@@ -31,12 +31,12 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 3 | `jugadores.estado`, la mantiene ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
 | 4 | `PartidoService` rechaza también fechas iguales, para alinearse con `chk_partido_fechas` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
-| 6 | `roles` y `usuarios_roles` las crea **ficha técnica**, junto con el login JWT | Asignado | 26/10/2026 | Ficha técnica |
+| 6 | `roles` y `usuarios_roles`: las creó **torneos** en la V008, con el JWT (S2-01 a S2-04) | Hecho | 28/10/2026 | Miguel (torneos) |
 | 7 | `documentos_jugador` la crea **ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
 | 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 9 | `notificaciones` la crea **torneos**, mismo criterio | Hecho | 26/10/2026 | Miguel (torneos) |
 | 10 | `FichaTecnicaService`: interfaz y stub escritos; la implementación real es de ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
-| 11 | `ComunService`: interfaz y stub escritos; **falta la implementación de ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
+| 11 | `ComunService`: implementado por **torneos** (`ComunServiceImpl`, tarea S2-02) | Hecho | 28/10/2026 | Miguel (torneos) |
 | 12 | `TorneosConsultaService`: interfaz escrita; la implementación es la S4-07 | Hecho | 26/10/2026 | Miguel (torneos) |
 | 13 | Contrato de video: el **mínimo**, solo `partidoId` y `fechaCierre` | Decidido | 26/10/2026 | Miguel (torneos) |
 | 14 | `clubes.nombre_club` ampliado a `varchar(80)`, entidad y DTO | Hecho | 26/10/2026 | Miguel (torneos) |
@@ -82,9 +82,51 @@ arrancar en `dev`.
 
 ### Lo que falta confirmar con los otros grupos
 
-Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos. Los puntos **6, 7
-y 11 están asignados a ficha técnica y ellos no lo confirmaron todavía**: hasta que lo hagan,
-torneos trabaja con mocks y la HU 16 queda sin seguridad real.
+Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos. Del resto:
+
+- Los puntos **6 y 11 los terminó haciendo torneos** en el sprint 2, porque la HU 16 no se podía
+  cerrar sin ellos: ver "Lo que el sprint 2 agregó fuera de torneos" más abajo. Si ficha técnica
+  los quiere tomar, el código está listo para que su `@Service` reemplace al nuestro.
+- El punto **7 (`documentos_jugador`) sigue sin dueño confirmado**, y mientras no exista, las
+  validaciones de documentos y apto médico de la HU 5 no comprueban nada: el servicio responde
+  siempre que están vigentes y lo deja anotado en el log.
+
+### Lo que el sprint 2 agregó fuera de torneos
+
+Todo esto se hizo con el visto bueno de Miguel el 28/10/2026 y hay que contárselo a los otros
+grupos, porque toca archivos compartidos:
+
+| Qué | Dónde | Por qué |
+| --- | --- | --- |
+| Migración `V008__roles_y_usuarios_roles.sql` | `database/migrations/` | Las dos tablas del punto 6, con los cinco roles sembrados |
+| Entidades `Rol` y `UsuarioRol`, repos `RolRepository` y `UsuarioRolRepository` | `entity/` y `repos/` (raíz, como `Auditoria`) | Son compartidas, no son de torneos |
+| `spring-boot-starter-security` y, en pruebas, `spring-security-test` y `spring-boot-security-test` | `semillero-api/pom.xml` | HU 16. En Spring Boot 4 la integración de `@WithMockUser` con MockMvc va en un artefacto aparte |
+| `spring-security-core` y `openpdf` 1.3.30 | `core/pom.xml` | Leer el usuario autenticado, y los PDF de la lista de buena fe y del fixture |
+| `LoginResponseDto` con `token` y `roles`, y `AuthenticationService` que los emite | `dto/response/` y `service/` | El login común es el que entrega el JWT (tarea S2-01) |
+| `ForbiddenException` y su handler 403 | `service/exception/` y `ApiExceptionHandler` | Restricciones por propiedad (tarea S2-03) |
+| `AuditoriaRepository.findByTablaAndRegistroIdOrderByFechaDescIdDesc` | `repos/` | El orden por `fecha` sola era inestable y hacía fallar la prueba del historial de a ratos |
+| `ComunServiceImpl`, `AsignacionRolesService`, `RolesSeeder` y `UsuarioRolController` | `service/comun/` y `controller/comun/` | Núcleo común: quién tiene qué rol, y el endpoint para asignarlos |
+| `JwtService`, `UsuarioAutenticado`, `AccesoTorneos`, `RegistroAccesoService` | `service/seguridad/` | El JWT y las restricciones por propiedad |
+| `SeguridadConfiguration` y `JwtAutenticacionFilter` | `semillero-api/config/` | Las reglas por endpoint |
+
+**El JWT se firma con el JDK** (HMAC-SHA256 y Base64), sin `jjwt` ni ninguna otra librería: una
+dependencia menos en un `pom.xml` compartido, y se evita el choque entre el Jackson 2 que arrastra
+`jjwt-jackson` y el Jackson 3 que usa Spring Boot 4. El secreto va en `semillero.jwt.secret`, con la
+variable de entorno `JWT_SECRET` en producción: **nunca en Git**.
+
+**Lo que la seguridad NO cambia**: las rutas de los otros tres módulos siguen abiertas, exactamente
+como antes. Solo `/api/v1/torneos/**` y `/api/v1/usuarios/*/roles` piden token. Cuando los otros
+grupos quieran cerrar las suyas, se agregan reglas en `SeguridadConfiguration`.
+
+**Cómo se crea el primer usuario con rol**, porque el endpoint de asignación lo puede usar solo un
+administrador: se le inserta el rol a mano una vez.
+
+```sql
+INSERT INTO usuarios_roles (users_id, roles_id)
+SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'vos@example.com' AND r.codigo = 'ADMIN';
+```
+
+Desde ahí, `PUT /api/v1/usuarios/{id}/roles` con `["ORGANIZADOR"]` alcanza para el resto.
 
 ### Punto 10: qué hace hoy la implementación de `FichaTecnicaService`
 

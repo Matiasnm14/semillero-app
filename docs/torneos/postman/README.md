@@ -1,7 +1,13 @@
-# Pruebas manuales del sprint 1 · Módulo de Torneos
+# Pruebas manuales de los sprints 1 y 2 · Módulo de Torneos
 
-Colección de Postman que prueba de punta a punta todo lo que el módulo de Torneos entregó en el
-sprint 1: **54 requests y 93 aserciones** repartidas en 7 carpetas.
+Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: las 54
+requests del sprint 1 más 14 del sprint 2, en 8 carpetas.
+
+> **Desde el sprint 2 la API pide token.** Todo lo que está bajo `/api/v1/torneos` necesita un JWT
+> con el rol que corresponda (HU 16, tareas S2-01 a S2-04). La colección tiene la autenticación
+> *Bearer `{{token}}`* a nivel colección y el primer request de la carpeta 07 hace el login y guarda
+> el token. **Antes de correrla hay que crear un usuario con rol** y poner su email y contraseña en
+> las variables `adminEmail` y `adminPassword`; está explicado en el paso 3.
 
 | Carpeta | Qué cubre | Tareas |
 | --- | --- | --- |
@@ -12,6 +18,7 @@ sprint 1: **54 requests y 93 aserciones** repartidas en 7 carpetas.
 | 04 · HU 3 Sedes y canchas | CRUD, superficie, dimensiones, descripción | S1-16, S1-17 |
 | 05 · HU 4 Inscripción | Inscribir equipo, duplicado, cupo | S1-20, S1-21 |
 | 06 · Torneo en BORRADOR | Que no se pueda inscribir ni abrir sin categorías | S1-10, S1-20 |
+| 07 · Sprint 2 | Login con token, aprobación e historial de inscripciones, lista de buena fe con su PDF, fixture de liga con su PDF y publicación, y el 401 sin token | S2-01, S2-02, S2-06 a S2-18 |
 
 La colección se corre entera de arriba abajo: cada carpeta deja en variables los IDs que usa la
 siguiente. **Las fechas se calculan solas respecto de hoy**, en el script `prerequest` de la
@@ -50,6 +57,28 @@ El `docker-compose.yml` crea el usuario y la base solo, leyendo el `.env`, así 
 ninguna contraseña de superusuario. **Ojo:** si ya tenés un PostgreSQL nativo escuchando en el 5432,
 el contenedor no va a poder levantar. O paras el servicio de Windows (`postgresql-x64-18`), o cambiás
 `DB_PORT_EXTERNAL` en el `.env` y ajustás `DB_URL`.
+
+---
+
+## Paso 1b · Un usuario con rol, para el token
+
+El endpoint que asigna roles lo puede usar solo un administrador, así que el primero se carga a
+mano, una sola vez, con la API levantada y el usuario ya creado (lo crea la carpeta 00 de la
+colección, o `POST /api/v1/usuarios`):
+
+```sql
+INSERT INTO usuarios_roles (users_id, roles_id)
+SELECT u.id, r.id FROM users u, roles r
+WHERE u.email = 'organizador@example.com' AND r.codigo = 'ORGANIZADOR'
+ON CONFLICT DO NOTHING;
+```
+
+Después, en el entorno de Postman, poné ese email en `adminEmail` y su contraseña en
+`adminPassword`. Con un usuario ADMIN alcanza para repartir el resto de los roles por
+`PUT /api/v1/usuarios/{id}/roles` con un cuerpo como `["ORGANIZADOR","ENTRENADOR"]`.
+
+Los cinco roles (`ADMIN`, `ORGANIZADOR`, `ENTRENADOR`, `MESA_CONTROL`, `CONSULTA`) los siembra la
+migración `V008` y también `RolesSeeder` al arrancar, así que la tabla `roles` ya viene cargada.
 
 ---
 
