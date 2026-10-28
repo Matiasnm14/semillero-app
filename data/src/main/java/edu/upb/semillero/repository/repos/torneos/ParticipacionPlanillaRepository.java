@@ -1,6 +1,7 @@
 package edu.upb.semillero.repository.repos.torneos;
 
 import edu.upb.semillero.repository.entity.ParticipacionPartido;
+import edu.upb.semillero.repository.enums.EstadoPartido;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.repository.Repository;
@@ -27,4 +28,12 @@ public interface ParticipacionPlanillaRepository extends Repository<Participacio
     List<ParticipacionPartido> findByPartidoIdOrderByIdAsc(Long partidoId);
 
     Optional<ParticipacionPartido> findByPartidoIdAndJugadorId(Long partidoId, Long jugadorId);
+
+    /** Tarea S4-12: los partidos cerrados de un jugador en un torneo, con sus minutos. */
+    List<ParticipacionPartido> findByJugadorIdAndPartidoTorneoCategoriaTorneoIdAndPartidoEstado(
+            Long jugadorId, Long torneoId, EstadoPartido estado);
+
+    /** Tarea S4-11: quién jugó los partidos cerrados de una categoría. */
+    List<ParticipacionPartido> findByPartidoTorneoCategoriaIdAndPartidoEstado(Long torneoCategoriaId,
+            EstadoPartido estado);
 }
