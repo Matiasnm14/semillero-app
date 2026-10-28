@@ -19,7 +19,12 @@ public class Club extends BaseEntity {
     @JoinColumn(name = "ciudad_id")
     private Ciudad ciudad;
 
-    @Lob
     @Column(name = "foto_club")
     private String fotoClub;
+
+    @Column(name = "anio_fundacion")
+    private Integer anioFundacion;
+
+    @Column(name = "descripcion_club", length = 500)
+    private String descripcionClub;
 }

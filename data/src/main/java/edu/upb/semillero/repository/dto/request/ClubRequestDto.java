@@ -6,5 +6,7 @@ import jakarta.validation.constraints.Size;
 public record ClubRequestDto(
         @Size(max = 15) String nombreClub,
         @Positive Long ciudadId,
-        String fotoClub
+        String fotoClub,
+        @Positive Integer anioFundacion,
+        @Size(max = 500) String descripcionClub
 ) {}

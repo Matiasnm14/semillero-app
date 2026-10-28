@@ -10,4 +10,5 @@ public record LoginResponseDto(
         Long jugadorId,
         Long clubId,
         String nombreClub,
-        String fotoPerfil) {}
+        String fotoPerfil,
+        String accessToken) {}

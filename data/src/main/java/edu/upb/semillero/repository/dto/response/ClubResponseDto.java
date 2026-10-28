@@ -4,5 +4,8 @@ public record ClubResponseDto(
         Long id,
         String nombreClub,
         Long ciudadId,
-        String fotoClub
+        String ciudadNombre,
+        String fotoClub,
+        Integer anioFundacion,
+        String descripcionClub
 ) {}
