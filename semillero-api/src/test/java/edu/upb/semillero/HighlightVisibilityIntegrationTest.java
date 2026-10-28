@@ -106,7 +106,7 @@ class HighlightVisibilityIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode result = json.readTree(response);
-        String token = result.get("accessToken").asString();
+        String token = result.get("token").asString();
         assertThat(token).isNotBlank();
         return token;
     }
