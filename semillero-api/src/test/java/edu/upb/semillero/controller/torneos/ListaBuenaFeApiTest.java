@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = "ORGANIZADOR")
 class ListaBuenaFeApiTest {
     private static final String TORNEOS = "/api/v1/torneos";
     private static final String INSCRIPCIONES = "/api/v1/torneos/inscripciones";
@@ -168,6 +170,23 @@ class ListaBuenaFeApiTest {
         }
         postJson(lista(), jugador(jugadorFichado(clubId, "2013-06-01"), 6))
                 .andExpect(status().isBadRequest());
+    }
+
+    /** Tarea S2-08: la lista confirmada se exporta en PDF. */
+    @Test
+    void exportaLaListaEnPdf() throws Exception {
+        mvc.perform(get(lista() + "/pdf")).andExpect(status().isBadRequest());
+
+        postJson(lista(), jugador(jugadorFichado(clubId, "2013-06-01"), 1))
+                .andExpect(status().isCreated());
+        byte[] pdf = mvc.perform(get(lista() + "/pdf")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        org.assertj.core.api.Assertions.assertThat(
+                        new String(pdf, 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1))
+                .isEqualTo("%PDF");
+        org.assertj.core.api.Assertions.assertThat(pdf.length).isGreaterThan(800);
     }
 
     @Test

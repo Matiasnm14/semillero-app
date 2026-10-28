@@ -5,10 +5,14 @@ import edu.upb.semillero.repository.dto.request.torneos.ListaBuenaFeRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.ListaBuenaFeConfirmacionResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.ListaBuenaFeResponseDto;
 import edu.upb.semillero.service.torneos.ListaBuenaFeService;
+import edu.upb.semillero.service.torneos.PdfTorneosService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,9 +32,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/api/v1/torneos/inscripciones/{inscripcionEquipoId}/lista-buena-fe")
 public class ListaBuenaFeController {
     private final ListaBuenaFeService service;
+    private final PdfTorneosService pdfs;
 
-    public ListaBuenaFeController(ListaBuenaFeService service) {
+    public ListaBuenaFeController(ListaBuenaFeService service, PdfTorneosService pdfs) {
         this.service = service;
+        this.pdfs = pdfs;
     }
 
     @GetMapping
@@ -74,5 +80,16 @@ public class ListaBuenaFeController {
     public ListaBuenaFeConfirmacionResponseDto confirmar(
             @PathVariable @Positive Long inscripcionEquipoId) {
         return service.confirmar(inscripcionEquipoId);
+    }
+
+    /** Tarea S2-08: la lista en PDF, para presentarla en la mesa de control. */
+    @GetMapping(value = "/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> pdf(@PathVariable @Positive Long inscripcionEquipoId) {
+        byte[] pdf = pdfs.listaBuenaFe(inscripcionEquipoId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename("lista-buena-fe-" + inscripcionEquipoId + ".pdf").toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }
