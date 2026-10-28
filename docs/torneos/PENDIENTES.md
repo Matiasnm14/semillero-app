@@ -1,6 +1,7 @@
 # Pendientes del módulo de Torneos para acordar con los otros grupos
 
-Grupo 4 (Torneos). Actualizado: 28/10/2026. El backend del sprint 3 está en la sección 8.
+Grupo 4 (Torneos). Actualizado: 28/10/2026. El backend del sprint 3 está en la sección 8 y el del
+sprint 4 en la sección 9.
 
 El módulo de Torneos ya tiene sus 16 tablas propias como entidades JPA (tareas S1-05 y S1-06).
 La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
@@ -452,3 +453,118 @@ Lo que la colección deja comprobado del sprint 3, además de lo que ya cubren l
 minutos jugados salen 60, 10, 70 y 0 en un partido de 70 minutos con un cambio en el 60; la tabla da
 3 puntos al que ganó y 1 de fair play al amonestado; y los dos PDF nuevos salen con su
 `Content-Type` y con contenido.
+
+## 9. Estado del sprint 4
+
+Hecho el 28/10/2026 en la rama `torneos`: todo el backend del sprint 4, después de traer `main`
+(el commit `7444f0e` del grupo de video) sin conflictos. Faltan las pantallas (S4-06, S4-13 y
+S4-14) y las pruebas en dispositivos (S4-17), que van con el frontend en Flutter. **Ninguna tarea
+está Completada** según la definición de terminado: falta el PR, la revisión de otro integrante y
+probarlo contra PostgreSQL.
+
+| HU | Tareas | Endpoints (todos bajo `/api/v1/torneos`) |
+| --- | --- | --- |
+| 13 Suspensiones | S4-01 a S4-05 | Las automáticas no tienen endpoint: las genera el cierre. `GET /{torneoId}/sanciones?estado=&categoriaId=`, `GET /{torneoId}/categorias/{categoriaId}/sancionados?jornada=`, `POST /{torneoId}/sanciones` (manual), `GET /sanciones/{id}`, `GET /sanciones/{id}/historial`, `GET` y `POST /sanciones/{id}/apelaciones`, `PUT /apelaciones/{id}/resolucion` |
+| 15 API | S4-07 a S4-10 | `TorneosConsultaServiceImpl` (Java). `GET /partidos/{id}`, `GET /partidos/finalizados?desde=`, `GET /jugadores/{jugadorId}/sanciones?vigentes=`. OpenAPI en `/v3/api-docs` con `bearerAuth` y el esquema `PartidoFinalizado` |
+| 12 Estadísticas | S4-11 y S4-12 | `GET /{torneoId}/categorias/{categoriaId}/estadisticas?limite=`, `GET /{torneoId}/jugadores/{jugadorId}/estadisticas` |
+| 14 App | S4-15 y S4-16 (backend) | `GET /mi-cuenta`, `GET /jugadores/{jugadorId}/proximos-partidos`, `GET /{torneoId}/categorias/{categoriaId}/proximos-partidos`, `GET /notificaciones?soloNoLeidas=`, `PUT /notificaciones/{id}/leida`, `PUT /notificaciones/leidas` |
+| — | S4-18 a S4-20 | `ContratoTorneosConsultaTest`, `PartidoFinalizadoApiTest`, `PRUEBAS_ACEPTACION.md` y la regresión completa |
+
+**No hizo falta ninguna migración**: `sanciones`, `apelaciones`, `notificaciones` y `auditoria` ya
+estaban en la `V007`.
+
+### Cómo funciona el régimen disciplinario (HU 13)
+
+El cierre del partido (`CierrePartidoService`) llama a `SancionesAutomaticas` dentro de su misma
+transacción, como pide la regla 7:
+
+1. **Descuento (S4-03).** A cada sanción VIGENTE de los jugadores de los dos equipos le cuenta la
+   fecha, si el partido es posterior al que originó la sanción (o al alta, si es manual). Al llegar
+   a las fechas de la suspensión queda CUMPLIDA. El W.O. cuenta como fecha.
+2. **Roja (S4-02).** Una suspensión de `fechas_suspension_roja` por cada roja del partido.
+3. **Acumulación (S4-01).** Por cada jugador con amarillas en el partido se cuentan sus amarillas en
+   todos los partidos cerrados del torneo; cada múltiplo de `umbral_amarillas` es una suspensión de
+   `fechas_suspension_amarillas`.
+
+El bloqueo en la planilla ya estaba desde la S3-02: un jugador con una sanción VIGENTE en el
+torneo aparece bloqueado y no entra.
+
+**Reabrir y volver a cerrar no duplica nada.** Cada fecha descontada queda en `auditoria`
+(`DESCONTAR_FECHA`, con el partido en el motivo) y la reapertura la devuelve
+(`REVERTIR_DESCUENTO`). Al volver a cerrar, las sanciones se concilian con los eventos que quedaron:
+si se borró la roja o la amarilla que la originó, la sanción queda ANULADA.
+
+**Los sancionados de una fecha** (S4-04) son los que tienen una sanción no anulada que cubre esa
+jornada: las primeras `fechas_suspension` fechas que juega su equipo después del partido que la
+originó. Sirve para la fecha que viene y para revisar una que pasó.
+
+### `PartidoFinalizado` (S4-09)
+
+Al cerrar, el servicio publica el evento `PartidoFinalizado(partidoId, fechaCierre)`, que es el
+contrato mínimo del punto 13. Lo escucha `AvisoPartidoFinalizado`, que **recién cuando la
+transacción se confirmó** hace un `POST` asíncrono a `TORNEOS_PARTIDO_FINALIZADO_URL` (con
+`TORNEOS_PARTIDO_FINALIZADO_TOKEN` como Bearer, si se configura). Si la URL está vacía no avisa, y si
+el microservicio no responde queda en el log: nunca falla el cierre. En cualquier caso, el
+microservicio puede leer `GET /partidos/finalizados?desde=`. Cualquier otro módulo del monolito
+puede escuchar el mismo evento de Spring.
+
+**Hay que acordarlo con el grupo de video**: la ruta donde lo reciben y si quieren token.
+
+### Seguridad (S4-10)
+
+- El 401 dice si falta el token o si el que vino no es válido o venció, así la app sabe si mandar al
+  login.
+- "Mi cuenta" y las notificaciones son del dueño del token: pedir las de otro da 403, salvo al
+  administrador. Las notificaciones las puede leer cualquier usuario con sesión.
+- Apelar una sanción: ENTRENADOR (solo de su club, por `AccesoTorneos`), ORGANIZADOR y ADMIN.
+  Resolverla, la sanción manual y todo lo demás que escribe: ORGANIZADOR o ADMIN.
+- OpenAPI declara el esquema `bearerAuth` y lo pide solo en las rutas de torneos.
+
+### Decisiones tomadas al implementarlo, para validar con el grupo
+
+1. **Acumulación**: cuentan todas las amarillas del torneo, también las dos que terminaron en roja
+   en un mismo partido. Si el grupo quiere excluirlas, es un filtro en `SancionesAutomaticas`.
+2. **El W.O. descuenta fecha** al suspendido del equipo, porque el equipo pasó esa fecha.
+3. **Sin reglamento** se usan los valores por defecto de las columnas: umbral 3, una fecha por
+   amarillas y una por roja.
+4. **Apelación**: una pendiente a la vez; solo se apela una sanción VIGENTE. REDUCIDA exige menos
+   fechas que las que tenía, y si ya las cumplió queda CUMPLIDA.
+5. **Estadísticas**: el autogol no suma al goleador (va aparte en el resumen del jugador). Las vallas
+   no cuentan los W.O., que no se jugaron. A igual cantidad de goles, comparten el puesto.
+6. **Avisos (S4-16)**: el resultado publicado le llega a los dos equipos con los mismos
+   destinatarios que la reprogramación; la suspensión, al jugador si tiene cuenta.
+7. **`TorneosConsultaService`**: no muestra torneos en BORRADOR (HU 1), y en un torneo por grupos
+   la tabla trae las filas de todos los grupos seguidas. Nunca le tira excepciones a otro módulo:
+   lo que no existe vuelve vacío.
+
+### Arreglos de la regresión (S4-20)
+
+- **Traer `main`** no tuvo conflictos y las 318 pruebas siguieron pasando, más las 20 nuevas de
+  `main`: 338.
+- **La colección de Postman se rompió con ese merge**, como ya había anotado Miguel en el README: la
+  carpeta 00 da de alta al administrador con `POST /api/v1/administradores`, que ahora pide ADMIN.
+  Hay que volver a cargar el primer administrador por SQL (paso 1b del README) y sacar ese request
+  de la carpeta 00.
+- Encontrado al escribir `ContratoTorneosConsultaTest`: si `TorneosConsultaService` atrapaba una
+  excepción de otro servicio, la transacción del que llamaba quedaba marcada para rollback. Ahora
+  consulta sin excepciones.
+
+### Pruebas del sprint 4
+
+`clean verify` (sin `VideoPartidoIntegrationTest`, que necesita FFmpeg) pasa con **359 pruebas**:
+las 338 de después del merge y 21 nuevas.
+
+| Clase | Qué cubre |
+| --- | --- |
+| `RegimenDisciplinarioApiTest` | Roja, descuento, bloqueo, sancionados por fecha, reapertura, acumulación con corrección, sanción manual y apelación |
+| `EstadisticasApiTest` | Las cuatro tablas de la categoría y el resumen por jugador |
+| `ConsultaAppApiTest` | Próximos partidos, mi cuenta con la suspensión, notificaciones, partido por ID y los cerrados |
+| `SeguridadSprint4ApiTest` | El 401 claro, cada uno sus avisos, quién apela y quién resuelve |
+| `PartidoFinalizadoApiTest` | El `POST` al microservicio de video, y que no salga si el cierre falla |
+| `ContratoTorneosConsultaTest` | S4-18: la interfaz Java da lo mismo que la API |
+| `OpenApiDocsTest` | Tres casos nuevos: rutas, `bearerAuth` y `PartidoFinalizado` |
+
+El detalle criterio por criterio de las 16 HU está en `PRUEBAS_ACEPTACION.md` (S4-19).
+
+**Falta**: probar el sprint 4 contra PostgreSQL, sumarlo a la colección de Postman y arreglar su
+carpeta 00.

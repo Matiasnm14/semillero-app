@@ -159,7 +159,7 @@ Antes de escribir una clase nueva, abrir una parecida que ya exista en el repo (
 - **Controladores**: `@RestController`, ruta `/api/v1/torneos/...`, devuelven `PageResponse` en listados, `201` con `Location` al crear, `204` al borrar.
 - **Fechas**: `LocalDate` y `LocalDateTime`, sin zona horaria.
 - **Respuestas** con el ID del jugador, nunca datos personales.
-- **Seguridad**: el repo todavía no tiene. La hace Alan en la HU 16 (S2-01 a S2-04). Mientras no exista, no bloquear el resto de tareas por eso.
+- **Seguridad**: JWT con roles desde el sprint 2 (HU 16). Las reglas por ruta están en `SeguridadConfiguration`, y las de propiedad (el entrenador con su club, la mesa de control con su partido, cada uno con sus avisos) en `AccesoTorneos`. Un endpoint nuevo de torneos que escribe queda solo para ORGANIZADOR y ADMIN, salvo que se agregue una regla.
 - Nada de contraseñas ni `.env` en Git.
 
 ---
@@ -241,7 +241,7 @@ Roles del sistema: administrador, organizador, entrenador, mesa de control y con
 
 El documento oficial es el **Sprint Backlog** (Google Doc "Sprint Backlog - Módulo de Torneos", versión de entrega 04/11). Esta es la lista resumida para saber qué hacer y en qué orden.
 
-**Estado real al 28/10/2026:** el backend de los sprints 1, 2 y 3 está en la rama `torneos`; faltan las pantallas, que van en Flutter, y todo el sprint 4. Qué se hizo en cada sprint, y las decisiones que se tomaron al implementarlo, está en `PENDIENTES.md` (secciones 7 y 8). Respetar la columna "Depende de".
+**Estado real al 28/10/2026:** el backend de los cuatro sprints está en la rama `torneos`; faltan las pantallas y las pruebas en dispositivos, que van con el frontend en Flutter. Qué se hizo en cada sprint, y las decisiones que se tomaron al implementarlo, está en `PENDIENTES.md` (secciones 7, 8 y 9). Cada criterio de aceptación con la prueba que lo comprueba está en `PRUEBAS_ACEPTACION.md`. Respetar la columna "Depende de".
 
 ### Sprint 1 (01/10 al 09/10) - base, torneo, reglamento, canchas, inscripción
 
