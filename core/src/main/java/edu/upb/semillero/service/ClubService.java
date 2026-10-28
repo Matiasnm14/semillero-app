@@ -59,13 +59,19 @@ public class ClubService {
         entity.setNombreClub(request.nombreClub());
         entity.setCiudad(relations.find(Ciudad.class, request.ciudadId()));
         entity.setFotoClub(request.fotoClub());
+        entity.setAnioFundacion(request.anioFundacion());
+        entity.setDescripcionClub(request.descripcionClub());
     }
 
     private ClubResponseDto toResponse(Club entity) {
+        Ciudad ciudad = entity.getCiudad();
         return new ClubResponseDto(
                 entity.getId(),
                 entity.getNombreClub(),
-                relations.id(entity.getCiudad()),
-                entity.getFotoClub());
+                relations.id(ciudad),
+                ciudad == null ? null : ciudad.getNombreCiudad(),
+                entity.getFotoClub(),
+                entity.getAnioFundacion(),
+                entity.getDescripcionClub());
     }
 }

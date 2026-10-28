@@ -5,6 +5,7 @@ import edu.upb.semillero.repository.dto.response.LoginResponseDto;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.entity.UsuarioTrabaja;
 import edu.upb.semillero.repository.repos.AdministradorRepository;
+import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
@@ -12,11 +13,16 @@ import edu.upb.semillero.repository.repos.UsuarioRolRepository;
 import edu.upb.semillero.repository.repos.UsuarioTrabajaRepository;
 import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.exception.BusinessException;
+import edu.upb.semillero.service.exception.HighlightAccessDeniedException;
 import edu.upb.semillero.service.seguridad.JwtService;
 import java.util.List;
+
+import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
 
 @Service
 @Transactional(readOnly = true)
@@ -24,6 +30,7 @@ public class AuthenticationService {
     private final UsuarioRepository usuarios;
     private final AdministradorRepository administradores;
     private final JugadorRepository jugadores;
+    private final FichadoRepository fichados;
     private final UsuarioClubRepository usuariosClub;
     private final UsuarioTrabajaRepository usuariosTrabaja;
     private final PasswordEncoder passwordEncoder;
@@ -35,6 +42,7 @@ public class AuthenticationService {
             UsuarioRepository usuarios,
             AdministradorRepository administradores,
             JugadorRepository jugadores,
+            FichadoRepository fichados,
             UsuarioClubRepository usuariosClub,
             UsuarioTrabajaRepository usuariosTrabaja,
             UsuarioRolRepository usuariosRoles,
@@ -44,6 +52,7 @@ public class AuthenticationService {
         this.usuarios = usuarios;
         this.administradores = administradores;
         this.jugadores = jugadores;
+        this.fichados = fichados;
         this.usuariosClub = usuariosClub;
         this.usuariosTrabaja = usuariosTrabaja;
         this.usuariosRoles = usuariosRoles;
@@ -52,6 +61,7 @@ public class AuthenticationService {
         this.jwt = jwt;
     }
 
+    @Transactional
     public LoginResponseDto login(LoginRequestDto request) {
         Usuario usuario = usuarios.findByEmailIgnoreCase(request.identificador().trim())
                 .or(() -> usuarios.findByNameIgnoreCase(request.identificador().trim()))
@@ -87,13 +97,64 @@ public class AuthenticationService {
      * Tarea S2-01: la respuesta lleva además el JWT y los roles de la HU 16,
      * que son los que mira la autorización de los endpoints de torneos.
      */
-    private LoginResponseDto response(
-            Usuario usuario, String rol, Long jugadorId, Long clubId, String nombreClub) {
+    private LoginResponseDto response(Usuario usuario, String rol, Long jugadorId, Long clubId, String nombreClub) {
         List<String> roles = List.copyOf(comun.rolesDe(usuario.getId()));
         return new LoginResponseDto(usuario.getId(), usuario.getName(), usuario.getNombres(),
                 usuario.getApellidos(), usuario.getEmail(), rol, jugadorId, clubId, nombreClub,
                 usuario.getFotoPerfil(),
                 jwt.emitir(usuario.getId(), usuario.getName(), roles, clubId),
                 roles);
+    }
+
+    /**
+     * Authorizes an operation over a player's highlights. Public reads do not
+     * enter this method; private history and every mutation do.
+     */
+    private UsuarioAutenticado requireJwt(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new HighlightAccessDeniedException(
+                    "Debes iniciar sesión para administrar highlights");
+        }
+
+        return jwt.validar(authorization.substring("Bearer ".length()).trim())
+                .orElseThrow(() -> new HighlightAccessDeniedException(
+                        "La sesión no es válida"));
+    }
+    public void authorizeHighlightManagement(String authorization, Long jugadorId) {
+        var autenticado = requireJwt(authorization);
+
+        if (administradores.findFirstByUsuarioId(autenticado.usuarioId()).isPresent()) {
+            return;
+        }
+
+        var jugador = jugadores.findFirstByUsuarioId(autenticado.usuarioId());
+        if (jugador.isPresent() && jugadorId.equals(jugador.get().getId())) {
+            return;
+        }
+
+        boolean esUsuarioClub =
+                usuariosClub.findFirstByUsuarioId(autenticado.usuarioId()).isPresent();
+
+        if (esUsuarioClub && autenticado.clubId() != null
+                && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
+                jugadorId, autenticado.clubId())) {
+            return;
+        }
+
+        throw new HighlightAccessDeniedException(
+                "No tienes permiso para administrar los highlights de este jugador");
+    }
+
+    /** Hidden history is private to the player, even from their club. */
+    public void authorizeHiddenHighlightHistory(String authorization, Long jugadorId) {
+        var autenticado = requireJwt(authorization);
+
+        var jugador = jugadores.findFirstByUsuarioId(autenticado.usuarioId());
+        if (jugador.isPresent() && jugadorId.equals(jugador.get().getId())) {
+            return;
+        }
+
+        throw new HighlightAccessDeniedException(
+                "Solo el jugador propietario puede consultar sus highlights ocultos");
     }
 }

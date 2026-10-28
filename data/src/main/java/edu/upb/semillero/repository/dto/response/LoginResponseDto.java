@@ -24,3 +24,4 @@ public record LoginResponseDto(
         String fotoPerfil,
         String token,
         List<String> roles) {}
+

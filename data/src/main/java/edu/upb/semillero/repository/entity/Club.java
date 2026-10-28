@@ -20,5 +20,12 @@ public class Club extends BaseEntity {
     private Ciudad ciudad;
 
     @Column(name = "foto_club", columnDefinition = "text")
+
     private String fotoClub;
+
+    @Column(name = "anio_fundacion")
+    private Integer anioFundacion;
+
+    @Column(name = "descripcion_club", length = 500)
+    private String descripcionClub;
 }

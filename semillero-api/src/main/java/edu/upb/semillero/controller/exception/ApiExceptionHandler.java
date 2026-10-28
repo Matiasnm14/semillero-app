@@ -6,6 +6,7 @@ import edu.upb.semillero.service.exception.AnalysisUploadException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.ForbiddenException;
 import edu.upb.semillero.service.exception.NotFoundException;
+import edu.upb.semillero.service.exception.HighlightAccessDeniedException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
 import edu.upb.semillero.service.exception.VideoTooLargeException;
 import jakarta.validation.ConstraintViolationException;
@@ -59,6 +60,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail notFound(NotFoundException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(HighlightAccessDeniedException.class)
+    public ProblemDetail highlightAccessDenied(HighlightAccessDeniedException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
     }
 
     @ExceptionHandler(BusinessException.class)
