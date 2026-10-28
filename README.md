@@ -66,7 +66,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-Las migraciones [V000–V005](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate y completa sus restricciones sin borrar datos; V005 añade las imágenes de perfiles y escudos. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+Las migraciones [V000–V008](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos y V008 los roles compartidos. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 
@@ -175,7 +175,22 @@ Reglas incluidas:
 
 Errores HTTP en formato `ProblemDetail`: `400` para datos/reglas inválidos, `404` para registros o relaciones inexistentes y `409` para duplicados o restricciones de integridad, incluido borrar un registro que tiene dependencias.
 
-La autenticación y autorización de roles quedan como trabajo posterior: esta base expone los CRUD para desarrollo del equipo.
+## Autenticación y permisos
+
+`POST /api/v1/auth/login` devuelve el JWT que se envía en `Authorization: Bearer <token>`. El registro `POST /api/v1/usuarios` sigue siendo público; registrar una cuenta no le asigna permisos y el login exige un perfil o rol asignado.
+
+| Ruta / operación | Acceso |
+| --- | --- |
+| `/api/v1/administradores`, incluido listado y consulta | ADMIN |
+| POST, PUT y DELETE de `/api/v1/usuarios-club` y `/api/v1/usuarios-trabaja` | ADMIN; sus consultas GET siguen públicas |
+| PUT y DELETE de `/api/v1/usuarios/{id}` | Titular de la cuenta con JWT o ADMIN |
+| `/api/v1/roles` y `/api/v1/usuarios/{id}/roles` | ADMIN |
+| GET de `/api/v1/torneos/**` | Usuario autenticado |
+| Escrituras de torneos | ORGANIZADOR o ADMIN; inscripciones y lista de buena fe también admiten ENTRENADOR, con las validaciones de propiedad del servicio |
+
+Los demás CRUD compartidos conservan su acceso público de desarrollo. Las asignaciones que determinan roles y pertenencia a clubes requieren ADMIN para impedir que una cuenta se otorgue permisos. Para crear el primer administrador, registrar la cuenta e insertar una vez su vínculo al rol `ADMIN` desde una conexión autorizada a la base; ver el [procedimiento de alta inicial](docs/torneos/PENDIENTES.md#lo-que-el-sprint-2-agregó-fuera-de-torneos). Configurar `JWT_SECRET` en el entorno de producción.
+
+Flutter Web puede usar orígenes `http://localhost:<puerto>` y `http://127.0.0.1:<puerto>`. Spring Security procesa CORS antes de autenticar: el preflight no necesita JWT y las peticiones reales conservan sus permisos. Los orígenes externos no están habilitados en esta configuración local.
 
 ## Pruebas
 

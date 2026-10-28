@@ -81,9 +81,12 @@ public class PartidoService {
     }
 
     private void validate(Partido entity) {
+        // El CHECK chk_partido_fechas de la tabla exige fecha_fin > fecha_inicio,
+        // así que fechas iguales también se rechazan acá: si no, el error llegaría
+        // como un 409 genérico de la base en vez de un 400 con el motivo.
         if (entity.getFechaInicio() != null && entity.getFechaFin() != null
-                && entity.getFechaFin().isBefore(entity.getFechaInicio())) {
-            throw new BusinessException("La fecha final no puede ser anterior a la fecha inicial");
+                && !entity.getFechaFin().isAfter(entity.getFechaInicio())) {
+            throw new BusinessException("La fecha final tiene que ser posterior a la fecha inicial");
         }
         Long localId = entity.getClubLocal().getId();
         Long visitanteId = entity.getClubVisitante().getId();

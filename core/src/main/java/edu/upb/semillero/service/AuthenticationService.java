@@ -9,22 +9,24 @@ import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
+import edu.upb.semillero.repository.repos.UsuarioRolRepository;
 import edu.upb.semillero.repository.repos.UsuarioTrabajaRepository;
+import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.HighlightAccessDeniedException;
+import edu.upb.semillero.service.seguridad.JwtService;
+import java.util.List;
+
+import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Transactional(readOnly = true)
 public class AuthenticationService {
-    private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
     private final UsuarioRepository usuarios;
     private final AdministradorRepository administradores;
     private final JugadorRepository jugadores;
@@ -32,7 +34,9 @@ public class AuthenticationService {
     private final UsuarioClubRepository usuariosClub;
     private final UsuarioTrabajaRepository usuariosTrabaja;
     private final PasswordEncoder passwordEncoder;
-    private final Map<String, SessionScope> sessions = new ConcurrentHashMap<>();
+    private final UsuarioRolRepository usuariosRoles;
+    private final ComunService comun;
+    private final JwtService jwt;
 
     public AuthenticationService(
             UsuarioRepository usuarios,
@@ -41,14 +45,20 @@ public class AuthenticationService {
             FichadoRepository fichados,
             UsuarioClubRepository usuariosClub,
             UsuarioTrabajaRepository usuariosTrabaja,
-            PasswordEncoder passwordEncoder) {
+            UsuarioRolRepository usuariosRoles,
+            PasswordEncoder passwordEncoder,
+            ComunService comun,
+            JwtService jwt) {
         this.usuarios = usuarios;
         this.administradores = administradores;
         this.jugadores = jugadores;
         this.fichados = fichados;
         this.usuariosClub = usuariosClub;
         this.usuariosTrabaja = usuariosTrabaja;
+        this.usuariosRoles = usuariosRoles;
         this.passwordEncoder = passwordEncoder;
+        this.comun = comun;
+        this.jwt = jwt;
     }
 
     @Transactional
@@ -59,78 +69,92 @@ public class AuthenticationService {
         if (!passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             throw new BusinessException("Credenciales inválidas");
         }
-        SessionScope scope = scopeFor(usuario);
-        String token = newAccessToken();
-        sessions.put(token, scope);
-        return response(usuario, scope.role(), scope.playerId(), scope.clubId(), scope.clubName(), token);
+        if (administradores.findFirstByUsuarioId(usuario.getId()).isPresent()) {
+            return response(usuario, "ADMINISTRADOR_GENERAL", null, null, null);
+        }
+        var jugador = jugadores.findFirstByUsuarioId(usuario.getId());
+        if (jugador.isPresent()) {
+            return response(usuario, "JUGADOR", jugador.get().getId(), null, null);
+        }
+        var usuarioClub = usuariosClub.findFirstByUsuarioId(usuario.getId());
+        if (usuarioClub.isPresent()) {
+            UsuarioTrabaja vinculacion = usuariosTrabaja
+                    .findFirstByUsuarioClubId(usuarioClub.get().getId())
+                    .orElseThrow(() -> new BusinessException("El usuario del club no tiene un club asignado"));
+            return response(usuario, "USUARIO_CLUB", null, vinculacion.getClub().getId(),
+                    vinculacion.getClub().getNombreClub());
+        }
+        // Tarea S2-01: una cuenta del sistema (organizador, mesa de control o
+        // consulta) no está en administrador, jugadores ni usuarios_club: su rol
+        // sale de usuarios_roles (migración V008).
+        if (!usuariosRoles.findByUsuarioId(usuario.getId()).isEmpty()) {
+            return response(usuario, "USUARIO_SISTEMA", null, null, null);
+        }
+        throw new BusinessException("La cuenta no tiene un rol asignado");
     }
 
-    private LoginResponseDto response(
-            Usuario usuario, String rol, Long jugadorId, Long clubId, String nombreClub, String accessToken) {
+    /**
+     * Tarea S2-01: la respuesta lleva además el JWT y los roles de la HU 16,
+     * que son los que mira la autorización de los endpoints de torneos.
+     */
+    private LoginResponseDto response(Usuario usuario, String rol, Long jugadorId, Long clubId, String nombreClub) {
+        List<String> roles = List.copyOf(comun.rolesDe(usuario.getId()));
         return new LoginResponseDto(usuario.getId(), usuario.getName(), usuario.getNombres(),
                 usuario.getApellidos(), usuario.getEmail(), rol, jugadorId, clubId, nombreClub,
-                usuario.getFotoPerfil(), accessToken);
+                usuario.getFotoPerfil(),
+                jwt.emitir(usuario.getId(), usuario.getName(), roles, clubId),
+                roles);
     }
 
     /**
      * Authorizes an operation over a player's highlights. Public reads do not
      * enter this method; private history and every mutation do.
      */
+    private UsuarioAutenticado requireJwt(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new HighlightAccessDeniedException(
+                    "Debes iniciar sesión para administrar highlights");
+        }
+
+        return jwt.validar(authorization.substring("Bearer ".length()).trim())
+                .orElseThrow(() -> new HighlightAccessDeniedException(
+                        "La sesión no es válida"));
+    }
     public void authorizeHighlightManagement(String authorization, Long jugadorId) {
-        SessionScope scope = requireSession(authorization);
-        if ("ADMINISTRADOR_GENERAL".equals(scope.role())) return;
-        if ("JUGADOR".equals(scope.role()) && jugadorId.equals(scope.playerId())) return;
-        if ("USUARIO_CLUB".equals(scope.role()) && scope.clubId() != null
-                && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(jugadorId, scope.clubId())) return;
+        var autenticado = requireJwt(authorization);
+
+        if (administradores.findFirstByUsuarioId(autenticado.usuarioId()).isPresent()) {
+            return;
+        }
+
+        var jugador = jugadores.findFirstByUsuarioId(autenticado.usuarioId());
+        if (jugador.isPresent() && jugadorId.equals(jugador.get().getId())) {
+            return;
+        }
+
+        boolean esUsuarioClub =
+                usuariosClub.findFirstByUsuarioId(autenticado.usuarioId()).isPresent();
+
+        if (esUsuarioClub && autenticado.clubId() != null
+                && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
+                jugadorId, autenticado.clubId())) {
+            return;
+        }
+
         throw new HighlightAccessDeniedException(
                 "No tienes permiso para administrar los highlights de este jugador");
     }
 
     /** Hidden history is private to the player, even from their club. */
     public void authorizeHiddenHighlightHistory(String authorization, Long jugadorId) {
-        SessionScope scope = requireSession(authorization);
-        if ("JUGADOR".equals(scope.role()) && jugadorId.equals(scope.playerId())) return;
+        var autenticado = requireJwt(authorization);
+
+        var jugador = jugadores.findFirstByUsuarioId(autenticado.usuarioId());
+        if (jugador.isPresent() && jugadorId.equals(jugador.get().getId())) {
+            return;
+        }
+
         throw new HighlightAccessDeniedException(
                 "Solo el jugador propietario puede consultar sus highlights ocultos");
     }
-
-    private SessionScope requireSession(String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new HighlightAccessDeniedException(
-                    "Debes iniciar sesión para administrar highlights");
-        }
-        SessionScope scope = sessions.get(authorization.substring("Bearer ".length()).trim());
-        if (scope == null) {
-            throw new HighlightAccessDeniedException("La sesión no es válida");
-        }
-        return scope;
-    }
-
-    private String newAccessToken() {
-        byte[] bytes = new byte[32];
-        TOKEN_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private SessionScope scopeFor(Usuario usuario) {
-        if (administradores.findFirstByUsuarioId(usuario.getId()).isPresent()) {
-            return new SessionScope("ADMINISTRADOR_GENERAL", null, null, null);
-        }
-        var jugador = jugadores.findFirstByUsuarioId(usuario.getId());
-        if (jugador.isPresent()) {
-            var fichadoActual = fichados
-                    .findFirstByJugadorIdAndFechaFinalFichajeIsNullOrderByFechaFichajeDesc(jugador.get().getId());
-            return new SessionScope("JUGADOR", jugador.get().getId(),
-                    fichadoActual.map(fichado -> fichado.getClub().getId()).orElse(null),
-                    fichadoActual.map(fichado -> fichado.getClub().getNombreClub()).orElse(null));
-        }
-        var usuarioClub = usuariosClub.findFirstByUsuarioId(usuario.getId())
-                .orElseThrow(() -> new BusinessException("La cuenta no tiene un rol asignado"));
-        UsuarioTrabaja vinculacion = usuariosTrabaja.findFirstByUsuarioClubId(usuarioClub.getId())
-                .orElseThrow(() -> new BusinessException("El usuario del club no tiene un club asignado"));
-        return new SessionScope("USUARIO_CLUB", null, vinculacion.getClub().getId(),
-                vinculacion.getClub().getNombreClub());
-    }
-
-    private record SessionScope(String role, Long playerId, Long clubId, String clubName) {}
 }
