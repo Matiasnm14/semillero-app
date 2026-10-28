@@ -132,7 +132,7 @@ public class ReglamentoService {
      */
     public List<AuditoriaResponseDto> findHistorial(Long torneoId) {
         Reglamento reglamento = require(torneoId);
-        return auditoria.findByTablaAndRegistroIdOrderByFechaDesc(TABLA, reglamento.getId()).stream()
+        return auditoria.findByTablaAndRegistroIdOrderByFechaDescIdDesc(TABLA, reglamento.getId()).stream()
                 .map(this::toAuditoriaResponse)
                 .toList();
     }

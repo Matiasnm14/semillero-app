@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = "ORGANIZADOR")
 class InscripcionEquipoApiTest {
     private static final String TORNEOS = "/api/v1/torneos";
     private static final String INSCRIPCIONES = "/api/v1/torneos/inscripciones";
@@ -141,6 +143,68 @@ class InscripcionEquipoApiTest {
                 .andExpect(status().isNotFound());
     }
 
+    /** Tareas S2-11 y S2-12: cambio de estado con motivo y su historial. */
+    @Test
+    void elOrganizadorObservaRechazaYApruebaConMotivo() throws Exception {
+        long categoriaId = categoriaDeTorneoAbierto(4);
+        long id = idDe(postJson(INSCRIPCIONES, inscripcion(categoriaId, clubA))
+                .andExpect(status().isCreated()));
+        String estado = INSCRIPCIONES + "/" + id + "/estado";
+
+        putJson(estado, cambio("OBSERVADA", null)).andExpect(status().isBadRequest());
+        putJson(estado, cambio("OBSERVADA", "Falta la lista de buena fe"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("OBSERVADA"))
+                .andExpect(jsonPath("$.motivo").value("Falta la lista de buena fe"));
+        putJson(estado, cambio("OBSERVADA", "De nuevo")).andExpect(status().isBadRequest());
+        putJson(estado, cambio("APROBADA", null)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("APROBADA"))
+                .andExpect(jsonPath("$.motivo").doesNotExist());
+
+        mvc.perform(get(INSCRIPCIONES + "/" + id + "/historial")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].valorNuevo").value(
+                        org.hamcrest.Matchers.containsString("APROBADA")))
+                .andExpect(jsonPath("$[0].accion").value("CAMBIO_ESTADO"))
+                .andExpect(jsonPath("$[0].usuarioId").value(usuarioId))
+                .andExpect(jsonPath("$[1].valorNuevo").value(
+                        org.hamcrest.Matchers.containsString("OBSERVADA")));
+    }
+
+    /** Tarea S2-10: el listado se filtra por torneo, categoría y estado. */
+    @Test
+    void filtraElListadoPorTorneoYPorEstado() throws Exception {
+        long torneoId = torneoFuturo();
+        long categoriaId = categoria(torneoId, 4);
+        mvc.perform(post(TORNEOS + "/" + torneoId + "/abrir-inscripciones")).andExpect(status().isOk());
+        long aprobada = idDe(postJson(INSCRIPCIONES, inscripcion(categoriaId, clubA))
+                .andExpect(status().isCreated()));
+        postJson(INSCRIPCIONES, inscripcion(categoriaId, clubB)).andExpect(status().isCreated());
+        putJson(INSCRIPCIONES + "/" + aprobada + "/estado", cambio("APROBADA", null))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(INSCRIPCIONES).param("torneoId", String.valueOf(torneoId)))
+                .andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get(INSCRIPCIONES).param("torneoId", String.valueOf(torneoId))
+                        .param("estado", "APROBADA"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(aprobada));
+        mvc.perform(get(INSCRIPCIONES).param("torneoCategoriaId", String.valueOf(categoriaId))
+                        .param("estado", "PENDIENTE"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].clubId").value(clubB));
+    }
+
+    private Map<String, Object> cambio(String estado, String motivo) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("estado", estado);
+        if (motivo != null) {
+            body.put("motivo", motivo);
+        }
+        body.put("usuarioId", usuarioId);
+        return body;
+    }
+
     private long categoriaDeTorneoAbierto(int cupo) throws Exception {
         long torneoId = torneoFuturo();
         long categoriaId = categoria(torneoId, cupo);
@@ -197,13 +261,21 @@ class InscripcionEquipoApiTest {
     }
 
     private long create(String url, Map<String, Object> body) throws Exception {
-        String content = postJson(url, body).andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(content).get("id").asLong();
+        return idDe(postJson(url, body).andExpect(status().isCreated()));
+    }
+
+    private long idDe(ResultActions result) throws Exception {
+        return json.readTree(result.andReturn().getResponse().getContentAsString())
+                .get("id").asLong();
     }
 
     private ResultActions postJson(String url, Map<String, Object> body) throws Exception {
         return mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(body)));
+    }
+
+    private ResultActions putJson(String url, Map<String, Object> body) throws Exception {
+        return mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
     }
 }

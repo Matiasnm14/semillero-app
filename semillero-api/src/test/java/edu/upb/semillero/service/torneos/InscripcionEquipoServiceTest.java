@@ -1,6 +1,8 @@
 package edu.upb.semillero.service.torneos;
 
+import edu.upb.semillero.repository.dto.request.torneos.CambioEstadoInscripcionRequestDto;
 import edu.upb.semillero.repository.dto.request.torneos.InscripcionEquipoRequestDto;
+import edu.upb.semillero.repository.entity.Auditoria;
 import edu.upb.semillero.repository.entity.Club;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.entity.torneos.Grupo;
@@ -9,16 +11,20 @@ import edu.upb.semillero.repository.entity.torneos.Torneo;
 import edu.upb.semillero.repository.entity.torneos.TorneoCategoria;
 import edu.upb.semillero.repository.enums.torneos.EstadoInscripcion;
 import edu.upb.semillero.repository.enums.torneos.EstadoTorneo;
+import edu.upb.semillero.repository.repos.AuditoriaRepository;
 import edu.upb.semillero.repository.repos.torneos.InscripcionEquipoRepository;
+import edu.upb.semillero.repository.repos.torneos.PartidoTorneoRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoCategoriaRepository;
 import edu.upb.semillero.service.EntityRelations;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,8 +43,106 @@ import static org.mockito.Mockito.when;
 class InscripcionEquipoServiceTest {
     @Mock InscripcionEquipoRepository repository;
     @Mock TorneoCategoriaRepository categorias;
+    @Mock AuditoriaRepository auditoria;
+    @Mock PartidoTorneoRepository partidos;
     @Mock EntityRelations relations;
     @InjectMocks InscripcionEquipoService service;
+
+    @Test
+    void noCambiaAlMismoEstadoEnQueYaEsta() {
+        when(repository.findById(5L)).thenReturn(Optional.of(pendiente()));
+
+        assertThatThrownBy(() -> service.cambiarEstado(5L,
+                new CambioEstadoInscripcionRequestDto(EstadoInscripcion.PENDIENTE, null, 4L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("ya está en estado PENDIENTE");
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void observarYRechazarExigenMotivo() {
+        when(repository.findById(5L)).thenReturn(Optional.of(pendiente()));
+
+        assertThatThrownBy(() -> service.cambiarEstado(5L,
+                new CambioEstadoInscripcionRequestDto(EstadoInscripcion.RECHAZADA, "  ", 4L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("hay que indicar el motivo");
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void rechazarGuardaElMotivoYLoDejaEnElHistorial() {
+        InscripcionEquipo inscripcion = pendiente();
+        when(repository.findById(5L)).thenReturn(Optional.of(inscripcion));
+        when(repository.saveAndFlush(inscripcion)).thenReturn(inscripcion);
+
+        var response = service.cambiarEstado(5L, new CambioEstadoInscripcionRequestDto(
+                EstadoInscripcion.RECHAZADA, "Faltan los documentos del club", 4L));
+
+        assertThat(response.estado()).isEqualTo(EstadoInscripcion.RECHAZADA);
+        assertThat(response.motivo()).isEqualTo("Faltan los documentos del club");
+        ArgumentCaptor<Auditoria> fila = ArgumentCaptor.forClass(Auditoria.class);
+        verify(auditoria).saveAndFlush(fila.capture());
+        assertThat(fila.getValue().getAccion()).isEqualTo("CAMBIO_ESTADO");
+        assertThat(fila.getValue().getTabla()).isEqualTo("inscripciones_equipo");
+        assertThat(fila.getValue().getValorAnterior()).contains("PENDIENTE");
+        assertThat(fila.getValue().getValorNuevo()).contains("RECHAZADA");
+        assertThat(fila.getValue().getMotivo()).isEqualTo("Faltan los documentos del club");
+    }
+
+    /** Aprobar no pide motivo y borra el que había dejado una observación. */
+    @Test
+    void aprobarLimpiaElMotivoDeLaObservacion() {
+        InscripcionEquipo inscripcion = pendiente();
+        inscripcion.setEstado(EstadoInscripcion.OBSERVADA);
+        inscripcion.setMotivo("Falta la lista de buena fe");
+        when(repository.findById(5L)).thenReturn(Optional.of(inscripcion));
+        when(repository.saveAndFlush(inscripcion)).thenReturn(inscripcion);
+
+        var response = service.cambiarEstado(5L,
+                new CambioEstadoInscripcionRequestDto(EstadoInscripcion.APROBADA, null, 4L));
+
+        assertThat(response.estado()).isEqualTo(EstadoInscripcion.APROBADA);
+        assertThat(response.motivo()).isNull();
+    }
+
+    /** Con el fixture ya generado, sacar a un equipo aprobado dejaría partidos sin rival. */
+    @Test
+    void noSacaAUnEquipoAprobadoSiLaCategoriaYaTieneFixture() {
+        InscripcionEquipo inscripcion = pendiente();
+        inscripcion.setEstado(EstadoInscripcion.APROBADA);
+        when(repository.findById(5L)).thenReturn(Optional.of(inscripcion));
+        when(partidos.countByTorneoCategoriaId(2L)).thenReturn(6L);
+
+        assertThatThrownBy(() -> service.cambiarEstado(5L, new CambioEstadoInscripcionRequestDto(
+                EstadoInscripcion.RECHAZADA, "Se bajó del torneo", 4L)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("ya tiene fixture generado");
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void elHistorialDevuelveLosCambiosDeMasNuevoAMasViejo() {
+        when(repository.findById(5L)).thenReturn(Optional.of(pendiente()));
+        Auditoria fila = new Auditoria();
+        fila.setId(30L);
+        fila.setAccion("CAMBIO_ESTADO");
+        fila.setTabla("inscripciones_equipo");
+        when(auditoria.findByTablaAndRegistroIdOrderByFechaDescIdDesc("inscripciones_equipo", 5L))
+                .thenReturn(List.of(fila));
+
+        assertThat(service.findHistorial(5L)).singleElement()
+                .satisfies(entrada -> assertThat(entrada.accion()).isEqualTo("CAMBIO_ESTADO"));
+    }
+
+    private InscripcionEquipo pendiente() {
+        InscripcionEquipo inscripcion = new InscripcionEquipo();
+        inscripcion.setId(5L);
+        inscripcion.setEstado(EstadoInscripcion.PENDIENTE);
+        inscripcion.setListaConfirmada(false);
+        inscripcion.setTorneoCategoria(abierta(4));
+        return inscripcion;
+    }
 
     @Test
     void noInscribeSiElTorneoNoTieneLasInscripcionesAbiertas() {
