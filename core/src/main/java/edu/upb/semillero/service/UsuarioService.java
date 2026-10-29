@@ -5,6 +5,7 @@ import edu.upb.semillero.repository.dto.response.UsuarioResponseDto;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
 import edu.upb.semillero.service.exception.BusinessException;
+import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,8 +61,11 @@ public class UsuarioService {
     }
 
     private void apply(Usuario entity, UsuarioRequestDto request) {
-        entity.setName(request.name());
-        entity.setEmail(request.email());
+        String name = normalize(request.name());
+        String email = normalize(request.email());
+        ensureLoginIdentifiersAvailable(entity.getId(), name, email);
+        entity.setName(name);
+        entity.setEmail(email);
         entity.setTelefonoUsuario(request.telefonoUsuario());
         entity.setDocIdentidadUsuario(request.docIdentidadUsuario());
         if (request.password() != null && !request.password().isBlank()) {
@@ -70,6 +74,25 @@ public class UsuarioService {
         entity.setNombres(request.nombres());
         entity.setApellidos(request.apellidos());
         entity.setFotoPerfil(request.fotoPerfil());
+    }
+
+    private void ensureLoginIdentifiersAvailable(Long userId, String name, String email) {
+        if (email != null && (userId == null
+                ? repository.existsByEmailIgnoreCase(email)
+                : repository.existsByEmailIgnoreCaseAndIdNot(email, userId))) {
+            throw new ConflictException("Ya existe una cuenta con este correo electrónico");
+        }
+        if (name != null && (userId == null
+                ? repository.existsByNameIgnoreCase(name)
+                : repository.existsByNameIgnoreCaseAndIdNot(name, userId))) {
+            throw new ConflictException("Ya existe una cuenta con este nombre de usuario");
+        }
+    }
+
+    private String normalize(String value) {
+        if (value == null) return null;
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private UsuarioResponseDto toResponse(Usuario entity) {

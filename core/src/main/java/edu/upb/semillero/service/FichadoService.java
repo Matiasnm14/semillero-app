@@ -80,5 +80,16 @@ public class FichadoService {
                 && entity.getFechaFinalFichaje().isBefore(entity.getFechaFichaje())) {
             throw new BusinessException("La fecha final no puede ser anterior a la fecha inicial");
         }
+        var nacimiento = entity.getJugador().getFechaNacimiento();
+        if (nacimiento != null && entity.getFechaFichaje() != null
+                && entity.getFechaFichaje().toLocalDate().isBefore(nacimiento)) {
+            throw new BusinessException(
+                    "La fecha inicial del fichaje no puede ser anterior al nacimiento del jugador");
+        }
+        if (nacimiento != null && entity.getFechaFinalFichaje() != null
+                && entity.getFechaFinalFichaje().toLocalDate().isBefore(nacimiento)) {
+            throw new BusinessException(
+                    "La fecha final del fichaje no puede ser anterior al nacimiento del jugador");
+        }
     }
 }

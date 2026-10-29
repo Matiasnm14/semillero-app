@@ -3,6 +3,9 @@ package edu.upb.semillero.config;
 import edu.upb.semillero.service.comun.Roles;
 import edu.upb.semillero.service.seguridad.RegistroAccesoService;
 import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
+import edu.upb.semillero.repository.repos.FichadoRepository;
+import edu.upb.semillero.repository.repos.JugadorRepository;
+import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -54,9 +57,16 @@ public class SeguridadConfiguration {
     private static final String ADMINISTRA = Roles.ADMIN;
 
     private final RegistroAccesoService registro;
+    private final JugadorRepository jugadores;
+    private final FichadoRepository fichados;
+    private final UsuarioClubRepository usuariosClub;
 
-    public SeguridadConfiguration(RegistroAccesoService registro) {
+    public SeguridadConfiguration(RegistroAccesoService registro, JugadorRepository jugadores,
+            FichadoRepository fichados, UsuarioClubRepository usuariosClub) {
         this.registro = registro;
+        this.jugadores = jugadores;
+        this.fichados = fichados;
+        this.usuariosClub = usuariosClub;
     }
 
     @Bean
@@ -72,20 +82,31 @@ public class SeguridadConfiguration {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
-                        // Los roles los asigna el administrador y nadie más.
+                        // Los administradores solo los asigna otro administrador.
                         .requestMatchers("/api/v1/roles", "/api/v1/usuarios/*/roles")
                         .hasRole(ADMINISTRA)
                         .requestMatchers("/api/v1/administradores", "/api/v1/administradores/**")
                         .hasRole(ADMINISTRA)
+                        // Una cuenta de club puede registrarse sin sesión. Solo
+                        // el alta inicial es pública; cambios y bajas siguen
+                        // requiriendo ADMIN.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios-club",
+                                "/api/v1/usuarios-trabaja")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios-club/**",
                                 "/api/v1/usuarios-trabaja/**").permitAll()
                         .requestMatchers("/api/v1/usuarios-club", "/api/v1/usuarios-club/**",
                                 "/api/v1/usuarios-trabaja", "/api/v1/usuarios-trabaja/**")
                         .hasRole(ADMINISTRA)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/{id}")
-                        .access(this::usuarioPropioOAdministrador)
+                        .access(this::usuarioPropioOClubOAdministrador)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/{id}")
                         .access(this::usuarioPropioOAdministrador)
+                        // Un jugador puede modificar su ficha. El personal de club
+                        // únicamente puede modificar fichas de jugadores fichados
+                        // actualmente por su propio club.
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/jugadores/{id}")
+                        .access(this::jugadorPropioOClubOAdministrador)
                         .requestMatchers(HttpMethod.GET, TORNEOS).authenticated()
                         .requestMatchers(LISTA_BUENA_FE)
                         .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
@@ -110,6 +131,70 @@ public class SeguridadConfiguration {
                         && usuario.usuarioId() != null
                         && usuario.usuarioId().toString().equals(contexto.getVariables().get("id")));
         return new AuthorizationDecision(permitido);
+    }
+
+    /**
+     * Permite actualizar una cuenta propia o, si la cuenta corresponde a un
+     * jugador, al personal del club que lo tiene fichado actualmente.
+     */
+    private AuthorizationDecision usuarioPropioOClubOAdministrador(
+            Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
+        Authentication actual = autenticacion.get();
+        if (actual == null || !actual.isAuthenticated()
+                || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+            return new AuthorizationDecision(false);
+        }
+        if (esAdministrador(actual)) {
+            return new AuthorizationDecision(true);
+        }
+        Long usuarioObjetivo;
+        try {
+            usuarioObjetivo = Long.valueOf(contexto.getVariables().get("id"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            return new AuthorizationDecision(false);
+        }
+        if (usuarioObjetivo.equals(usuario.usuarioId())) {
+            return new AuthorizationDecision(true);
+        }
+        boolean esJugadorDelClub = usuario.clubId() != null
+                && usuariosClub.findFirstByUsuarioId(usuario.usuarioId()).isPresent()
+                && jugadores.findFirstByUsuarioId(usuarioObjetivo)
+                        .map(jugador -> fichados
+                                .existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
+                                        jugador.getId(), usuario.clubId()))
+                        .orElse(false);
+        return new AuthorizationDecision(esJugadorDelClub);
+    }
+
+    private AuthorizationDecision jugadorPropioOClubOAdministrador(
+            Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
+        Authentication actual = autenticacion.get();
+        if (actual == null || !actual.isAuthenticated()
+                || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+            return new AuthorizationDecision(false);
+        }
+        if (esAdministrador(actual)) {
+            return new AuthorizationDecision(true);
+        }
+        Long jugadorId;
+        try {
+            jugadorId = Long.valueOf(contexto.getVariables().get("id"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            return new AuthorizationDecision(false);
+        }
+        boolean esPropio = jugadores.findFirstByUsuarioId(usuario.usuarioId())
+                .map(jugador -> jugadorId.equals(jugador.getId()))
+                .orElse(false);
+        boolean esJugadorDelClub = usuario.clubId() != null
+                && usuariosClub.findFirstByUsuarioId(usuario.usuarioId()).isPresent()
+                && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
+                        jugadorId, usuario.clubId());
+        return new AuthorizationDecision(esPropio || esJugadorDelClub);
+    }
+
+    private boolean esAdministrador(Authentication autenticacion) {
+        return autenticacion.getAuthorities().stream()
+                .anyMatch(rol -> ("ROLE_" + ADMINISTRA).equals(rol.getAuthority()));
     }
 
     /** 401: no vino token, o no servía. */
