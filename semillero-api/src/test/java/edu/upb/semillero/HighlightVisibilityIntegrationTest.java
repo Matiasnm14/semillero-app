@@ -28,6 +28,42 @@ class HighlightVisibilityIntegrationTest {
     @Autowired ObjectMapper json;
 
     @Test
+    void loginAcceptsEmailOrUsername() throws Exception {
+        String unique = Long.toUnsignedString(System.nanoTime());
+        String username = "jugador-" + unique;
+        String email = "ana-" + unique + "@example.com";
+        long userId = create("usuarios", Map.of(
+                "name", username,
+                "nombres", "Ana",
+                "apellidos", "Pérez",
+                "email", email,
+                "password", "secreto123"));
+        create("jugadores", Map.of("usuarioId", userId));
+
+        assertThat(login(email, "secreto123")).isNotBlank();
+        assertThat(login(username, "secreto123")).isNotBlank();
+    }
+
+    @Test
+    void rejectsDuplicateLoginIdentifiers() throws Exception {
+        String unique = Long.toUnsignedString(System.nanoTime());
+        String username = "jugador-" + unique;
+        String email = "ana-" + unique + "@example.com";
+        Map<String, Object> user = Map.of(
+                "name", username,
+                "nombres", "Ana",
+                "apellidos", "Pérez",
+                "email", email,
+                "password", "secreto123");
+        create("usuarios", user);
+
+        mvc.perform(post(API + "usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(user)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void hiddenHighlightStaysInOwnerHistoryAndIsNotPublic() throws Exception {
         String unique = Long.toUnsignedString(System.nanoTime());
         long userId = create("usuarios", Map.of(

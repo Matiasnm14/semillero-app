@@ -63,8 +63,8 @@ public class AuthenticationService {
 
     @Transactional
     public LoginResponseDto login(LoginRequestDto request) {
-        Usuario usuario = usuarios.findByEmailIgnoreCase(request.identificador().trim())
-                .or(() -> usuarios.findByNameIgnoreCase(request.identificador().trim()))
+        String identificador = request.identificador().trim();
+        Usuario usuario = usuarios.findFirstByEmailIgnoreCaseOrNameIgnoreCaseOrderByIdDesc(identificador, identificador)
                 .orElseThrow(() -> new BusinessException("Credenciales inválidas"));
         if (!passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             throw new BusinessException("Credenciales inválidas");
