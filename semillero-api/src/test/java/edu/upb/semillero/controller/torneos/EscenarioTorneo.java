@@ -254,8 +254,9 @@ final class EscenarioTorneo {
     }
 
     long usuario(String nombre) throws Exception {
-        return create("/api/v1/usuarios", Map.of("name", nombre, "nombres", "Prueba",
-                "apellidos", "Torneos", "email", nombre + System.nanoTime() + "@example.com",
+        String unico = nombre + System.nanoTime();
+        return create("/api/v1/usuarios", Map.of("name", unico, "nombres", "Prueba",
+                "apellidos", "Torneos", "email", unico + "@example.com",
                 "password", "secreto123"));
     }
 

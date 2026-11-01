@@ -1,0 +1,5 @@
+ALTER TABLE clubes
+    ADD COLUMN IF NOT EXISTS anio_fundacion INTEGER;
+
+ALTER TABLE clubes
+    ADD COLUMN IF NOT EXISTS descripcion_club VARCHAR(500);

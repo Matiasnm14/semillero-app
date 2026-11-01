@@ -212,7 +212,7 @@ class SeguridadTorneosApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"administradores", "usuarios-club", "usuarios-trabaja"})
+    @ValueSource(strings = {"administradores"})
     void lasAsignacionesDePrivilegiosRequierenAdministrador(String ruta) throws Exception {
         String url = "/api/v1/" + ruta;
         String tokenConsulta = token(usuarioCon(Roles.CONSULTA));
@@ -225,6 +225,25 @@ class SeguridadTorneosApiTest {
                             .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isForbidden());
         }
+    }
+
+    @Test
+    void elRegistroPublicoPuedeCrearUsuarioClub() throws Exception {
+        Usuario usuario = nuevoUsuario();
+        Club club = club("Club del registro público");
+
+        long usuarioClubId = idDe(postJson("/api/v1/usuarios-club",
+                Map.of("usuarioId", usuario.getId()))
+                .andExpect(status().isCreated()));
+        postJson("/api/v1/usuarios-trabaja", Map.of(
+                "usuarioClubId", usuarioClubId,
+                "clubId", club.getId(),
+                "tipoUsuarioClub", "UC"))
+                .andExpect(status().isCreated());
+
+        login(usuario).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value(Roles.CONSULTA))
+                .andExpect(jsonPath("$.clubId").value(club.getId()));
     }
 
     @Test

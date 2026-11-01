@@ -20,4 +20,5 @@ public class AuthenticationController {
     public LoginResponseDto login(@Valid @RequestBody LoginRequestDto request) {
         return service.login(request);
     }
+
 }

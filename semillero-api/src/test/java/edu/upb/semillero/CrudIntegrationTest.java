@@ -198,7 +198,15 @@ class CrudIntegrationTest {
     }
 
     private Map<String, Object> usuario(String email) {
-        return Map.of("name", "ana", "nombres", "Ana", "apellidos", "Pérez", "email", email, "password", "secreto123");
+        // UsuarioService exige name y email únicos, y esta prueba comparte la base entre
+        // métodos, así que cada usuario lleva un sufijo único. Un email con formato
+        // inválido se deja intacto, para la prueba de validación.
+        long sufijo = System.nanoTime();
+        int arroba = email.indexOf('@');
+        String emailUnico = arroba < 0 ? email
+                : email.substring(0, arroba) + sufijo + email.substring(arroba);
+        return Map.of("name", "ana" + sufijo, "nombres", "Ana", "apellidos", "Pérez",
+                "email", emailUnico, "password", "secreto123");
     }
 
     private Map<String, Object> partido(long local, long visitante) {
