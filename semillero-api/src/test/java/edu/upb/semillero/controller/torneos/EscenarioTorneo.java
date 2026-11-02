@@ -126,6 +126,7 @@ final class EscenarioTorneo {
         fichaje.put("jugadorId", jugadorId);
         fichaje.put("clubId", equipo.clubId());
         create("/api/v1/fichados", fichaje);
+        documentosVigentes(jugadorId);
         create(INSCRIPCIONES + "/" + equipo.inscripcionId() + "/lista-buena-fe",
                 Map.of("jugadorId", jugadorId, "dorsal", dorsal));
         equipo.jugadores().add(jugadorId);
@@ -286,7 +287,17 @@ final class EscenarioTorneo {
         fichaje.put("jugadorId", jugadorId);
         fichaje.put("clubId", clubId);
         create("/api/v1/fichados", fichaje);
+        documentosVigentes(jugadorId);
         return jugadorId;
+    }
+
+    /** Carga los tres documentos vigentes que la HU 5 exige para habilitar al jugador. */
+    private void documentosVigentes(long jugadorId) throws Exception {
+        String vence = LocalDate.now().plusYears(1).toString();
+        for (String tipo : List.of("CI", "CERTIFICADO_NACIMIENTO", "APTO_MEDICO")) {
+            create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
+                    "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence));
+        }
     }
 
     private long torneo(String formato, boolean externo) throws Exception {

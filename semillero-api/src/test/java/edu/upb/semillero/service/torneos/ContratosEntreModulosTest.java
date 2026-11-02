@@ -1,13 +1,17 @@
 package edu.upb.semillero.service.torneos;
 
 import edu.upb.semillero.repository.entity.Club;
+import edu.upb.semillero.repository.entity.DocumentoJugador;
 import edu.upb.semillero.repository.entity.Rol;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.entity.UsuarioRol;
 import edu.upb.semillero.repository.entity.Fichado;
 import edu.upb.semillero.repository.entity.Jugador;
+import edu.upb.semillero.repository.enums.EstadoDocumentoJugador;
 import edu.upb.semillero.repository.enums.EstadoJugador;
+import edu.upb.semillero.repository.enums.TipoDocumentoJugador;
 import edu.upb.semillero.repository.repos.ClubRepository;
+import edu.upb.semillero.repository.repos.DocumentoJugadorRepository;
 import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.RolRepository;
@@ -29,15 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Puntos 10, 11 y 12 del acuerdo de la S1-04: las interfaces entre módulos
  * existen, se pueden inyectar y responden lo que su documentación dice.
  *
- * <p>Tarea S2-05: {@code FichaTecnicaService} ya no inventa los datos, los lee
- * de {@code jugadores} y {@code fichado}. Lo único que sigue falseado son los
- * documentos y el apto médico, porque {@code documentos_jugador} es de ficha
- * técnica y todavía no existe.
- *
- * <p>Esta prueba también es el aviso de cuándo borrar
- * {@code MocksExternosConfiguration}: el día que ficha técnica agregue sus
- * implementaciones reales, los casos que comprueban el comportamiento del stub
- * de {@code ComunService} van a fallar, y eso es lo que se espera.
+ * <p>{@code FichaTecnicaService} lee de {@code jugadores}, {@code fichado} y,
+ * desde la migración V011, {@code documentos_jugador}: la implementación real
+ * es {@code service.fichatecnica.FichaTecnicaServiceImpl} y el stub
+ * {@code MocksExternosConfiguration} ya no se activa.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -49,6 +48,7 @@ class ContratosEntreModulosTest {
     @Autowired JugadorRepository jugadores;
     @Autowired ClubRepository clubes;
     @Autowired FichadoRepository fichados;
+    @Autowired DocumentoJugadorRepository documentos;
     @Autowired UsuarioRepository usuarios;
     @Autowired RolRepository roles;
     @Autowired UsuarioRolRepository usuariosRoles;
@@ -118,17 +118,26 @@ class ContratosEntreModulosTest {
     }
 
     /**
-     * Los documentos y el apto médico siguen sin verificarse. Mientras esta
-     * prueba pase, esas dos validaciones de la HU 5 no comprueban nada.
+     * Tarea S2-07 (punto 7 del acuerdo): los documentos y el apto médico se
+     * verifican de verdad contra {@code documentos_jugador}. Un jugador sin
+     * documentos no los tiene vigentes; con CI, certificado de nacimiento y
+     * apto médico VIGENTE y no vencidos a la fecha de corte, sí.
      */
     @Test
-    void losDocumentosYElAptoMedicoTodaviaNoSeVerifican() {
+    void losDocumentosYElAptoMedicoSeVerificanContraLaTabla() {
         Jugador jugador = jugador(LocalDate.of(2012, 6, 1));
 
-        var datos = fichaTecnica.datosParaTorneos(jugador.getId(), CORTE).orElseThrow();
+        var sinDocumentos = fichaTecnica.datosParaTorneos(jugador.getId(), CORTE).orElseThrow();
+        assertThat(sinDocumentos.documentosVigentes()).isFalse();
+        assertThat(sinDocumentos.aptoMedicoVigente()).isFalse();
 
-        assertThat(datos.documentosVigentes()).isTrue();
-        assertThat(datos.aptoMedicoVigente()).isTrue();
+        documento(jugador, TipoDocumentoJugador.CI, null);
+        documento(jugador, TipoDocumentoJugador.CERTIFICADO_NACIMIENTO, null);
+        documento(jugador, TipoDocumentoJugador.APTO_MEDICO, CORTE.plusMonths(1));
+
+        var conDocumentos = fichaTecnica.datosParaTorneos(jugador.getId(), CORTE).orElseThrow();
+        assertThat(conDocumentos.documentosVigentes()).isTrue();
+        assertThat(conDocumentos.aptoMedicoVigente()).isTrue();
     }
 
     /**
@@ -202,5 +211,14 @@ class ContratosEntreModulosTest {
         fichado.setFechaFichaje(desde);
         fichado.setFechaFinalFichaje(hasta);
         fichados.saveAndFlush(fichado);
+    }
+
+    private void documento(Jugador jugador, TipoDocumentoJugador tipo, LocalDate vencimiento) {
+        DocumentoJugador doc = new DocumentoJugador();
+        doc.setJugador(jugador);
+        doc.setTipo(tipo);
+        doc.setEstado(EstadoDocumentoJugador.VIGENTE);
+        doc.setFechaVencimiento(vencimiento);
+        documentos.saveAndFlush(doc);
     }
 }

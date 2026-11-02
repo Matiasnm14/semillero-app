@@ -29,23 +29,16 @@ import org.springframework.context.annotation.Configuration;
  * implementación de verdad, {@code service.comun.ComunServiceImpl}, con las
  * tablas {@code roles} y {@code usuarios_roles} de la migración V008.
  *
- * <p>El bean se registra solo si no hay otro de su tipo, así que el día que
- * ficha técnica agregue su {@code @Service} real, este se apaga sin que nadie
- * toque nada, y esta clase se puede borrar.
+ * <p>El bean se registra solo si no hay otro de su tipo. Desde que existe
+ * {@code service.fichatecnica.FichaTecnicaServiceImpl} (un {@code @Service}
+ * real que además lee {@code documentos_jugador}), este stub <strong>ya no se
+ * activa</strong>; queda como respaldo y esta clase se puede borrar.
  *
- * <p><strong>Qué es real y qué no</strong>, para que nadie lo confunda:
- *
- * <ul>
- *   <li>{@code FichaTecnicaService} <strong>lee la base</strong> (tarea S2-05):
- *       la edad sale de {@code jugadores.fecha_nacimiento}, el estado de
- *       {@code jugadores.estado} y el fichaje de la tabla {@code fichado}. Son
- *       tablas de la BD acordada y solo se leen, nunca se escriben.</li>
- *   <li>Lo único que sigue inventado ahí es {@code documentosVigentes} y
- *       {@code aptoMedicoVigente}, que responden {@code true}: la tabla
- *       {@code documentos_jugador} es de ficha técnica (punto 7 del acuerdo) y
- *       todavía no existe. Hasta que exista, esas dos validaciones de la HU 5
- *       <strong>no comprueban nada</strong>.</li>
- * </ul>
+ * <p>Diferencia con la implementación real, por si alguien vuelve a activar
+ * este stub: acá {@code documentosVigentes} y {@code aptoMedicoVigente}
+ * responden siempre {@code true} (no verifican nada), mientras que
+ * {@code FichaTecnicaServiceImpl} los valida de verdad contra
+ * {@code documentos_jugador}.
  */
 @Configuration
 public class MocksExternosConfiguration {
