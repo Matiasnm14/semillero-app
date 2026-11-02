@@ -16,5 +16,5 @@ COPY --chown=10001:10001 VPS-Implementacion/backend-compartido/entrypoint.sh /ap
 RUN chmod 550 /app/entrypoint.sh
 
 USER 10001:10001
-EXPOSE 8080
+EXPOSE 18083
 ENTRYPOINT ["/app/entrypoint.sh"]

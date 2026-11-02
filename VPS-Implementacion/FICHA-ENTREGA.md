@@ -4,11 +4,11 @@
 - Artefacto: `semillero-api`, Java 21. Integra `core`, `data` y los módulos del equipo.
 - Estado: configuración e imagen verificadas localmente; instalación y URL pública por confirmar.
 - Cuenta SSH verificada: `backend@80.241.208.3`, Docker rootless; cuota máxima 4 GiB y cuatro CPU.
-- Puerto interno: `8080`; puerto de loopback en Caddy: `18083`; prefijo REST `/api/v1`.
+- Red: `network_mode: host`; Spring y healthcheck en `127.0.0.1:18083`; prefijo REST `/api/v1`.
 - Imagen: `semillero-backend:<versión>`, construida en la computadora para la arquitectura del VPS.
 - Perfil: `vps`; análisis, workers y YouTube deshabilitados para esta entrega.
 - Base: PostgreSQL compartido, conexión mediante `DB_URL`, `DB_USER`, `DB_PASSWORD`.
-- Migraciones: Flyway V000–V012 antes de JPA; no requiere ejecutar `init.sql`.
+- Migraciones: migrador central; Flyway desactivado en runtime y Hibernate `validate`. El esquema debe ser compatible con V000–V012.
 - Autenticación: `POST /api/v1/auth/login`, token Bearer; secreto `JWT_SECRET` exclusivo del VPS.
 - Web: orígenes mediante `CORS_ALLOWED_ORIGINS`; sin credenciales de DB en Flutter.
 - Archivos: volumen `backend_data`, ruta interna `/var/lib/semillero` para videos, PNG y temporales de multipart/Java.
@@ -17,7 +17,7 @@
 - Dependencias de esta imagen: Java 21, curl, FFmpeg y FFprobe; inferencia GPU externa. Python/uploader y OAuth se incorporarán cuando se habilite YouTube.
 - Pruebas: `./mvnw clean verify`, suites PostgreSQL y verificación del contenedor antes de publicar.
 - Antecedente 2026-11-01: imagen anterior, 340 pruebas y 17 comprobaciones HTTP; sustituida para esta entrega por la imagen con FFmpeg y migraciones V000–V012.
-- Puesta en producción pendiente: resolver acceso de PostgreSQL desde el contenedor, permisos para Flyway, copia de seguridad y URL pública/CORS. Ver [preparación del VPS](backend-compartido/PREPARACION_VPS.md).
+- Configuración confirmada por el administrador: conexión loopback mediante red host, credenciales en `/home/backend/proyecto/.env.db`, migrador central y runtime sin DDL. URL pública/CORS por confirmar. Ver [preparación del VPS](backend-compartido/PREPARACION_VPS.md).
 
 Procedimiento completo en [`backend-compartido/README.md`](backend-compartido/README.md).
 

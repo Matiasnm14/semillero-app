@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:semillero-vps;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa", "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop", "spring.flyway.enabled=false",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
         "semillero.jwt.secret=secreto-solo-para-pruebas-del-perfil-vps",
         "semillero.cors.allowed-origin-patterns=https://web.semillero.example"
 })
@@ -28,6 +28,15 @@ class VpsConfigurationIntegrationTest {
     @Autowired AnalysisProperties analysis;
     @Autowired VideoProperties video;
     @Autowired org.springframework.core.env.Environment environment;
+    @Autowired org.springframework.context.ApplicationContext context;
+
+    @Test
+    void elRuntimeNoCreaFlywayYUsaElLoopbackYPuertoDelProxy() {
+        assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class)).isFalse();
+        assertThat(context.getBeansOfType(org.flywaydb.core.Flyway.class)).isEmpty();
+        assertThat(environment.getProperty("server.address")).isEqualTo("127.0.0.1");
+        assertThat(environment.getProperty("server.port", Integer.class)).isEqualTo(18083);
+    }
 
     @Test
     void losVideosMapasYTemporalesUsanElVolumenPersistente() {
