@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@org.springframework.security.test.context.support.WithMockUser(roles = "ADMINISTRADOR_GENERAL")
+@org.springframework.security.test.context.support.WithMockUser(roles = "ADMIN")
 class AnalysisJobIntegrationTest {
     @TempDir static Path root;
     @DynamicPropertySource
@@ -161,7 +161,7 @@ class AnalysisJobIntegrationTest {
                 try {
                     org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
                         new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
-                            java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
+                            java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
                     return createDirect(partidoId, video.getId());
                 }
                 catch (AnalysisConflictException e) { return e; }
@@ -429,7 +429,7 @@ class AnalysisJobIntegrationTest {
     private AnalysisJobResponseDto createDirect(Long match, Long videoId) {
         org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
-                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
+                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
         return service.create(match, videoId);
     }
 

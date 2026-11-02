@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "USUARIO_SISTEMA")
+@WithMockUser(roles = "ORGANIZADOR")
 class FlujoCompletoPartidoApiTest {
 
     @Autowired MockMvc mvc;

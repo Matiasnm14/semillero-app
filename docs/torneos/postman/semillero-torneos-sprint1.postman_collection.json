@@ -455,7 +455,7 @@
          "    const body = pm.response.json();",
          "    pm.expect(body.token, 'token').to.be.a('string');",
          "    pm.expect(body.token.split('.').length, 'el JWT tiene tres partes').to.eql(3);",
-         "    pm.expect(body.roles, 'el usuario de las pruebas tiene que ser USUARIO_SISTEMA').to.include('USUARIO_SISTEMA');",
+         "    pm.expect(body.roles, 'el usuario de las pruebas tiene que ser ADMIN').to.include('ADMIN');",
          "    pm.collectionVariables.set('token', body.token);",
          "    // Desde aca, el que crea torneos y resuelve inscripciones es este usuario.",
          "    pm.collectionVariables.set('organizadorId', body.id);",
@@ -5357,7 +5357,7 @@
          "    pm.response.to.have.status(200);",
          "    const cuenta = pm.response.json();",
          "    pm.expect(cuenta.usuarioId).to.eql(Number(pm.collectionVariables.get('organizadorId')));",
-         "    pm.expect(cuenta.roles).to.include('USUARIO_SISTEMA');",
+         "    pm.expect(cuenta.roles).to.include('ADMIN');",
          "    pm.expect(cuenta.suspendido).to.eql(false);",
          "    pm.expect(cuenta.notificacionesSinLeer).to.be.a('number');",
          "});"

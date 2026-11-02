@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "USUARIO_SISTEMA")
+@WithMockUser(roles = "ORGANIZADOR")
 class ConsultaAppApiTest {
 
     @Autowired MockMvc mvc;
@@ -86,7 +86,7 @@ class ConsultaAppApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jugadorIds[0]").value(jugador))
                 .andExpect(jsonPath("$.suspendido").value(false))
-                .andExpect(jsonPath("$.roles[0]").value("JUGADOR"))
+                .andExpect(jsonPath("$.roles[0]").value("CONSULTA"))
                 .andExpect(jsonPath("$.proximosPartidos.length()").value(1))
                 .andExpect(jsonPath("$.notificacionesSinLeer").value(0));
 

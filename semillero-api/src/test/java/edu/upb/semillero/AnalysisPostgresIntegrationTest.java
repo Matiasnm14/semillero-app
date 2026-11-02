@@ -242,7 +242,7 @@ class AnalysisPostgresIntegrationTest {
     private ConfigurableApplicationContext start(int remotePort) {
         org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
-                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
+                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
         return new SpringApplicationBuilder(SemilleroApplication.class).profiles("test").run(
                 "--spring.datasource.url=" + System.getenv("ANALYSIS_PG_TEST_URL"),
                 "--spring.datasource.username=analysis_test", "--spring.datasource.password=",

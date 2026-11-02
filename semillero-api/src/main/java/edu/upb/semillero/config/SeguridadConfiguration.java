@@ -67,9 +67,10 @@ public class SeguridadConfiguration {
             "/api/v1/torneos/partidos/*/cerrar"};
     private static final String[] NOTIFICACIONES = {
             "/api/v1/torneos/notificaciones", "/api/v1/torneos/notificaciones/**"};
-    private static final String SISTEMA = Roles.USUARIO_SISTEMA;
-    private static final String CLUB = Roles.USUARIO_CLUB;
-    private static final String ADMINISTRA = Roles.ADMINISTRADOR_GENERAL;
+    private static final String ORGANIZA = Roles.ORGANIZADOR;
+    private static final String ADMINISTRA = Roles.ADMIN;
+    private static final String ENTRENA = Roles.ENTRENADOR;
+    private static final String MESA = Roles.MESA_CONTROL;
 
     private final RegistroAccesoService registro;
     private final JugadorRepository jugadores;
@@ -136,27 +137,31 @@ public class SeguridadConfiguration {
                         // These relationships determine video ownership: public writes would let
                         // another user reassign a match or enroll themselves to bypass the checks.
                         .requestMatchers(HttpMethod.POST, "/api/v1/partidos", "/api/v1/participaciones-partido", "/api/v1/fichados")
-                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ORGANIZA, ADMINISTRA)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partidos/{id}", "/api/v1/participaciones-partido/{id}", "/api/v1/fichados/{id}")
-                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ORGANIZA, ADMINISTRA)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/partidos/{id}", "/api/v1/participaciones-partido/{id}", "/api/v1/fichados/{id}")
-                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ORGANIZA, ADMINISTRA)
                         .requestMatchers(LISTA_BUENA_FE)
-                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")
-                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
                         // La planilla, los eventos y el cierre los carga la mesa de control
                         // (HU 9 y 10); qué partido puede tocar lo controla AccesoTorneos.
                         .requestMatchers(MESA_DE_CONTROL)
-                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .hasAnyRole(MESA, ORGANIZA, ADMINISTRA)
                         // Cada uno maneja sus avisos (HU 14); de quién son lo controla
                         // AccesoTorneos con el token.
                         .requestMatchers(NOTIFICACIONES).authenticated()
                         // El entrenador apela una sanción de su equipo (HU 13); resolverla
                         // es del organizador.
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/sanciones/*/apelaciones")
-                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
-                        .requestMatchers(TORNEOS).hasAnyRole(SISTEMA, ADMINISTRA)
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
+                        .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
+                        // Los documentos del jugador llevan datos sensibles: exigen sesión y
+                        // el servicio controla, por jugador, quién puede verlos y aprobarlos.
+                        .requestMatchers("/api/v1/documentos-jugador", "/api/v1/documentos-jugador/**")
+                        .authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(this::sinSesion)

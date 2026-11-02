@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "USUARIO_SISTEMA")
+@WithMockUser(roles = "ORGANIZADOR")
 class ListaBuenaFeApiTest {
     private static final String TORNEOS = "/api/v1/torneos";
     private static final String INSCRIPCIONES = "/api/v1/torneos/inscripciones";

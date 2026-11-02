@@ -63,7 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@org.springframework.security.test.context.support.WithMockUser(roles = "ADMINISTRADOR_GENERAL")
+@org.springframework.security.test.context.support.WithMockUser(roles = "ADMIN")
 class VideoPartidoIntegrationTest {
     @TempDir static Path root;
     @TempDir static Path artifactRoot;

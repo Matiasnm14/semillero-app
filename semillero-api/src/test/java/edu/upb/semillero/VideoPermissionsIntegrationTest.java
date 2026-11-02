@@ -102,36 +102,36 @@ class VideoPermissionsIntegrationTest {
 
     @Test
     void ownCoachCreatesPendingUploadWithRecordedIdentityAndConsultableLocation() throws Exception {
-        var accepted = upload(match, coach, "USUARIO_CLUB");
+        var accepted = upload(match, coach, "ENTRENADOR");
         long id = accepted.path("id").asLong(), analysis = accepted.path("analysisId").asLong();
         assertThat(videos.findById(id).orElseThrow().getUsuarioCargaId()).isEqualTo(coach.getId());
-        mvc.perform(auth(get(base(match) + "/" + id), coach, "USUARIO_CLUB")).andExpect(status().isOk())
+        mvc.perform(auth(get(base(match) + "/" + id), coach, "ENTRENADOR")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoAnalisis").value("PENDIENTE"));
-        mvc.perform(auth(get("/api/v1/analisis/" + analysis), coach, "USUARIO_CLUB")).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/analisis/" + analysis), coach, "ENTRENADOR")).andExpect(status().isOk());
         assertThat(jobs.findById(analysis).orElseThrow().isEnviado()).isFalse();
         verifyNoInteractions(gateway);
     }
 
     @Test
     void anotherClubCannotUploadOrReadUsingGuessedIdentifiers() throws Exception {
-        var accepted = upload(match, coach, "USUARIO_CLUB");
+        var accepted = upload(match, coach, "ENTRENADOR");
         String videoPath = base(match) + "/" + accepted.path("id").asLong();
         String analysisPath = "/api/v1/analisis/" + accepted.path("analysisId").asLong();
         clearInvocations(inspector);
-        mvc.perform(auth(multipart(base(match)).file(file()), outsider, "USUARIO_CLUB")).andExpect(status().isForbidden());
+        mvc.perform(auth(multipart(base(match)).file(file()), outsider, "ENTRENADOR")).andExpect(status().isForbidden());
         for (String path : new String[]{base(match), videoPath, videoPath + "/analisis", analysisPath,
                 analysisPath + "/resultados", analysisPath + "/heatmap"}) {
-            mvc.perform(auth(get(path), outsider, "USUARIO_CLUB")).andExpect(status().isForbidden());
+            mvc.perform(auth(get(path), outsider, "ENTRENADOR")).andExpect(status().isForbidden());
         }
-        mvc.perform(auth(post(videoPath + "/analisis"), outsider, "USUARIO_CLUB")).andExpect(status().isForbidden());
-        mvc.perform(auth(post(videoPath + "/youtube/reintentar"), outsider, "USUARIO_CLUB")).andExpect(status().isForbidden());
+        mvc.perform(auth(post(videoPath + "/analisis"), outsider, "ENTRENADOR")).andExpect(status().isForbidden());
+        mvc.perform(auth(post(videoPath + "/youtube/reintentar"), outsider, "ENTRENADOR")).andExpect(status().isForbidden());
         assertThat(videos.count()).isEqualTo(1);
         verify(inspector, never()).inspect(any());
     }
 
     @Test
     void matchingClubClaimAloneDoesNotGrantAccessWithoutDatabaseRelationship() throws Exception {
-        String token = jwt.emitir(reader.getId(), "reader", List.of("USUARIO_CLUB"), local.getId());
+        String token = jwt.emitir(reader.getId(), "reader", List.of("ENTRENADOR"), local.getId());
         mvc.perform(multipart(base(match)).file(file()).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)).andExpect(status().isForbidden());
         mvc.perform(get(base(match)).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)).andExpect(status().isForbidden());
         assertNoUpload();
@@ -139,51 +139,51 @@ class VideoPermissionsIntegrationTest {
 
     @Test
     void removingClubRelationshipRevokesAccessEvenWithAnUnexpiredToken() throws Exception {
-        String token = jwt.emitir(coach.getId(), "coach", List.of("USUARIO_CLUB"), local.getId());
+        String token = jwt.emitir(coach.getId(), "coach", List.of("ENTRENADOR"), local.getId());
         work.deleteAll();
         mvc.perform(multipart(base(match)).file(file()).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)).andExpect(status().isForbidden());
         assertNoUpload();
     }
 
     @Test
-    void unUsuarioSistemaTieneAccesoGlobalAVideos() throws Exception {
-        upload(match, mesa, "USUARIO_SISTEMA");
-        // Con los roles unificados un USUARIO_SISTEMA accede a cualquier partido.
-        upload(other, mesa, "USUARIO_SISTEMA");
-        assertThat(videos.count()).isEqualTo(2);
+    void mesaCanUploadOnlyToItsAssignedMatch() throws Exception {
+        upload(match, mesa, "MESA_CONTROL");
+        mvc.perform(auth(get(base(other)), mesa, "MESA_CONTROL")).andExpect(status().isForbidden());
+        mvc.perform(auth(multipart(base(other)).file(file()), mesa, "MESA_CONTROL")).andExpect(status().isForbidden());
+        assertThat(videos.count()).isEqualTo(1);
     }
 
     @Test
     void participantCanReadOwnMatchButCannotUploadOrStartAnalysis() throws Exception {
-        var accepted = upload(match, coach, "USUARIO_CLUB");
+        var accepted = upload(match, coach, "ENTRENADOR");
         String path = base(match) + "/" + accepted.path("id").asLong();
         String analysis = "/api/v1/analisis/" + accepted.path("analysisId").asLong();
         for (String route : new String[]{base(match), path, path + "/analisis", analysis}) {
-            mvc.perform(auth(get(route), playerUser, "JUGADOR")).andExpect(status().isOk());
+            mvc.perform(auth(get(route), playerUser, "CONSULTA")).andExpect(status().isOk());
         }
-        mvc.perform(auth(get(analysis + "/resultados"), playerUser, "JUGADOR")).andExpect(status().isConflict());
-        mvc.perform(auth(get(analysis + "/heatmap"), playerUser, "JUGADOR")).andExpect(status().isConflict());
-        mvc.perform(auth(multipart(base(match)).file(file()), playerUser, "JUGADOR")).andExpect(status().isForbidden());
-        mvc.perform(auth(post(path + "/analisis"), playerUser, "JUGADOR")).andExpect(status().isForbidden());
-        mvc.perform(auth(post(path + "/youtube/reintentar"), playerUser, "JUGADOR")).andExpect(status().isForbidden());
-        mvc.perform(auth(get(base(other)), playerUser, "JUGADOR")).andExpect(status().isForbidden());
+        mvc.perform(auth(get(analysis + "/resultados"), playerUser, "CONSULTA")).andExpect(status().isConflict());
+        mvc.perform(auth(get(analysis + "/heatmap"), playerUser, "CONSULTA")).andExpect(status().isConflict());
+        mvc.perform(auth(multipart(base(match)).file(file()), playerUser, "CONSULTA")).andExpect(status().isForbidden());
+        mvc.perform(auth(post(path + "/analisis"), playerUser, "CONSULTA")).andExpect(status().isForbidden());
+        mvc.perform(auth(post(path + "/youtube/reintentar"), playerUser, "CONSULTA")).andExpect(status().isForbidden());
+        mvc.perform(auth(get(base(other)), playerUser, "CONSULTA")).andExpect(status().isForbidden());
     }
 
     @Test
     void consultaWithoutMatchRelationshipCannotAccessVideos() throws Exception {
-        mvc.perform(auth(get(base(match)), reader, "JUGADOR")).andExpect(status().isForbidden());
-        mvc.perform(auth(multipart(base(match)).file(file()), reader, "JUGADOR")).andExpect(status().isForbidden());
+        mvc.perform(auth(get(base(match)), reader, "CONSULTA")).andExpect(status().isForbidden());
+        mvc.perform(auth(multipart(base(match)).file(file()), reader, "CONSULTA")).andExpect(status().isForbidden());
         assertNoUpload();
     }
 
     @Test
     void adminAndOrganizerHaveGlobalAccessButCannotCrossVideoMatchRelationships() throws Exception {
-        var a = upload(match, admin, "ADMINISTRADOR_GENERAL");
-        var b = upload(other, reader, "USUARIO_SISTEMA");
-        mvc.perform(auth(get(base(other) + "/" + b.path("id").asLong()), admin, "ADMINISTRADOR_GENERAL")).andExpect(status().isOk());
-        mvc.perform(auth(get(base(other) + "/" + a.path("id").asLong()), admin, "ADMINISTRADOR_GENERAL")).andExpect(status().isNotFound());
-        mvc.perform(auth(get("/api/v1/analisis/999999"), admin, "ADMINISTRADOR_GENERAL")).andExpect(status().isNotFound());
-        mvc.perform(auth(get("/api/v1/analisis/-1"), admin, "ADMINISTRADOR_GENERAL")).andExpect(status().isBadRequest());
+        var a = upload(match, admin, "ADMIN");
+        var b = upload(other, reader, "ORGANIZADOR");
+        mvc.perform(auth(get(base(other) + "/" + b.path("id").asLong()), admin, "ADMIN")).andExpect(status().isOk());
+        mvc.perform(auth(get(base(other) + "/" + a.path("id").asLong()), admin, "ADMIN")).andExpect(status().isNotFound());
+        mvc.perform(auth(get("/api/v1/analisis/999999"), admin, "ADMIN")).andExpect(status().isNotFound());
+        mvc.perform(auth(get("/api/v1/analisis/-1"), admin, "ADMIN")).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -191,11 +191,11 @@ class VideoPermissionsIntegrationTest {
         for (String route : new String[]{"partidos", "participaciones-partido", "fichados"}) {
             mvc.perform(post("/api/v1/" + route).contentType("application/json").content("{}"))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(auth(post("/api/v1/" + route).contentType("application/json").content("{}"), outsider, "USUARIO_CLUB"))
+            mvc.perform(auth(post("/api/v1/" + route).contentType("application/json").content("{}"), outsider, "ENTRENADOR"))
                     .andExpect(status().isForbidden());
-            mvc.perform(auth(put("/api/v1/" + route + "/" + match.getId()).contentType("application/json").content("{}"), outsider, "USUARIO_CLUB"))
+            mvc.perform(auth(put("/api/v1/" + route + "/" + match.getId()).contentType("application/json").content("{}"), outsider, "ENTRENADOR"))
                     .andExpect(status().isForbidden());
-            mvc.perform(auth(delete("/api/v1/" + route + "/" + match.getId()), reader, "JUGADOR"))
+            mvc.perform(auth(delete("/api/v1/" + route + "/" + match.getId()), reader, "CONSULTA"))
                     .andExpect(status().isForbidden());
         }
         assertThat(matches.findById(match.getId()).orElseThrow().getClubLocal().getId()).isEqualTo(local.getId());

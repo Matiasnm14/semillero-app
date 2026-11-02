@@ -87,15 +87,15 @@ el contenedor no va a poder levantar. O paras el servicio de Windows (`postgresq
 ## Paso 1b · El usuario administrador de las pruebas
 
 Una sola vez por base. Con la API levantada, se crea el usuario por la API, que sigue siendo
-pública, y se le marca como `USUARIO_SISTEMA` por SQL (una fila en `usuarios_roles`): con ese rol
-opera todo el flujo de torneos de la colección.
+pública, y se le carga el rol `ADMIN` por SQL, porque el endpoint que asigna roles ya pide ser
+administrador:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/usuarios -H "Content-Type: application/json" -d '{"name":"postman-admin","nombres":"Postman","apellidos":"Admin","email":"postman-admin@example.com","password":"secreto123"}'
 ```
 
 ```bash
-docker exec semillero-app-db-1 psql -U semillero -d semillero -c "INSERT INTO usuarios_roles (users_id, roles_id) SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'postman-admin@example.com' AND r.codigo = 'USUARIO_SISTEMA' ON CONFLICT DO NOTHING;"
+docker exec semillero-app-db-1 psql -U semillero -d semillero -c "INSERT INTO usuarios_roles (users_id, roles_id) SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'postman-admin@example.com' AND r.codigo = 'ADMIN' ON CONFLICT DO NOTHING;"
 ```
 
 Si usás el PostgreSQL instalado en Windows en vez del contenedor, el `psql` está en
@@ -105,14 +105,12 @@ Ese email y esa contraseña son los valores por defecto de las variables `adminE
 `adminPassword`, así que la colección corre sin tocar nada más. **Es un usuario de prueba local**:
 no va a ningún entorno de verdad.
 
-Los roles están unificados con el resto de los módulos (las cuatro categorías del login común):
-`ADMINISTRADOR_GENERAL` (tabla `administrador`), `JUGADOR` (tabla `jugadores`), `USUARIO_CLUB`
-(tabla `usuarios_club`) y `USUARIO_SISTEMA` (una fila en `usuarios_roles`). Solo este último se
-guarda en la tabla `roles`, que siembra `RolesSeeder` y la migración `V014`. Para dar de alta a una
-cuenta operativa del torneo:
+Los cinco roles (`ADMIN`, `ORGANIZADOR`, `ENTRENADOR`, `MESA_CONTROL`, `CONSULTA`) los siembra la
+migración `V008` y también `RolesSeeder` al arrancar, así que la tabla `roles` ya viene cargada.
+Desde este administrador, el resto de las cuentas se arreglan por la API:
 
 ```bash
-PUT /api/v1/usuarios/{id}/roles   con   ["USUARIO_SISTEMA"]
+PUT /api/v1/usuarios/{id}/roles   con   ["ORGANIZADOR","ENTRENADOR"]
 ```
 
 ---

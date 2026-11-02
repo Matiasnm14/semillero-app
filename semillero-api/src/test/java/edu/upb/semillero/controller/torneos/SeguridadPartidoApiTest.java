@@ -30,14 +30,15 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * HU 16 aplicada al sprint 3, con los roles unificados del login común: un
- * {@code USUARIO_SISTEMA} llena la planilla, carga los eventos, cierra y reabre
- * el partido; sin token no se puede escribir y cualquiera con sesión lee. Con
- * token de verdad, como la web y la app.
+ * HU 16 aplicada al sprint 3: la mesa de control llena la planilla, carga los
+ * eventos y cierra, pero solo en el partido que tiene asignado (tarea S2-03); no
+ * reprograma ni reabre, que son del organizador. Con token de verdad, como la
+ * web y la app.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -58,48 +59,100 @@ class SeguridadPartidoApiTest {
     }
 
     @Test
-    void unUsuarioSistemaOperaElPartidoYSinTokenNoSePuede() throws Exception {
-        Usuario sistema = usuarioSistema();
-        Partido partido = armarPartido();
-        String token = token(sistema);
+    void laMesaDeControlSoloManejaElPartidoQueTieneAsignado() throws Exception {
+        Usuario mesa = usuarioCon(Roles.MESA_CONTROL);
+        Usuario otraMesa = usuarioCon(Roles.MESA_CONTROL);
+        Usuario consulta = usuarioCon(Roles.CONSULTA);
+        Partido partido = partidoConMesa(mesa);
+        String tokenMesa = token(mesa);
+        String tokenOtraMesa = token(otraMesa);
+        String tokenConsulta = token(consulta);
         String url = "/api/v1/torneos/partidos/" + partido.id();
 
-        // Sin token no se puede escribir la planilla.
-        mvc.perform(put(url + "/planilla").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(partido.planilla(sistema.getId()))))
-                .andExpect(status().isUnauthorized());
+        con(tokenOtraMesa, put(url + "/planilla"), partido.planilla(otraMesa.getId()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value(containsString("no está asignado")));
+        con(tokenConsulta, put(url + "/planilla"), partido.planilla(consulta.getId()))
+                .andExpect(status().isForbidden());
 
-        // El usuario del sistema llena la planilla, confirma, carga un gol y cierra.
-        con(token, put(url + "/planilla"), partido.planilla(sistema.getId()))
+        con(tokenMesa, put(url + "/planilla"), partido.planilla(mesa.getId()))
                 .andExpect(status().isOk());
-        mvc.perform(post(url + "/planilla/confirmar").param("usuarioId", String.valueOf(sistema.getId()))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        mvc.perform(post(url + "/planilla/confirmar").param("usuarioId", String.valueOf(mesa.getId()))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenMesa))
                 .andExpect(status().isOk());
-        con(token, post(url + "/eventos"), Map.of("tipo", "GOL", "minuto", 10,
+        con(tokenMesa, post(url + "/eventos"), Map.of("tipo", "GOL", "minuto", 10,
                         "jugadorId", partido.titularLocal(), "tipoGol", "JUGADA",
-                        "usuarioId", sistema.getId()))
+                        "usuarioId", mesa.getId()))
                 .andExpect(status().isCreated());
-        con(token, post(url + "/cerrar"), Map.of("usuarioId", sistema.getId()))
+        con(tokenOtraMesa, post(url + "/cerrar"), Map.of("usuarioId", otraMesa.getId()))
+                .andExpect(status().isForbidden());
+        con(tokenMesa, post(url + "/cerrar"), Map.of("usuarioId", mesa.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cerradoPorId").value(sistema.getId()));
-        // Reabrir y reprogramar también los puede un usuario del sistema.
-        con(token, post(url + "/reabrir"), Map.of("motivo", "Error", "usuarioId", sistema.getId()))
-                .andExpect(status().isOk());
+                .andExpect(jsonPath("$.cerradoPorId").value(mesa.getId()));
+
+        // Reabrir y reprogramar son del organizador.
+        con(tokenMesa, post(url + "/reabrir"), Map.of("motivo", "Error", "usuarioId", mesa.getId()))
+                .andExpect(status().isForbidden());
+        con(tokenMesa, post(url + "/reprogramaciones"), Map.of(
+                        "fechaInicio", LocalDateTime.now().plusDays(60).withNano(0).toString(),
+                        "canchaId", 1, "motivo", "Lluvia", "usuarioId", mesa.getId()))
+                .andExpect(status().isForbidden());
 
         // Cualquiera con sesión lee la planilla y la tabla.
-        mvc.perform(get(url + "/planilla").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        mvc.perform(get(url + "/planilla").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta))
                 .andExpect(status().isOk());
-        mvc.perform(get(partido.tabla()).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        mvc.perform(get(partido.tabla()).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta))
                 .andExpect(status().isOk());
     }
 
-    /** Arma el torneo y devuelve su primer partido. */
-    private Partido armarPartido() throws Exception {
+    /**
+     * Correcciones del PR #13 (punto 4): el actor de un cierre sale del token, no
+     * del cuerpo. Autenticada A (la mesa asignada) y enviando el id de B, el cierre
+     * se rechaza con 403 sin cerrar el partido ni auditar a nombre de B. Con A en
+     * ambos lugares, el cierre funciona y queda a nombre de A.
+     */
+    @Test
+    void rechazaCerrarCuandoElCuerpoAtribuyeElCierreAOtroUsuario() throws Exception {
+        Usuario mesa = usuarioCon(Roles.MESA_CONTROL);
+        Usuario otro = usuarioCon(Roles.MESA_CONTROL);
+        Partido partido = partidoConMesa(mesa);
+        String tokenMesa = token(mesa);
+        String url = "/api/v1/torneos/partidos/" + partido.id();
+
+        con(tokenMesa, put(url + "/planilla"), partido.planilla(mesa.getId()))
+                .andExpect(status().isOk());
+        mvc.perform(post(url + "/planilla/confirmar").param("usuarioId", String.valueOf(mesa.getId()))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenMesa))
+                .andExpect(status().isOk());
+        con(tokenMesa, post(url + "/eventos"), Map.of("tipo", "GOL", "minuto", 10,
+                        "jugadorId", partido.titularLocal(), "tipoGol", "JUGADA", "usuarioId", mesa.getId()))
+                .andExpect(status().isCreated());
+
+        // Autenticada A, pero el cuerpo atribuye el cierre a B: 403, sin cerrar.
+        con(tokenMesa, post(url + "/cerrar"), Map.of("usuarioId", otro.getId()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(url + "/resultado").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenMesa))
+                .andExpect(jsonPath("$.estado").value(org.hamcrest.Matchers.not("FINALIZADO")));
+
+        // Con A en ambos lugares el cierre funciona y queda a nombre de A.
+        con(tokenMesa, post(url + "/cerrar"), Map.of("usuarioId", mesa.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cerradoPorId").value(mesa.getId()));
+    }
+
+    /** Arma el torneo como organizador y le asigna la mesa al primer partido. */
+    private Partido partidoConMesa(Usuario mesa) throws Exception {
         TestSecurityContextHolder.setAuthentication(new UsernamePasswordAuthenticationToken(
-                "sistema", null, List.of(new SimpleGrantedAuthority("ROLE_" + Roles.USUARIO_SISTEMA))));
+                "organizador", null, List.of(new SimpleGrantedAuthority("ROLE_" + Roles.ORGANIZADOR))));
         EscenarioTorneo torneo = EscenarioTorneo.liga(mvc, json, 2, 2);
         JsonNode partido = torneo.generarLiga().get(0);
         long id = partido.get("id").asLong();
+        Map<String, Object> ajuste = new LinkedHashMap<>();
+        ajuste.put("fechaInicio", partido.get("fechaInicio").asText());
+        ajuste.put("mesaControlId", mesa.getId());
+        ajuste.put("usuarioId", torneo.usuarioId);
+        torneo.putJson(torneo.partido(id), ajuste).andExpect(status().isOk())
+                .andExpect(jsonPath("$.mesaControlId").value(mesa.getId()));
         TestSecurityContextHolder.clearContext();
         return new Partido(id, torneo.equipoDe(partido.get("clubLocalId").asLong()).jugadores(),
                 torneo.equipoDe(partido.get("clubVisitanteId").asLong()).jugadores(), torneo.tabla());
@@ -112,15 +165,15 @@ class SeguridadPartidoApiTest {
                 .content(json.writeValueAsString(body)));
     }
 
-    private Usuario usuarioSistema() {
+    private Usuario usuarioCon(String codigoRol) {
         Usuario usuario = new Usuario();
         usuario.setName("u" + System.nanoTime());
-        usuario.setNombres("Sistema");
-        usuario.setApellidos("Torneos");
-        usuario.setEmail("sistema" + System.nanoTime() + "@example.com");
+        usuario.setNombres("Mesa");
+        usuario.setApellidos("Control");
+        usuario.setEmail("mesa" + System.nanoTime() + "@example.com");
         usuario.setPasswordHash(passwordEncoder.encode(CLAVE));
         usuario = usuarios.saveAndFlush(usuario);
-        Rol rol = roles.findByCodigo(Roles.USUARIO_SISTEMA).orElseThrow();
+        Rol rol = roles.findByCodigo(codigoRol).orElseThrow();
         UsuarioRol asignacion = new UsuarioRol();
         asignacion.setUsuario(usuario);
         asignacion.setRol(rol);

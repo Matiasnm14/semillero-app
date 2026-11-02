@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "USUARIO_SISTEMA")
+@WithMockUser(roles = "CONSULTA")
 @Transactional
 class EstadisticasJugadorApiTest {
     private static final String STATS = "/api/v1/torneos/jugadores/72001/estadisticas";

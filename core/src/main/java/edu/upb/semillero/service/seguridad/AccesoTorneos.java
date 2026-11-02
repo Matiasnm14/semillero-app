@@ -51,7 +51,7 @@ public class AccesoTorneos {
      */
     public void requireClubPropio(Long clubId, String queIntento) {
         Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty() || mandaEnTodo(actual.get()) || !actual.get().tieneRol(Roles.USUARIO_CLUB)) {
+        if (actual.isEmpty() || mandaEnTodo(actual.get()) || !actual.get().tieneRol(Roles.ENTRENADOR)) {
             return;
         }
         UsuarioAutenticado usuario = actual.get();
@@ -70,7 +70,7 @@ public class AccesoTorneos {
     public void requirePartidoAsignado(Long partidoId, Long mesaControlId) {
         Optional<UsuarioAutenticado> actual = actual();
         if (actual.isEmpty() || mandaEnTodo(actual.get())
-                || !actual.get().tieneRol(Roles.USUARIO_SISTEMA)) {
+                || !actual.get().tieneRol(Roles.MESA_CONTROL)) {
             return;
         }
         UsuarioAutenticado usuario = actual.get();
@@ -97,8 +97,7 @@ public class AccesoTorneos {
             return pedido;
         }
         UsuarioAutenticado usuario = actual.get();
-        if (pedido == null || pedido.equals(usuario.usuarioId())
-                || usuario.tieneRol(Roles.ADMINISTRADOR_GENERAL)) {
+        if (pedido == null || pedido.equals(usuario.usuarioId()) || usuario.tieneRol(Roles.ADMIN)) {
             return pedido == null ? usuario.usuarioId() : pedido;
         }
         registro.rechazado("", queIntento, usuario.usuarioId(),
@@ -106,7 +105,34 @@ public class AccesoTorneos {
         throw new ForbiddenException("Solo podés ver tus propios datos");
     }
 
+    /**
+     * Quién ejecuta una acción que se audita o se atribuye: el cierre de un
+     * partido, una sanción, una apelación, una reprogramación, la planilla. Con
+     * token, siempre el dueño del token: si el cuerpo trae otro {@code usuarioId}
+     * se rechaza con 403, nunca se usa para sustituir al actor real (ni siquiera
+     * un administrador puede figurar como otro). Sin token —solo en las pruebas
+     * con usuario de mentira— se usa el {@code usuarioId} del cuerpo.
+     */
+    public Long exigirActor(Long pedido, String queIntento) {
+        Optional<UsuarioAutenticado> actual = actual();
+        if (actual.isEmpty()) {
+            if (pedido == null) {
+                throw new BusinessException(
+                        "Falta usuarioId: sin token no se sabe quién ejecuta la acción");
+            }
+            return pedido;
+        }
+        UsuarioAutenticado usuario = actual.get();
+        if (pedido == null || pedido.equals(usuario.usuarioId())) {
+            return usuario.usuarioId();
+        }
+        registro.rechazado("", queIntento, usuario.usuarioId(),
+                "El usuarioId del cuerpo (" + pedido + ") no coincide con el usuario autenticado");
+        throw new ForbiddenException(
+                "El usuarioId enviado no coincide con el usuario autenticado que ejecuta la acción");
+    }
+
     private boolean mandaEnTodo(UsuarioAutenticado usuario) {
-        return usuario.tieneRol(Roles.USUARIO_SISTEMA) || usuario.tieneRol(Roles.ADMINISTRADOR_GENERAL);
+        return usuario.tieneRol(Roles.ORGANIZADOR) || usuario.tieneRol(Roles.ADMIN);
     }
 }

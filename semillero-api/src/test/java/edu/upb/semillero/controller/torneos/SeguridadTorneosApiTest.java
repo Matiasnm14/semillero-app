@@ -1,9 +1,7 @@
 package edu.upb.semillero.controller.torneos;
 
-import edu.upb.semillero.repository.entity.Administrador;
 import edu.upb.semillero.repository.entity.Auditoria;
 import edu.upb.semillero.repository.entity.Club;
-import edu.upb.semillero.repository.entity.Jugador;
 import edu.upb.semillero.repository.entity.Rol;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.entity.UsuarioClub;
@@ -12,7 +10,6 @@ import edu.upb.semillero.repository.entity.UsuarioTrabaja;
 import edu.upb.semillero.repository.repos.AuditoriaRepository;
 import edu.upb.semillero.repository.repos.AdministradorRepository;
 import edu.upb.semillero.repository.repos.ClubRepository;
-import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.RolRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
@@ -42,10 +39,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * HU 16 - Control de acceso por roles, con los roles unificados del login común
- * (ADMINISTRADOR_GENERAL, JUGADOR, USUARIO_CLUB, USUARIO_SISTEMA): tareas S2-01
- * (JWT), S2-02 (permisos por endpoint), S2-03 (restricción por propiedad) y
- * S2-04 (registro de accesos rechazados).
+ * HU 16 - Control de acceso por roles: tareas S2-01 (JWT), S2-02 (permisos por
+ * endpoint), S2-03 (restricción por propiedad) y S2-04 (registro de accesos
+ * rechazados).
  *
  * <p>Sin {@code @WithMockUser} a propósito: acá el token se saca del login, que
  * es lo que hace la web y la app.
@@ -67,17 +63,16 @@ class SeguridadTorneosApiTest {
     @Autowired UsuarioTrabajaRepository usuariosTrabaja;
     @Autowired AuditoriaRepository auditoria;
     @Autowired AdministradorRepository administradores;
-    @Autowired JugadorRepository jugadores;
     @Autowired PasswordEncoder passwordEncoder;
 
-    /** Tarea S2-01: el login devuelve el token y los roles del login común. */
+    /** Tarea S2-01: el login devuelve el token y los roles de la HU 16. */
     @Test
     void elLoginDevuelveElTokenYLosRoles() throws Exception {
-        Usuario sistema = usuarioSistema();
+        Usuario organizador = usuarioCon(Roles.ORGANIZADOR);
 
-        String cuerpo = login(sistema).andExpect(status().isOk())
+        String cuerpo = login(organizador).andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.USUARIO_SISTEMA))
+                .andExpect(jsonPath("$.roles[0]").value(Roles.ORGANIZADOR))
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(json.readTree(cuerpo).get("token").asString().split("\\.")).hasSize(3);
@@ -96,10 +91,10 @@ class SeguridadTorneosApiTest {
         mvc.perform(get("/api/v1/paises")).andExpect(status().isOk());
     }
 
-    /** Tarea S2-02: una cuenta de solo lectura (jugador) lee el fixture pero no crea torneos. */
+    /** Tarea S2-02: el rol CONSULTA lee el fixture pero no crea torneos. */
     @Test
-    void elRolDeSoloLecturaLeePeroNoEscribe() throws Exception {
-        String token = token(usuarioJugador());
+    void elRolConsultaLeePeroNoEscribe() throws Exception {
+        String token = token(usuarioCon(Roles.CONSULTA));
 
         mvc.perform(get(TORNEOS).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk());
@@ -110,10 +105,10 @@ class SeguridadTorneosApiTest {
                         org.hamcrest.Matchers.containsString("no tiene permiso")));
     }
 
-    /** Tarea S2-02: el usuario de club maneja su lista de buena fe, no el torneo. */
+    /** Tarea S2-02: el entrenador maneja su lista de buena fe, no el torneo. */
     @Test
-    void elUsuarioClubEntraALaListaDeBuenaFePeroNoAlTorneo() throws Exception {
-        String token = token(entrenadorDe(club("Club del entrenador")));
+    void elEntrenadorEntraALaListaDeBuenaFePeroNoAlTorneo() throws Exception {
+        String token = token(usuarioCon(Roles.ENTRENADOR));
 
         mvc.perform(post(TORNEOS).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -143,21 +138,17 @@ class SeguridadTorneosApiTest {
     }
 
     /**
-     * Tarea S2-03: el usuario de un club no puede cargar la lista de buena fe del
-     * equipo de otro club.
+     * Tarea S2-03: el entrenador de un club no puede cargar la lista de buena fe
+     * del equipo de otro club.
      */
     @Test
-    void elUsuarioClubNoTocaLaListaDeOtroClub() throws Exception {
+    void elEntrenadorNoTocaLaListaDeOtroClub() throws Exception {
         Club suyo = club("Club del entrenador");
         Club ajeno = club("Club ajeno");
         Usuario entrenador = entrenadorDe(suyo);
         String token = token(entrenador);
 
-        long organizadorId = idDe(postJson("/api/v1/usuarios", Map.of("name", "org" + System.nanoTime(),
-                "nombres", "Org", "apellidos", "Org",
-                "email", "org" + System.nanoTime() + "@example.com", "password", CLAVE))
-                .andExpect(status().isCreated()));
-        long inscripcionAjena = inscripcionDe(ajeno, organizadorId);
+        long inscripcionAjena = inscripcionDe(ajeno);
 
         mvc.perform(post(TORNEOS + "/inscripciones/" + inscripcionAjena + "/lista-buena-fe")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -176,24 +167,24 @@ class SeguridadTorneosApiTest {
     /** Tarea S2-02: los roles los asigna el administrador, y solo él. */
     @Test
     void soloElAdministradorAsignaRoles() throws Exception {
-        Usuario admin = usuarioAdmin();
+        Usuario admin = usuarioCon(Roles.ADMIN);
         Usuario cualquiera = nuevoUsuario();
         String tokenAdmin = token(admin);
 
         mvc.perform(get("/api/v1/roles")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/roles").header(HttpHeaders.AUTHORIZATION,
-                        "Bearer " + token(usuarioSistema())))
+                        "Bearer " + token(usuarioCon(Roles.CONSULTA))))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/roles").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value(org.hamcrest.Matchers.hasItem(Roles.USUARIO_SISTEMA)));
+                .andExpect(jsonPath("$").value(org.hamcrest.Matchers.hasItem(Roles.MESA_CONTROL)));
 
         mvc.perform(put("/api/v1/usuarios/" + cualquiera.getId() + "/roles")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("[\"USUARIO_SISTEMA\"]"))
+                        .content("[\"MESA_CONTROL\"]"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0]").value(Roles.USUARIO_SISTEMA));
+                .andExpect(jsonPath("$[0]").value(Roles.MESA_CONTROL));
         mvc.perform(put("/api/v1/usuarios/" + cualquiera.getId() + "/roles")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,13 +211,13 @@ class SeguridadTorneosApiTest {
     @ValueSource(strings = {"administradores"})
     void lasAsignacionesDePrivilegiosRequierenAdministrador(String ruta) throws Exception {
         String url = "/api/v1/" + ruta;
-        String tokenSistema = token(usuarioSistema());
+        String tokenConsulta = token(usuarioCon(Roles.CONSULTA));
         for (var peticion : List.of(post(url), put(url + "/999999"), delete(url + "/999999"))) {
             mvc.perform(peticion.contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isUnauthorized());
         }
         for (var peticion : List.of(post(url), put(url + "/999999"), delete(url + "/999999"))) {
-            mvc.perform(peticion.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema)
+            mvc.perform(peticion.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta)
                             .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isForbidden());
         }
@@ -247,36 +238,35 @@ class SeguridadTorneosApiTest {
                 .andExpect(status().isCreated());
 
         login(usuario).andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.USUARIO_CLUB))
+                .andExpect(jsonPath("$.roles[0]").value(Roles.CONSULTA))
                 .andExpect(jsonPath("$.clubId").value(club.getId()));
     }
 
     @Test
     void noSePuedeCambiarLaClaveNiEliminarLaCuentaDeOtroUsuario() throws Exception {
-        Usuario admin = usuarioAdmin();
-        String tokenSistema = token(usuarioSistema());
+        Usuario admin = usuarioCon(Roles.ADMIN);
+        String tokenConsulta = token(usuarioCon(Roles.CONSULTA));
         String url = "/api/v1/usuarios/" + admin.getId();
         String hashAnterior = admin.getPasswordHash();
         String cambio = json.writeValueAsString(Map.of("password", "claveAjena123"));
 
         mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON).content(cambio))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(put(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema)
+        mvc.perform(put(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta)
                         .contentType(MediaType.APPLICATION_JSON).content(cambio))
                 .andExpect(status().isForbidden());
         mvc.perform(delete(url)).andExpect(status().isUnauthorized());
-        mvc.perform(delete(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema))
+        mvc.perform(delete(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenConsulta))
                 .andExpect(status().isForbidden());
 
         assertThat(usuarios.findById(admin.getId()).orElseThrow().getPasswordHash())
                 .isEqualTo(hashAnterior);
-        login(admin).andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.ADMINISTRADOR_GENERAL));
+        login(admin).andExpect(status().isOk()).andExpect(jsonPath("$.roles[0]").value(Roles.ADMIN));
     }
 
     @Test
     void elUsuarioPuedeCambiarSuPropiaClave() throws Exception {
-        Usuario usuario = usuarioSistema();
+        Usuario usuario = usuarioCon(Roles.CONSULTA);
         String token = token(usuario);
 
         mvc.perform(put("/api/v1/usuarios/" + usuario.getId())
@@ -296,7 +286,7 @@ class SeguridadTorneosApiTest {
     @Test
     void elAdministradorPuedeEditarYEliminarOtrasCuentas() throws Exception {
         Usuario usuario = nuevoUsuario();
-        String tokenAdmin = token(usuarioAdmin());
+        String tokenAdmin = token(usuarioCon(Roles.ADMIN));
         String url = "/api/v1/usuarios/" + usuario.getId();
         mvc.perform(put(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -315,7 +305,7 @@ class SeguridadTorneosApiTest {
         Usuario administrador = nuevoUsuario();
         Usuario entrenador = nuevoUsuario();
         Club club = club("Club asignado");
-        String tokenAdmin = token(usuarioAdmin());
+        String tokenAdmin = token(usuarioCon(Roles.ADMIN));
 
         mvc.perform(post("/api/v1/administradores")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
@@ -323,7 +313,7 @@ class SeguridadTorneosApiTest {
                         .content(json.writeValueAsString(Map.of("usuarioId", administrador.getId()))))
                 .andExpect(status().isCreated());
         login(administrador).andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.ADMINISTRADOR_GENERAL));
+                .andExpect(jsonPath("$.roles[0]").value(Roles.ADMIN));
 
         long usuarioClubId = idDe(mvc.perform(post("/api/v1/usuarios-club")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
@@ -337,11 +327,13 @@ class SeguridadTorneosApiTest {
                                 "clubId", club.getId(), "tipoUsuarioClub", "EN"))))
                 .andExpect(status().isCreated());
         login(entrenador).andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.USUARIO_CLUB))
+                .andExpect(jsonPath("$.roles[0]").value(Roles.ENTRENADOR))
                 .andExpect(jsonPath("$.clubId").value(club.getId()));
     }
 
-    private long inscripcionDe(Club club, long organizadorId) throws Exception {
+    private long inscripcionDe(Club club) throws Exception {
+        Usuario organizador = usuarioCon(Roles.ORGANIZADOR);
+        String tokenOrganizador = token(organizador);
         Map<String, Object> torneo = new LinkedHashMap<>();
         torneo.put("nombre", "Copa Seguridad");
         torneo.put("temporada", java.time.LocalDate.now().getYear());
@@ -351,11 +343,10 @@ class SeguridadTorneosApiTest {
         torneo.put("fechaInicio", java.time.LocalDate.now().plusDays(20).toString());
         torneo.put("fechaFin", java.time.LocalDate.now().plusDays(100).toString());
         torneo.put("fechaLimiteInscripcion", java.time.LocalDate.now().plusDays(10).toString());
-        torneo.put("usuarioId", organizadorId);
+        torneo.put("usuarioId", organizador.getId());
 
-        String tokenSistema = token(usuarioSistema());
         long torneoId = idDe(mvc.perform(post(TORNEOS)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(torneo)))
                 .andExpect(status().isCreated()));
@@ -367,26 +358,26 @@ class SeguridadTorneosApiTest {
         categoria.put("duracionTiempoMin", 35);
         categoria.put("jugadoresEnCancha", 11);
         long categoriaId = idDe(mvc.perform(post(TORNEOS + "/" + torneoId + "/categorias")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(categoria)))
                 .andExpect(status().isCreated()));
         mvc.perform(post(TORNEOS + "/" + torneoId + "/abrir-inscripciones")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador))
                 .andExpect(status().isOk());
 
         Map<String, Object> inscripcion = Map.of("torneoCategoriaId", categoriaId,
-                "clubId", club.getId(), "usuarioId", organizadorId);
+                "clubId", club.getId(), "usuarioId", organizador.getId());
         return idDe(mvc.perform(post(TORNEOS + "/inscripciones")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSistema)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(inscripcion)))
                 .andExpect(status().isCreated()));
     }
 
-    private Usuario usuarioSistema() {
+    private Usuario usuarioCon(String codigoRol) {
         Usuario usuario = nuevoUsuario();
-        Rol rol = roles.findByCodigo(Roles.USUARIO_SISTEMA).orElseThrow();
+        Rol rol = roles.findByCodigo(codigoRol).orElseThrow();
         UsuarioRol asignacion = new UsuarioRol();
         asignacion.setUsuario(usuario);
         asignacion.setRol(rol);
@@ -395,23 +386,7 @@ class SeguridadTorneosApiTest {
         return usuario;
     }
 
-    private Usuario usuarioAdmin() {
-        Usuario usuario = nuevoUsuario();
-        Administrador administrador = new Administrador();
-        administrador.setUsuario(usuario);
-        administradores.saveAndFlush(administrador);
-        return usuario;
-    }
-
-    private Usuario usuarioJugador() {
-        Usuario usuario = nuevoUsuario();
-        Jugador jugador = new Jugador();
-        jugador.setUsuario(usuario);
-        jugadores.saveAndFlush(jugador);
-        return usuario;
-    }
-
-    /** Usuario de club (entrenador): el rol USUARIO_CLUB sale de usuarios_club y usuario_trabaja. */
+    /** Entrenador de verdad: el rol sale de usuario_trabaja, como el punto 21 del acuerdo. */
     private Usuario entrenadorDe(Club club) {
         Usuario usuario = nuevoUsuario();
         UsuarioClub usuarioClub = new UsuarioClub();

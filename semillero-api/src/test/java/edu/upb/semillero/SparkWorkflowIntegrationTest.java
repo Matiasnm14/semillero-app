@@ -117,7 +117,7 @@ class SparkWorkflowIntegrationTest {
         long matchId = matches.saveAndFlush(match).getId();
         byte[] video;
         try (var input = getClass().getResourceAsStream("/video/valid.mp4")) { video = input.readAllBytes(); }
-        mvc.perform(multipart("/api/v1/partidos/" + matchId + "/videos").with(user("analista").roles("ADMINISTRADOR_GENERAL"))
+        mvc.perform(multipart("/api/v1/partidos/" + matchId + "/videos").with(user("analista").roles("ADMIN"))
                 .file(new MockMultipartFile("file", "partido.mp4", "video/mp4", video)))
                 .andExpect(status().isAccepted());
         var job = jobs.findAll().getFirst();
@@ -131,15 +131,15 @@ class SparkWorkflowIntegrationTest {
         assertThat(job.getRespuestaJson()).isEqualTo(RESULT.formatted(remoteId.get()));
         assertThat(job.isRemoteCleanupPending()).isTrue();
         assertThat(deletedAfterCommit.get()).isFalse();
-        mvc.perform(get("/api/v1/analisis/" + id).with(user("analista").roles("ADMINISTRADOR_GENERAL"))).andExpect(jsonPath("$.heatmapDisponible").value(true))
+        mvc.perform(get("/api/v1/analisis/" + id).with(user("analista").roles("ADMIN"))).andExpect(jsonPath("$.heatmapDisponible").value(true))
                 .andExpect(jsonPath("$.respuestaRecibida").value(true)).andExpect(jsonPath("$.resultadosDisponibles").value(false));
         mvc.perform(get("/api/v1/analisis/" + id + "/resultados")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/analisis/" + id + "/heatmap")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/v1/analisis/" + id + "/resultados").with(user("analista").roles("ADMINISTRADOR_GENERAL")))
+        mvc.perform(get("/api/v1/analisis/" + id + "/resultados").with(user("analista").roles("ADMIN")))
                 .andExpect(status().isOk()).andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.players[0].jerseyStatus").value("consensus_unverified"))
                 .andExpect(jsonPath("$.players[0].movement.distanceMeters").isEmpty());
-        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMINISTRADOR_GENERAL")))
+        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN")))
                 .andExpect(status().isOk()).andExpect(content().contentType("image/png"))
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"analysis-" + id + "-heatmap.png\""))
                 .andExpect(content().bytes(HttpAnalysisGatewayTest.png()));
@@ -150,8 +150,8 @@ class SparkWorkflowIntegrationTest {
         assertThat(deletedAfterCommit.get()).isTrue();
         assertThat(jobs.findById(id).orElseThrow().isRemoteCleanupPending()).isFalse();
         // Serving a saved result never calls back to a Spark that has already deleted it.
-        mvc.perform(get("/api/v1/analisis/" + id + "/resultados").with(user("analista").roles("ADMINISTRADOR_GENERAL"))).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMINISTRADOR_GENERAL"))).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/analisis/999999/heatmap").with(user("analista").roles("ADMINISTRADOR_GENERAL"))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/analisis/" + id + "/resultados").with(user("analista").roles("ADMIN"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/analisis/999999/heatmap").with(user("analista").roles("ADMIN"))).andExpect(status().isNotFound());
     }
 }

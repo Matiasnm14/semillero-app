@@ -64,14 +64,14 @@ public class AccesoVideos {
         if (!authenticated(auth)) return false;
         if (auth.getPrincipal() instanceof UsuarioAutenticado user
                 && (user.usuarioId() == null || !comun.usuarioExiste(user.usuarioId()))) return false;
-        if (role(auth, Roles.ADMINISTRADOR_GENERAL) || role(auth, Roles.USUARIO_SISTEMA)) return true;
+        if (role(auth, Roles.ADMIN) || role(auth, Roles.ORGANIZADOR)) return true;
         if (!(auth.getPrincipal() instanceof UsuarioAutenticado user) || user.usuarioId() == null
                 || !comun.usuarioExiste(user.usuarioId())) return false;
-        if (role(auth, Roles.USUARIO_CLUB)) {
+        if (role(auth, Roles.ENTRENADOR)) {
             var clubs = comun.clubesDondeTrabaja(user.usuarioId());
             if (clubs.contains(partido.getClubLocal().getId()) || clubs.contains(partido.getClubVisitante().getId())) return true;
         }
-        if (role(auth, Roles.USUARIO_SISTEMA) && partido.getMesaControl() != null
+        if (role(auth, Roles.MESA_CONTROL) && partido.getMesaControl() != null
                 && user.usuarioId().equals(partido.getMesaControl().getId())) return true;
         return !write && participaciones.existsByPartidoIdAndJugadorUsuarioId(partido.getId(), user.usuarioId());
     }
