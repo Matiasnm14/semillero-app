@@ -1,5 +1,7 @@
 # HU01 — Carga de videos de partidos
 
+> Documento histórico del flujo anterior. La carga vigente responde **202** con video y análisis pendiente persistidos, sin esperar inferencia. Consultar [CARGAS_PERSISTENTES_Y_PERMISOS.md](CARGAS_PERSISTENTES_Y_PERMISOS.md) y el [contrato Spark](HU02_HU03_ANALISIS.md). Las referencias a 201, carga pública y espera del Future en este documento describen la implementación anterior.
+
 La API recibe un MP4, valida el partido y el contenido y espera el JSON final del analizador Python. Solo acepta la carga cuando conserva el original y guarda sus metadatos junto con un análisis `COMPLETADO` y su respuesta. La publicación opcional en YouTube empieza después del commit, mediante una cola persistida en PostgreSQL. Ver [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md).
 
 Corresponde a SB-001 (validación), SB-002 (registro y metadatos) y SB-003 (pruebas). La integración con YouTube conserva el trabajo del piloto: OAuth del propietario, canal verificado y subida reanudable con visibilidad No listado.

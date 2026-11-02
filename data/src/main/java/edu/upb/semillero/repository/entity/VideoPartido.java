@@ -34,6 +34,8 @@ public class VideoPartido extends BaseEntity {
     private String sha256;
     @Column(name = "fecha_carga", nullable = false)
     private Instant fechaCarga;
+    @Column(name = "usuario_carga_id")
+    private Long usuarioCargaId;
     @Column(name = "titulo_youtube", nullable = false, length = 100)
     private String tituloYoutube;
     @Enumerated(EnumType.STRING)

@@ -1,7 +1,6 @@
 package edu.upb.semillero.service;
 
 import edu.upb.semillero.config.VideoProperties;
-import edu.upb.semillero.config.AnalysisProperties;
 import edu.upb.semillero.repository.dto.response.VideoPartidoResponseDto;
 import edu.upb.semillero.repository.entity.AnalysisJob;
 import edu.upb.semillero.repository.entity.VideoPartido;
@@ -11,27 +10,17 @@ import edu.upb.semillero.repository.repos.AnalysisJobRepository;
 import edu.upb.semillero.repository.repos.PartidoRepository;
 import edu.upb.semillero.repository.repos.VideoPartidoRepository;
 import edu.upb.semillero.service.exception.BusinessException;
-import edu.upb.semillero.service.exception.AnalysisUploadException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
 import edu.upb.semillero.service.exception.VideoTooLargeException;
 import edu.upb.semillero.service.video.LocalVideoStorage;
 import edu.upb.semillero.service.video.VideoInspector;
-import edu.upb.semillero.service.analysis.AnalysisConcurrencyLimiter;
-import edu.upb.semillero.service.analysis.AnalysisGateway;
-import edu.upb.semillero.service.analysis.AnalysisGatewayException;
-import edu.upb.semillero.service.analysis.AnalysisResultValidator;
-import edu.upb.semillero.service.analysis.HttpAnalysisGateway;
 import java.io.InputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,17 +38,13 @@ public class VideoPartidoService {
     private final VideoProperties properties;
     private final TransactionTemplate transaction;
     private final AnalysisJobRepository analyses;
-    private final AnalysisGateway gateway;
-    private final AnalysisResultValidator validator;
-    private final AnalysisProperties analysisProperties;
-    private final AnalysisConcurrencyLimiter capacity;
     private final Clock clock;
+    private final edu.upb.semillero.service.seguridad.AccesoVideos acceso;
 
     public VideoPartidoService(VideoPartidoRepository videos, PartidoRepository partidos,
             LocalVideoStorage storage, VideoInspector inspector, VideoProperties properties,
-            PlatformTransactionManager transactionManager, AnalysisJobRepository analyses, AnalysisGateway gateway,
-            AnalysisResultValidator validator, AnalysisProperties analysisProperties, AnalysisConcurrencyLimiter capacity,
-            @Qualifier("analysisClock") Clock clock) {
+            PlatformTransactionManager transactionManager, AnalysisJobRepository analyses,
+            @Qualifier("analysisClock") Clock clock, edu.upb.semillero.service.seguridad.AccesoVideos acceso) {
         this.videos = videos;
         this.partidos = partidos;
         this.storage = storage;
@@ -67,86 +52,53 @@ public class VideoPartidoService {
         this.properties = properties;
         this.transaction = new TransactionTemplate(transactionManager);
         this.analyses = analyses;
-        this.gateway = gateway;
-        this.validator = validator;
-        this.analysisProperties = analysisProperties;
-        this.capacity = capacity;
         this.clock = clock;
+        this.acceso = acceso;
     }
 
+    /** Accepts a validated local original and its durable queue entry; never waits for Spark. */
     public VideoPartidoResponseDto create(Long partidoId, String filename, long declaredSize, InputStream input) {
-        requirePartido(partidoId);
-        if (!analysisProperties.isEnabled() || !analysisProperties.isEndpointValid()
-                || !analysisProperties.isEvaluationPathValid()) {
-            throw new StorageUnavailableException("El servicio de análisis no está habilitado o configurado");
-        }
+        var partido = requirePartido(partidoId);
+        acceso.requireWrite(partido);
         String name = normalizeName(filename);
         if (declaredSize == 0) throw new BusinessException("El archivo de video está vacío");
         if (declaredSize > properties.getMaxBytes()) throw new VideoTooLargeException();
-        var permit = capacity.tryAcquire();
-        if (permit == null) throw new StorageUnavailableException("No hay capacidad de análisis disponible; intenta más tarde");
-        try (permit) {
-            Instant requested = now();
-            var staged = storage.stage(input);
-            try {
-                var metadata = inspector.inspect(staged.path());
-                Instant started = now();
-                String payload = evaluate(staged);
-                Instant finished = now();
-                storage.commit(staged);
-                // Copying, decoding and inference run without a SQL transaction. Both records become
-                // visible together, so the YouTube worker cannot publish an unaccepted upload.
-                return transaction.execute(status -> {
-                    var partido = requirePartido(partidoId);
-                    VideoPartido video = new VideoPartido();
-                    video.setPartido(partido);
-                    video.setStorageId(staged.storageId());
-                    video.setNombreOriginal(name);
-                    video.setFormato(metadata.format());
-                    video.setTamanoBytes(staged.size());
-                    video.setDuracionSegundos(metadata.durationSeconds());
-                    video.setSha256(staged.sha256());
-                    video.setFechaCarga(finished);
-                    video.setTituloYoutube(partido.getFechaInicio().toLocalDate().toString());
-                    video.setEstadoYoutube(properties.getYoutube().isEnabled()
-                            ? EstadoYoutube.PENDIENTE : EstadoYoutube.DESHABILITADO);
-                    if (properties.getYoutube().isEnabled()) video.setProximoIntento(finished);
-                    video = videos.saveAndFlush(video);
-                    var analysis = new AnalysisJob();
-                    analysis.setVideo(video);
-                    analysis.setEstado(EstadoAnalisis.COMPLETADO);
-                    analysis.setFechaSolicitud(requested);
-                    analysis.setFechaInicio(started);
-                    analysis.setFechaFin(finished);
-                    analysis.setFechaActualizacion(finished);
-                    analysis.setEnviado(true);
-                    analysis.setRespuestaJson(payload);
-                    analysis.setResultadosDisponibles(false);
-                    analyses.saveAndFlush(analysis);
-                    return toResponse(video);
-                });
-            } catch (RuntimeException e) {
-                // Includes failures raised by the transaction manager at commit, after saveAndFlush.
-                storage.discard(staged.storageId());
-                throw e;
-            }
-        }
-    }
-
-    private String evaluate(LocalVideoStorage.Staged staged) {
-        CompletableFuture<String> future = null;
+        Long uploaderId = acceso.currentUserId();
+        var staged = storage.stage(input);
         try {
-            future = gateway.evaluate(new AnalysisGateway.Submission(staged.storageId(), staged.path()));
-            if (future == null) throw new AnalysisGatewayException(AnalysisGatewayException.Reason.INVALID_RESPONSE);
-            return validator.validate(future.get(analysisProperties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AnalysisUploadException(AnalysisGatewayException.Reason.INTERRUPTED);
-        } catch (ExecutionException | TimeoutException | RuntimeException e) {
-            throw new AnalysisUploadException(HttpAnalysisGateway.reason(e));
-        } finally {
-            // Cancel the exchange before compensating the file; cancellation cannot stop Python's inference.
-            if (future != null && !future.isDone()) future.cancel(true);
+            var metadata = inspector.inspect(staged.path());
+            storage.commit(staged);
+            return transaction.execute(status -> {
+                var currentMatch = requirePartido(partidoId);
+                acceso.requireWrite(currentMatch);
+                Instant accepted = now();
+                var video = new VideoPartido();
+                video.setPartido(currentMatch);
+                video.setUsuarioCargaId(uploaderId);
+                video.setStorageId(staged.storageId());
+                video.setNombreOriginal(name);
+                video.setFormato(metadata.format());
+                video.setTamanoBytes(staged.size());
+                video.setDuracionSegundos(metadata.durationSeconds());
+                video.setSha256(staged.sha256());
+                video.setFechaCarga(accepted);
+                video.setTituloYoutube(currentMatch.getFechaInicio().toLocalDate().toString());
+                video.setEstadoYoutube(properties.getYoutube().isEnabled()
+                        ? EstadoYoutube.ESPERANDO_ANALISIS : EstadoYoutube.DESHABILITADO);
+                video = videos.saveAndFlush(video);
+                var analysis = new AnalysisJob();
+                analysis.setVideo(video);
+                analysis.setEstado(EstadoAnalisis.PENDIENTE);
+                analysis.setFechaSolicitud(accepted);
+                analysis.setFechaActualizacion(accepted);
+                analysis.setProximaEjecucion(accepted);
+                analyses.saveAndFlush(analysis);
+                return toResponse(video);
+            });
+        } catch (RuntimeException e) {
+            // Includes commit failures: no accepted response is returned before both records commit.
+            storage.discard(staged.storageId());
+            throw e;
         }
     }
 
@@ -156,19 +108,19 @@ public class VideoPartidoService {
 
     @Transactional(readOnly = true)
     public Page<VideoPartidoResponseDto> findAll(Long partidoId, Pageable pageable) {
-        requirePartido(partidoId);
+        acceso.requireRead(requirePartido(partidoId));
         return videos.findByPartidoId(partidoId, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public VideoPartidoResponseDto findById(Long partidoId, Long id) {
-        requirePartido(partidoId);
+        acceso.requireRead(requirePartido(partidoId));
         return toResponse(require(partidoId, id));
     }
 
     @Transactional
     public VideoPartidoResponseDto retryYoutube(Long partidoId, Long id) {
-        requirePartido(partidoId);
+        acceso.requireWrite(requirePartido(partidoId));
         var video = videos.findLockedById(id).filter(v -> v.getPartido().getId().equals(partidoId))
                 .orElseThrow(() -> new NotFoundException("Video no encontrado para el partido indicado"));
         if (!properties.getYoutube().isEnabled()) {
@@ -183,6 +135,10 @@ public class VideoPartidoService {
         }
         if (!storage.exists(video.getStorageId())) {
             throw new StorageUnavailableException("El archivo original no está disponible para reintentar");
+        }
+        if (analyses.findFirstByVideoIdOrderByIdDesc(id)
+                .filter(job -> job.getEstado() == EstadoAnalisis.COMPLETADO).isEmpty()) {
+            throw new ConflictException("La publicación en YouTube requiere un análisis completado");
         }
         video.setEstadoYoutube(EstadoYoutube.PENDIENTE);
         video.setErrorYoutube(null);
@@ -213,9 +169,11 @@ public class VideoPartidoService {
 
     private VideoPartidoResponseDto toResponse(VideoPartido video) {
         String youtubeUrl = video.getYoutubeId() == null ? null : "https://www.youtube.com/watch?v=" + video.getYoutubeId();
+        var analysis = analyses.findFirstByVideoIdOrderByIdDesc(video.getId()).orElse(null);
         return new VideoPartidoResponseDto(video.getId(), video.getPartido().getId(), video.getNombreOriginal(),
                 video.getFormato(), video.getTamanoBytes(), video.getDuracionSegundos(), video.getSha256(),
                 video.getFechaCarga(), storage.exists(video.getStorageId()), video.getTituloYoutube(),
-                video.getEstadoYoutube(), video.getYoutubeId(), youtubeUrl, video.getErrorYoutube());
+                video.getEstadoYoutube(), video.getYoutubeId(), youtubeUrl, video.getErrorYoutube(),
+                analysis == null ? null : analysis.getId(), analysis == null ? null : analysis.getEstado(), video.getUsuarioCargaId());
     }
 }
