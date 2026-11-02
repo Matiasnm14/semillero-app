@@ -138,6 +138,31 @@ class ListaBuenaFeApiTest {
     }
 
     @Test
+    void rechazaAlJugadorSinLosDocumentosVigentes() throws Exception {
+        long sinDocs = jugadorFichadoSinDocumentos(clubId, "2013-06-01");
+
+        postJson(lista(), jugador(sinDocs, 11))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("documentos vigentes")));
+    }
+
+    @Test
+    void rechazaAlJugadorSinAptoMedico() throws Exception {
+        long sinApto = jugadorFichadoSinDocumentos(clubId, "2013-06-01");
+        String vence = LocalDate.now().plusYears(1).toString();
+        create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
+                "tipo", "CI", "estado", "VIGENTE", "fechaVencimiento", vence));
+        create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
+                "tipo", "CERTIFICADO_NACIMIENTO", "estado", "VIGENTE", "fechaVencimiento", vence));
+
+        postJson(lista(), jugador(sinApto, 12))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("apto médico vigente")));
+    }
+
+    @Test
     void confirmaLaListaSoloConElMinimoYDespuesNoLaDejaModificar() throws Exception {
         String confirmar = lista() + "/confirmar";
         postJson(lista(), jugador(jugadorFichado(clubId, "2013-06-01"), 1))
@@ -225,13 +250,36 @@ class ListaBuenaFeApiTest {
         return jugadorId;
     }
 
+    /** Jugador fichado pero sin documentos cargados, para probar la validación de la HU 5. */
+    private long jugadorFichadoSinDocumentos(long club, String fechaNacimiento) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("piernaHabil", "D");
+        if (fechaNacimiento != null) {
+            body.put("fechaNacimiento", fechaNacimiento);
+        }
+        long jugadorId = create("/api/v1/jugadores", body);
+        fichaje(jugadorId, club);
+        return jugadorId;
+    }
+
     private long jugador(String fechaNacimiento) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("piernaHabil", "D");
         if (fechaNacimiento != null) {
             body.put("fechaNacimiento", fechaNacimiento);
         }
-        return create("/api/v1/jugadores", body);
+        long jugadorId = create("/api/v1/jugadores", body);
+        documentosVigentes(jugadorId);
+        return jugadorId;
+    }
+
+    /** Documentos vigentes (CI, certificado de nacimiento, apto médico) para habilitar al jugador. */
+    private void documentosVigentes(long jugadorId) throws Exception {
+        String vence = LocalDate.now().plusYears(1).toString();
+        for (String tipo : java.util.List.of("CI", "CERTIFICADO_NACIMIENTO", "APTO_MEDICO")) {
+            create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
+                    "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence));
+        }
     }
 
     /** Fichaje abierto: empezó antes de la fecha de corte y no tiene fecha de fin. */

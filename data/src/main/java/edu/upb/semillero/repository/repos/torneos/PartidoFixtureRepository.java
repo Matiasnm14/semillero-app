@@ -1,6 +1,7 @@
 package edu.upb.semillero.repository.repos.torneos;
 
 import edu.upb.semillero.repository.entity.Partido;
+import edu.upb.semillero.repository.enums.EstadoPartido;
 import edu.upb.semillero.repository.enums.FaseTorneo;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,4 +44,12 @@ public interface PartidoFixtureRepository extends Repository<Partido, Long> {
     List<Partido> findByFechaInicioBetween(LocalDateTime desde, LocalDateTime hasta);
 
     long countByTorneoCategoriaId(Long torneoCategoriaId);
+
+    /**
+     * Punto 13 del acuerdo y tarea S4-09: los partidos cerrados desde una fecha,
+     * para que el microservicio de video los lea por {@code fecha_cierre} si no
+     * le llegó el aviso.
+     */
+    List<Partido> findByEstadoAndFechaCierreAfterOrderByFechaCierreAsc(EstadoPartido estado,
+            LocalDateTime desde);
 }

@@ -16,6 +16,7 @@ import edu.upb.semillero.repository.repos.torneos.ReglamentoDesempateRepository;
 import edu.upb.semillero.repository.repos.torneos.ReglamentoRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
@@ -48,16 +49,18 @@ public class ReglamentoService {
     private final TorneoRepository torneos;
     private final AuditoriaRepository auditoria;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public ReglamentoService(ReglamentoRepository repository, ReglamentoDesempateRepository desempates,
             CriterioDesempateRepository criterios, TorneoRepository torneos,
-            AuditoriaRepository auditoria, EntityRelations relations) {
+            AuditoriaRepository auditoria, EntityRelations relations, AccesoTorneos acceso) {
         this.repository = repository;
         this.desempates = desempates;
         this.criterios = criterios;
         this.torneos = torneos;
         this.auditoria = auditoria;
         this.relations = relations;
+        this.acceso = acceso;
     }
 
     public ReglamentoResponseDto findByTorneo(Long torneoId) {
@@ -67,6 +70,8 @@ public class ReglamentoService {
     @Transactional
     public ReglamentoResponseDto create(Long torneoId, ReglamentoRequestDto request) {
         Torneo torneo = requireTorneo(torneoId);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/" + torneoId + "/reglamento");
         repository.findByTorneoId(torneoId).ifPresent(existing -> {
             throw new ConflictException("El torneo " + torneoId + " ya tiene un reglamento");
         });
@@ -76,19 +81,21 @@ public class ReglamentoService {
         validate(entity);
         Reglamento creado = repository.saveAndFlush(entity);
         aplicarDesempates(creado, request.desempates());
-        registrar("CREAR", creado.getId(), null, snapshot(creado), request.usuarioId());
+        registrar("CREAR", creado.getId(), null, snapshot(creado), actor);
         return toResponse(creado);
     }
 
     @Transactional
     public ReglamentoResponseDto update(Long torneoId, ReglamentoRequestDto request) {
         Reglamento entity = require(torneoId);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/" + torneoId + "/reglamento");
         String anterior = snapshot(entity);
         apply(entity, request, entity.getTorneo());
         validate(entity);
         Reglamento guardado = repository.saveAndFlush(entity);
         aplicarDesempates(guardado, request.desempates());
-        registrar("MODIFICAR", guardado.getId(), anterior, snapshot(guardado), request.usuarioId());
+        registrar("MODIFICAR", guardado.getId(), anterior, snapshot(guardado), actor);
         return toResponse(guardado);
     }
 

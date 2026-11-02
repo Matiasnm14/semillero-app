@@ -29,10 +29,10 @@ import edu.upb.semillero.repository.repos.torneos.ReglamentoRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoCategoriaRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -94,11 +94,12 @@ public class FixtureService {
     private final CanchaRepository canchas;
     private final AuditoriaRepository auditoria;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public FixtureService(PartidoFixtureRepository partidos, TorneoRepository torneos,
             TorneoCategoriaRepository categorias, InscripcionEquipoRepository inscripciones,
             ReglamentoRepository reglamentos, CanchaRepository canchas,
-            AuditoriaRepository auditoria, EntityRelations relations) {
+            AuditoriaRepository auditoria, EntityRelations relations, AccesoTorneos acceso) {
         this.partidos = partidos;
         this.torneos = torneos;
         this.categorias = categorias;
@@ -107,6 +108,32 @@ public class FixtureService {
         this.canchas = canchas;
         this.auditoria = auditoria;
         this.relations = relations;
+        this.acceso = acceso;
+    }
+
+    /** HU 15: un partido de torneo por su ID, con la cancha y su superficie. */
+    public PartidoFixtureResponseDto findPartido(Long partidoId) {
+        Partido partido = partidos.findById(partidoId)
+                .filter(p -> p.getTorneoCategoria() != null)
+                .orElseThrow(() -> new NotFoundException("Partido de torneo con id " + partidoId
+                        + " no existe"));
+        return toResponse(partido);
+    }
+
+    /**
+     * HU 14: los partidos que vienen de una categoría, PROGRAMADO o EN_CURSO,
+     * del más cercano al más lejano. Con {@code clubId}, solo los de ese equipo.
+     */
+    public List<PartidoFixtureResponseDto> proximos(Long categoriaId, Long clubId, LocalDateTime desde) {
+        return partidos.findByTorneoCategoriaIdOrderByJornadaAscFechaInicioAsc(categoriaId).stream()
+                .filter(p -> p.getEstado() == EstadoPartido.PROGRAMADO
+                        || p.getEstado() == EstadoPartido.EN_CURSO)
+                .filter(p -> !ChoquesDeAgenda.finDe(p).isBefore(desde))
+                .filter(p -> clubId == null || Objects.equals(p.getClubLocal().getId(), clubId)
+                        || Objects.equals(p.getClubVisitante().getId(), clubId))
+                .sorted(Comparator.comparing(Partido::getFechaInicio))
+                .map(this::toResponse)
+                .toList();
     }
 
     public List<PartidoFixtureResponseDto> findByCategoria(Long torneoId, Long categoriaId) {
@@ -142,7 +169,8 @@ public class FixtureService {
             generados.addAll(rotacion(categoria, null, equipos, FaseTorneo.LIGA, idaVuelta));
         }
         agendarYGuardar(generados, agenda, request);
-        registrar("GENERAR_FIXTURE", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("GENERAR_FIXTURE", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/liga"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -177,7 +205,8 @@ public class FixtureService {
         }
         Agenda agenda = agenda(categoria, request);
         agendarYGuardar(generados, agenda, request);
-        registrar("GENERAR_LLAVES", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("GENERAR_LLAVES", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/eliminacion"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -220,7 +249,8 @@ public class FixtureService {
         Agenda agenda = agenda(categoria, request);
         agendarYGuardar(generados, agenda, request);
         enlazarConLaRondaAnterior(ronda, generados);
-        registrar("AVANZAR_RONDA", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("AVANZAR_RONDA", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/avanzar"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -238,7 +268,9 @@ public class FixtureService {
         }
         actuales.forEach(partidos::delete);
         partidos.flush();
-        registrar("BORRAR_FIXTURE", categoria.getId(), actuales.size(), usuarioId);
+        registrar("BORRAR_FIXTURE", categoria.getId(), actuales.size(),
+                acceso.exigirActor(usuarioId, "/api/v1/torneos/" + torneoId + "/categorias/"
+                        + categoriaId + "/fixture"));
     }
 
     /**
@@ -269,7 +301,8 @@ public class FixtureService {
         validarSinChoques(partido, ocupadosEseDia(partido.getFechaInicio().toLocalDate()),
                 descansoMinimo(categoria));
         Partido guardado = partidos.saveAndFlush(partido);
-        registrar("CARGAR_PARTIDO", categoria.getId(), 1, request.usuarioId());
+        registrar("CARGAR_PARTIDO", categoria.getId(), 1,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/manual"));
         return toResponse(guardado);
     }
 
@@ -301,7 +334,8 @@ public class FixtureService {
         validarSinChoques(partido, ocupadosEseDia(partido.getFechaInicio().toLocalDate()),
                 descansoMinimo(partido.getTorneoCategoria()));
         Partido guardado = partidos.saveAndFlush(partido);
-        registrar("AJUSTAR_PARTIDO", partido.getTorneoCategoria().getId(), 1, request.usuarioId());
+        registrar("AJUSTAR_PARTIDO", partido.getTorneoCategoria().getId(), 1,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/partidos/" + partidoId));
         return toResponse(guardado);
     }
 
@@ -331,7 +365,8 @@ public class FixtureService {
         }
         torneo.setEstado(EstadoTorneo.EN_CURSO);
         torneos.saveAndFlush(torneo);
-        registrar("PUBLICAR_FIXTURE", torneoId, (int) total, usuarioId);
+        registrar("PUBLICAR_FIXTURE", torneoId, (int) total,
+                acceso.exigirActor(usuarioId, "/api/v1/torneos/" + torneoId + "/fixture/publicar"));
         return new FixturePublicadoResponseDto(torneoId, torneo.getEstado(), total,
                 delTorneo.size());
     }
@@ -629,7 +664,7 @@ public class FixtureService {
                 partido.setCancha(cancha);
                 partido.setFechaInicio(inicio);
                 partido.setFechaFin(fin);
-                if (sinChoques(partido, ocupados, agenda.descansoMin())) {
+                if (ChoquesDeAgenda.sinChoques(partido, ocupados, agenda.descansoMin())) {
                     return;
                 }
             }
@@ -648,55 +683,10 @@ public class FixtureService {
     }
 
     private void validarSinChoques(Partido partido, List<Partido> ocupados, int descansoMin) {
-        if (!sinChoques(partido, ocupados, descansoMin)) {
+        if (!ChoquesDeAgenda.sinChoques(partido, ocupados, descansoMin)) {
             throw new ConflictException("El partido choca con otro ya programado: revisá la cancha,"
                     + " el horario y el descanso mínimo entre partidos del mismo equipo");
         }
-    }
-
-    private boolean sinChoques(Partido partido, List<Partido> ocupados, int descansoMin) {
-        for (Partido otro : ocupados) {
-            if (partido.getId() != null && Objects.equals(otro.getId(), partido.getId())) {
-                continue;
-            }
-            if (mismaCancha(partido, otro) && seCruzan(partido, otro)) {
-                return false;
-            }
-            if (compartenEquipo(partido, otro)
-                    && (seCruzan(partido, otro) || sinDescanso(partido, otro, descansoMin))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean mismaCancha(Partido uno, Partido otro) {
-        return uno.getCancha() != null && otro.getCancha() != null
-                && Objects.equals(uno.getCancha().getId(), otro.getCancha().getId());
-    }
-
-    private boolean compartenEquipo(Partido uno, Partido otro) {
-        List<Long> clubes = List.of(otro.getClubLocal().getId(), otro.getClubVisitante().getId());
-        return clubes.contains(uno.getClubLocal().getId())
-                || clubes.contains(uno.getClubVisitante().getId());
-    }
-
-    private boolean seCruzan(Partido uno, Partido otro) {
-        return uno.getFechaInicio().isBefore(finDe(otro)) && otro.getFechaInicio().isBefore(finDe(uno));
-    }
-
-    /** Minutos entre el final de uno y el comienzo del otro, en el orden que vengan. */
-    private boolean sinDescanso(Partido uno, Partido otro, int descansoMin) {
-        long minutos = uno.getFechaInicio().isAfter(otro.getFechaInicio())
-                ? Duration.between(finDe(otro), uno.getFechaInicio()).toMinutes()
-                : Duration.between(finDe(uno), otro.getFechaInicio()).toMinutes();
-        return minutos < descansoMin;
-    }
-
-    private LocalDateTime finDe(Partido partido) {
-        return partido.getFechaFin() == null
-                ? partido.getFechaInicio().plusMinutes(90)
-                : partido.getFechaFin();
     }
 
     private void registrar(String accion, Long registroId, int cantidad, Long usuarioId) {

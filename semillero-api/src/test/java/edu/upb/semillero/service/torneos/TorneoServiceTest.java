@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -45,7 +48,13 @@ class TorneoServiceTest {
     @Mock TorneoCategoriaRepository categorias;
     @Mock TorneoCategoriaService categoriaService;
     @Mock EntityRelations relations;
+    @Mock AccesoTorneos acceso;
     @InjectMocks TorneoService service;
+
+    @BeforeEach
+    void stubActor() {
+        lenient().when(acceso.exigirActor(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @Test
     void elTorneoNaceEnBorrador() {
