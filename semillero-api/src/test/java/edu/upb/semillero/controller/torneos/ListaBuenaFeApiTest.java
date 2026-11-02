@@ -51,7 +51,7 @@ class ListaBuenaFeApiTest {
     void fixtures() throws Exception {
         long paisId = create("/api/v1/paises", Map.of("nombrePais", "Bolivia"));
         ciudadId = create("/api/v1/ciudades", Map.of("nombreCiudad", "Santa Cruz", "paisId", paisId));
-        usuarioId = create("/api/v1/usuarios", Map.of("name", "dt",
+        usuarioId = create("/api/v1/usuarios", Map.of("name", "dt" + System.nanoTime(),
                 "nombres", "Miguel", "apellidos", "Lopez",
                 "email", "buenafe" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));

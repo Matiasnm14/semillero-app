@@ -54,7 +54,7 @@ class FixtureApiTest {
     void fixtures() throws Exception {
         long paisId = create("/api/v1/paises", Map.of("nombrePais", "Bolivia"));
         ciudadId = create("/api/v1/ciudades", Map.of("nombreCiudad", "Santa Cruz", "paisId", paisId));
-        usuarioId = create("/api/v1/usuarios", Map.of("name", "org",
+        usuarioId = create("/api/v1/usuarios", Map.of("name", "org" + System.nanoTime(),
                 "nombres", "Mauricio", "apellidos", "Valdivia",
                 "email", "fixture" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));

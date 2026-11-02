@@ -43,7 +43,7 @@ class InscripcionEquipoApiTest {
     void fixtures() throws Exception {
         long paisId = create("/api/v1/paises", Map.of("nombrePais", "Bolivia"));
         ciudadId = create("/api/v1/ciudades", Map.of("nombreCiudad", "Santa Cruz", "paisId", paisId));
-        usuarioId = create("/api/v1/usuarios", Map.of("name", "dt",
+        usuarioId = create("/api/v1/usuarios", Map.of("name", "dt" + System.nanoTime(),
                 "nombres", "Alan", "apellidos", "Villa",
                 "email", "inscripcion" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));

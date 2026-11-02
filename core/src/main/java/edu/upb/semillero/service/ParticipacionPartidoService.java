@@ -31,6 +31,12 @@ public class ParticipacionPartidoService {
         return repository.findAll(pageable).map(this::toResponse);
     }
 
+    public Page<ParticipacionPartidoResponseDto> findAll(Long jugadorId, Long partidoId, Long clubId,
+            Pageable pageable) {
+        if (jugadorId == null && partidoId == null && clubId == null) return findAll(pageable);
+        return repository.findFiltered(jugadorId, partidoId, clubId, pageable).map(this::toResponse);
+    }
+
     public ParticipacionPartidoResponseDto findById(Long id) {
         return toResponse(require(id));
     }
@@ -85,7 +91,8 @@ public class ParticipacionPartidoService {
                 entity.getMinutoEntrada(),
                 entity.getMinutoSalida(),
                 entity.getVelocidadProm(),
-                entity.getDistanciaRecorrida());
+                entity.getDistanciaRecorrida(),
+                entity.getMinutosJugados());
     }
 
     private void validate(ParticipacionPartido entity) {
