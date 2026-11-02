@@ -1,7 +1,7 @@
 # Pruebas manuales de los sprints 1 a 4 · Módulo de Torneos
 
-Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: **212 requests
-y 252 aserciones** en 11 carpetas, contra PostgreSQL de verdad.
+Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: **303 requests
+y 343 aserciones** en 12 carpetas, contra PostgreSQL de verdad.
 
 > **Documentos del jugador (HU 5).** Desde que `documentos_jugador` existe y `FichaTecnicaService`
 > valida de verdad, un jugador entra a la lista de buena fe solo con su CI, su certificado de
@@ -31,6 +31,7 @@ y 252 aserciones** en 11 carpetas, contra PostgreSQL de verdad.
 | 08 · Sprint 3 | Reprogramación con motivo e historial, planilla en borrador y confirmada con su PDF, goles, tarjetas y cambios, cierre con minutos jugados, tabla de posiciones y reapertura | S3-01 a S3-19 |
 | 09 · Sprint 4 | Reapertura para cargar una roja, la suspensión que genera el cierre, el bloqueo en la planilla, sanción manual con apelación y resolución, las cuatro tablas de estadísticas, el resumen por jugador, los partidos cerrados para video, mi cuenta, notificaciones y OpenAPI | S4-02 a S4-16 |
 | 10 · CRUD por id y consultas restantes | GET por id / PUT / DELETE de sede, cancha, torneo, categoría, inscripción y lista de buena fe; GET de criterio por id; GET y DELETE de reglamento; CRUD de `documentos-jugador`; GET del fixture; GET de apelaciones de una sanción | todas las HU |
+| 11 · Fixture: eliminación, avanzar, externo y ajuste | Llaves de eliminación directa con 4 equipos, cierre de las dos semifinales (con borrado de evento), `avanzar` a la final y su cierre; ajuste manual de un partido; `DELETE` del fixture; campeonato externo con carga manual de partido y cierre con el resultado a mano | S2-15, S2-17 |
 
 La carpeta 00 cierra con el login y con los dos casos de la HU 16 que no necesitan rol: sin token y
 con un token inventado, los dos dan 401.

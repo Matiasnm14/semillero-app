@@ -6688,6 +6688,2885 @@
      ]
     }
    ]
+  },
+  {
+   "name": "11 - Fixture: eliminacion, avanzar, externo y ajuste (HU 7)",
+   "item": [
+    {
+     "name": "Sede de eliminacion",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/sedes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Sede Elim {{sufijo}}\", \"direccion\": \"Av. Elim 1\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11SedeId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Cancha de eliminacion",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/canchas",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"sedeId\": \"{{e11SedeId}}\", \"nombre\": \"Cancha Elim\", \"tipoSuperficie\": \"CESPED_SINTETICO\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11CanchaId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Torneo de eliminacion directa",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Copa Eliminacion {{sufijo}}\", \"temporada\": \"{{temporada}}\", \"tipo\": \"OFICIAL\", \"ambito\": \"INTERNO\", \"formato\": \"ELIMINACION_DIRECTA\", \"fechaInicio\": \"{{fechaInicio}}\", \"fechaFin\": \"{{fechaFin}}\", \"fechaLimiteInscripcion\": \"{{fechaLimite}}\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11TorneoId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Categoria Sub-14 (eliminacion)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Sub-14\", \"edadMinima\": 12, \"edadMaxima\": 14, \"cupoMaximo\": 8, \"duracionTiempoMin\": 35, \"jugadoresEnCancha\": 7, \"maxSustituciones\": 5}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11CatId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Reglamento del torneo de eliminacion",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/reglamento",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"umbralAmarillas\": 3, \"fechaCorte\": \"{{fechaCorte}}\", \"minJugadores\": 1, \"maxJugadores\": 10, \"descansoMinimoMin\": 60, \"desempates\": [\"DIF_GOLES\", \"GOLES_FAVOR\", \"ENFRENTAMIENTO\", \"FAIR_PLAY\", \"SORTEO\"], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Abrir inscripciones (eliminacion)",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/abrir-inscripciones"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 abierto', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: crear club",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Elim A {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11ClubA', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: inscribir",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatId}}\", \"clubId\": \"{{e11ClubA}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscA', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: aprobar",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscA}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: crear jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/jugadores",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"piernaHabil\": \"D\", \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11JugA', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: fichar",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/fichados",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugA}}\", \"clubId\": \"{{e11ClubA}}\", \"fechaFichaje\": \"{{fechaFichaje}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: documento CI",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugA}}\", \"tipo\": \"CI\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: documento CERTIFICADO_NACIMIENTO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugA}}\", \"tipo\": \"CERTIFICADO_NACIMIENTO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: documento APTO_MEDICO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugA}}\", \"tipo\": \"APTO_MEDICO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: lista de buena fe",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscA}}/lista-buena-fe",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugA}}\", \"dorsal\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y habilitado', ()=>{ pm.response.to.have.status(201); pm.expect(pm.response.json().habilitado).to.eql(true); });",
+         "pm.collectionVariables.set('playerOf_'+pm.collectionVariables.get('e11ClubA'), pm.response.json().jugadorId);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo A: confirmar lista",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscA}}/lista-buena-fe/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: crear club",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Elim B {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11ClubB', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: inscribir",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatId}}\", \"clubId\": \"{{e11ClubB}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscB', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: aprobar",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscB}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: crear jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/jugadores",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"piernaHabil\": \"D\", \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11JugB', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: fichar",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/fichados",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugB}}\", \"clubId\": \"{{e11ClubB}}\", \"fechaFichaje\": \"{{fechaFichaje}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: documento CI",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugB}}\", \"tipo\": \"CI\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: documento CERTIFICADO_NACIMIENTO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugB}}\", \"tipo\": \"CERTIFICADO_NACIMIENTO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: documento APTO_MEDICO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugB}}\", \"tipo\": \"APTO_MEDICO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: lista de buena fe",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscB}}/lista-buena-fe",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugB}}\", \"dorsal\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y habilitado', ()=>{ pm.response.to.have.status(201); pm.expect(pm.response.json().habilitado).to.eql(true); });",
+         "pm.collectionVariables.set('playerOf_'+pm.collectionVariables.get('e11ClubB'), pm.response.json().jugadorId);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo B: confirmar lista",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscB}}/lista-buena-fe/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: crear club",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Elim C {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11ClubC', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: inscribir",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatId}}\", \"clubId\": \"{{e11ClubC}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscC', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: aprobar",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscC}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: crear jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/jugadores",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"piernaHabil\": \"D\", \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11JugC', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: fichar",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/fichados",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugC}}\", \"clubId\": \"{{e11ClubC}}\", \"fechaFichaje\": \"{{fechaFichaje}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: documento CI",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugC}}\", \"tipo\": \"CI\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: documento CERTIFICADO_NACIMIENTO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugC}}\", \"tipo\": \"CERTIFICADO_NACIMIENTO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: documento APTO_MEDICO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugC}}\", \"tipo\": \"APTO_MEDICO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: lista de buena fe",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscC}}/lista-buena-fe",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugC}}\", \"dorsal\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y habilitado', ()=>{ pm.response.to.have.status(201); pm.expect(pm.response.json().habilitado).to.eql(true); });",
+         "pm.collectionVariables.set('playerOf_'+pm.collectionVariables.get('e11ClubC'), pm.response.json().jugadorId);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo C: confirmar lista",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscC}}/lista-buena-fe/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: crear club",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Elim D {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11ClubD', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: inscribir",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatId}}\", \"clubId\": \"{{e11ClubD}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscD', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: aprobar",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscD}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: crear jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/jugadores",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"piernaHabil\": \"D\", \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11JugD', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: fichar",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/fichados",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugD}}\", \"clubId\": \"{{e11ClubD}}\", \"fechaFichaje\": \"{{fechaFichaje}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: documento CI",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugD}}\", \"tipo\": \"CI\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: documento CERTIFICADO_NACIMIENTO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugD}}\", \"tipo\": \"CERTIFICADO_NACIMIENTO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: documento APTO_MEDICO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugD}}\", \"tipo\": \"APTO_MEDICO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: lista de buena fe",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscD}}/lista-buena-fe",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{e11JugD}}\", \"dorsal\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y habilitado', ()=>{ pm.response.to.have.status(201); pm.expect(pm.response.json().habilitado).to.eql(true); });",
+         "pm.collectionVariables.set('playerOf_'+pm.collectionVariables.get('e11ClubD'), pm.response.json().jugadorId);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Equipo D: confirmar lista",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscD}}/lista-buena-fe/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "S2-15 generar llaves de eliminacion directa",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias/{{e11CatId}}/fixture/eliminacion",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"fechaPrimeraJornada\": \"{{fechaFixture}}\", \"canchaIds\": [\"{{e11CanchaId}}\"], \"siembra\": true, \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y dos semifinales', function(){",
+         "  pm.response.to.have.status(201);",
+         "  var ps = pm.response.json();",
+         "  var semis = ps.filter(function(p){return p.fase==='SEMIFINAL';});",
+         "  pm.expect(semis.length).to.eql(2);",
+         "  pm.collectionVariables.set('sf1Id',semis[0].id);",
+         "  pm.collectionVariables.set('sf1Local',semis[0].clubLocalId);",
+         "  pm.collectionVariables.set('sf1Visitante',semis[0].clubVisitanteId);",
+         "  pm.collectionVariables.set('sf2Id',semis[1].id);",
+         "  pm.collectionVariables.set('sf2Local',semis[1].clubLocalId);",
+         "  pm.collectionVariables.set('sf2Visitante',semis[1].clubVisitanteId);",
+         "});"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "GET del fixture de eliminacion",
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias/{{e11CatId}}/fixture"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 y hay semifinales', function(){ pm.response.to.have.status(200); pm.expect(pm.response.json().length).to.be.at.least(2); });"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "S2-17 ajuste manual de la semifinal 1",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"fechaInicio\": \"{{fechaReprogramada}}\", \"canchaId\": \"{{e11CanchaId}}\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 ajustado', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: planilla con un titular por equipo",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/planilla",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadores\": [{\"jugadorId\": \"{{sf1LocalPlayer}}\", \"esTitular\": true, \"capitan\": true}, {\"jugadorId\": \"{{sf1VisitantePlayer}}\", \"esTitular\": true, \"capitan\": true}], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.collectionVariables.set('sf1LocalPlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('sf1Local')));",
+         "pm.collectionVariables.set('sf1VisitantePlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('sf1Visitante')));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 planilla', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: confirmar planilla",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/planilla/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: gol del local (captura evento)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/eventos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"tipo\": \"GOL\", \"minuto\": 10, \"jugadorId\": \"{{sf1LocalPlayer}}\", \"tipoGol\": \"JUGADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('sf1EventoId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: borrar el evento (DELETE evento)",
+     "request": {
+      "method": "DELETE",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/eventos/{{sf1EventoId}}?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('borrado 204', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: volver a cargar el gol del local",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/eventos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"tipo\": \"GOL\", \"minuto\": 12, \"jugadorId\": \"{{sf1LocalPlayer}}\", \"tipoGol\": \"JUGADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF1: cerrar (gana el local)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf1Id}}/cerrar",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"observacionesArbitro\": \"Semifinal 1\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 cerrado', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF2: planilla",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf2Id}}/planilla",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadores\": [{\"jugadorId\": \"{{sf2LocalPlayer}}\", \"esTitular\": true, \"capitan\": true}, {\"jugadorId\": \"{{sf2VisitantePlayer}}\", \"esTitular\": true, \"capitan\": true}], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.collectionVariables.set('sf2LocalPlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('sf2Local')));",
+         "pm.collectionVariables.set('sf2VisitantePlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('sf2Visitante')));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 planilla', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF2: confirmar planilla",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf2Id}}/planilla/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF2: gol del local",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf2Id}}/eventos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"tipo\": \"GOL\", \"minuto\": 15, \"jugadorId\": \"{{sf2LocalPlayer}}\", \"tipoGol\": \"JUGADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "SF2: cerrar (gana el local)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{sf2Id}}/cerrar",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"observacionesArbitro\": \"Semifinal 2\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 cerrado', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "S2-15 avanzar: la final con los ganadores",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias/{{e11CatId}}/fixture/avanzar",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"fechaPrimeraJornada\": \"{{fechaFin}}\", \"canchaIds\": [\"{{e11CanchaId}}\"], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 y final con los dos ganadores', function(){",
+         "  pm.response.to.have.status(201);",
+         "  var fin = pm.response.json().filter(function(p){return p.fase==='FINAL';});",
+         "  pm.expect(fin.length).to.eql(1);",
+         "  pm.expect(fin[0].clubLocalId).to.not.eql(null);",
+         "  pm.expect(fin[0].clubVisitanteId).to.not.eql(null);",
+         "  pm.collectionVariables.set('e11FinalId',fin[0].id);",
+         "  pm.collectionVariables.set('e11FinalLocal',fin[0].clubLocalId);",
+         "  pm.collectionVariables.set('e11FinalVisitante',fin[0].clubVisitanteId);",
+         "});"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "FINAL: planilla",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{e11FinalId}}/planilla",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadores\": [{\"jugadorId\": \"{{finalLocalPlayer}}\", \"esTitular\": true, \"capitan\": true}, {\"jugadorId\": \"{{finalVisitantePlayer}}\", \"esTitular\": true, \"capitan\": true}], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.collectionVariables.set('finalLocalPlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('e11FinalLocal')));",
+         "pm.collectionVariables.set('finalVisitantePlayer', pm.collectionVariables.get('playerOf_'+pm.collectionVariables.get('e11FinalVisitante')));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 planilla', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "FINAL: confirmar planilla",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{e11FinalId}}/planilla/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "FINAL: gol del local",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{e11FinalId}}/eventos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"tipo\": \"GOL\", \"minuto\": 20, \"jugadorId\": \"{{finalLocalPlayer}}\", \"tipoGol\": \"JUGADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "FINAL: cerrar (campeon)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{e11FinalId}}/cerrar",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"observacionesArbitro\": \"Final\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 cerrado', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Categoria para borrar su fixture",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Sub-16\", \"edadMinima\": 14, \"edadMaxima\": 16, \"cupoMaximo\": 4, \"duracionTiempoMin\": 40, \"jugadoresEnCancha\": 7, \"maxSustituciones\": 5}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11CatDelId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Borrable: inscribir equipo A",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatDelId}}\", \"clubId\": \"{{e11ClubA}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscDel1', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Borrable: aprobar A",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscDel1}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Borrable: inscribir equipo B",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{e11CatDelId}}\", \"clubId\": \"{{e11ClubB}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('e11InscDel2', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Borrable: aprobar B",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{e11InscDel2}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Borrable: generar llaves",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias/{{e11CatDelId}}/fixture/eliminacion",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"fechaPrimeraJornada\": \"{{fechaFixture}}\", \"canchaIds\": [\"{{e11CanchaId}}\"], \"siembra\": true, \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "S2-17 DELETE del fixture",
+     "request": {
+      "method": "DELETE",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/{{e11TorneoId}}/categorias/{{e11CatDelId}}/fixture?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('borrado 204', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: torneo",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Liga Externa {{sufijo}}\", \"temporada\": \"{{temporada}}\", \"tipo\": \"OFICIAL\", \"ambito\": \"EXTERNO\", \"organizadorExterno\": \"Liga Cruce\\u00f1a\", \"formato\": \"LIGA\", \"fechaInicio\": \"{{fechaInicio}}\", \"fechaFin\": \"{{fechaFin}}\", \"fechaLimiteInscripcion\": \"{{fechaLimite}}\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extTorneoId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: categoria",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{extTorneoId}}/categorias",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Primera\", \"edadMinima\": 12, \"edadMaxima\": 99, \"cupoMaximo\": 4, \"duracionTiempoMin\": 45, \"jugadoresEnCancha\": 11, \"maxSustituciones\": 5}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extCatId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: reglamento",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{extTorneoId}}/reglamento",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"umbralAmarillas\": 5, \"fechaCorte\": \"{{fechaCorte}}\", \"minJugadores\": 1, \"maxJugadores\": 25, \"desempates\": [\"DIF_GOLES\", \"GOLES_FAVOR\"], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: abrir inscripciones",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/{{extTorneoId}}/abrir-inscripciones"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 abierto', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: club propio",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Nuestro Club {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extClubPropio', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: registrar el rival",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/clubes",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombreClub\": \"Rival Externo {{sufijo}}\", \"ciudadId\": \"{{ciudadId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extClubRival', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: inscribir nuestro club",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"torneoCategoriaId\": \"{{extCatId}}\", \"clubId\": \"{{extClubPropio}}\", \"usuarioId\": \"{{entrenadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extInsc', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: aprobar nuestra inscripcion",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{extInsc}}/estado",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 aprobada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: crear nuestro jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/jugadores",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"piernaHabil\": \"D\", \"fechaNacimiento\": \"{{fechaNacimientoSub14}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extJug', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: fichar nuestro jugador",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/fichados",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{extJug}}\", \"clubId\": \"{{extClubPropio}}\", \"fechaFichaje\": \"{{fechaFichaje}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: documento CI",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{extJug}}\", \"tipo\": \"CI\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: documento CERTIFICADO_NACIMIENTO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{extJug}}\", \"tipo\": \"CERTIFICADO_NACIMIENTO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: documento APTO_MEDICO",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/documentos-jugador",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{extJug}}\", \"tipo\": \"APTO_MEDICO\", \"estado\": \"VIGENTE\", \"fechaVencimiento\": \"2099-12-31\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: lista de buena fe",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{extInsc}}/lista-buena-fe",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadorId\": \"{{extJug}}\", \"dorsal\": 9}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 habilitado', ()=>{ pm.response.to.have.status(201); pm.expect(pm.response.json().habilitado).to.eql(true); });"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: confirmar lista",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/inscripciones/{{extInsc}}/lista-buena-fe/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "S2-17 Externo: cargar un partido a mano",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/{{extTorneoId}}/categorias/{{extCatId}}/fixture/partidos",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"clubLocalId\": \"{{extClubPropio}}\", \"clubVisitanteId\": \"{{extClubRival}}\", \"fechaInicio\": \"{{fechaReprogramada}}\", \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('201 Created', () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set('extPartidoId', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: ver el partido cargado",
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{extPartidoId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 partido', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: planilla de nuestro equipo",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{extPartidoId}}/planilla",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"jugadores\": [{\"jugadorId\": \"{{extJug}}\", \"esTitular\": true, \"capitan\": true}], \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 planilla', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: confirmar la planilla",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": "{{baseUrl}}/torneos/partidos/{{extPartidoId}}/planilla/confirmar?usuarioId={{organizadorId}}"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 confirmada', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Externo: cerrar con el resultado a mano",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/torneos/partidos/{{extPartidoId}}/cerrar",
+      "body": {
+       "mode": "raw",
+       "raw": "{\"golesLocal\": 2, \"golesVisitante\": 1, \"usuarioId\": \"{{organizadorId}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('200 cerrado', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    }
+   ]
   }
  ],
  "auth": {
