@@ -35,7 +35,9 @@ class DatabaseMigrationsPostgresTest {
 
     @BeforeEach
     void resetDisposableSchema() {
-        source = new DriverManagerDataSource(System.getenv("MIGRATIONS_PG_TEST_URL"), "migrations_test", "");
+        source = new DriverManagerDataSource(System.getenv("MIGRATIONS_PG_TEST_URL"),
+                System.getenv().getOrDefault("MIGRATIONS_PG_TEST_USER", "migrations_test"),
+                System.getenv().getOrDefault("MIGRATIONS_PG_TEST_PASSWORD", ""));
         jdbc = new JdbcTemplate(source);
         jdbc.execute("drop schema public cascade");
         jdbc.execute("create schema public");
@@ -249,7 +251,7 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForList("""
                     select r.codigo from usuarios_roles ur join roles r on r.id=ur.roles_id where ur.users_id=50
                     """, String.class)).containsExactly("ORGANIZADOR");
-            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(13);
             assertThat(jdbc.queryForObject("select count(*) from criterios_desempate", Integer.class)).isEqualTo(5);
         }
     }
@@ -309,7 +311,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 14 : 13);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 15 : 14);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -324,11 +326,14 @@ class DatabaseMigrationsPostgresTest {
     }
 
     private void assertCurrent() {
-        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(41);
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(61);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(13);
+                .isEqualTo(14);
+        assertThat(jdbc.queryForObject("select to_regclass('public.scouting_prospects') is not null", Boolean.class)).isTrue();
+        assertThat(jdbc.queryForObject("select count(*) from roles where codigo in ('SCOUT','COORDINADOR_SCOUTING','RECLUTADOR','EVALUADOR','RESPONSABLE_SALVAGUARDA','SCOUTING_AUDITOR','SCOUTING_CONFIG','SCOUTING_STATUS')", Integer.class))
+                .isEqualTo(8);
     }
 
     private void assertBaseline() {
@@ -364,7 +369,8 @@ class DatabaseMigrationsPostgresTest {
     private ConfigurableApplicationContext start(boolean migrations, String ddl) {
         return new SpringApplicationBuilder(SemilleroApplication.class).profiles("test").run(
                 "--spring.datasource.url=" + System.getenv("MIGRATIONS_PG_TEST_URL"),
-                "--spring.datasource.username=migrations_test", "--spring.datasource.password=",
+                "--spring.datasource.username=" + System.getenv().getOrDefault("MIGRATIONS_PG_TEST_USER", "migrations_test"),
+                "--spring.datasource.password=" + System.getenv().getOrDefault("MIGRATIONS_PG_TEST_PASSWORD", ""),
                 "--spring.flyway.enabled=" + migrations, "--spring.jpa.hibernate.ddl-auto=" + ddl,
                 "--server.port=0", "--spring.main.banner-mode=off", "--logging.level.root=WARN",
                 "--analysis.enabled=false", "--analysis.worker-enabled=false",

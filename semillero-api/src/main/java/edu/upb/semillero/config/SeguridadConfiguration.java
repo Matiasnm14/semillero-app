@@ -27,6 +27,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.core.annotation.Order;
 
 /**
  * HU 16 - Control de acceso por roles (tareas S2-01, S2-02 y S2-04).
@@ -73,6 +74,7 @@ public class SeguridadConfiguration {
     }
 
     @Bean
+    @Order(2)
     SecurityFilterChain seguridad(HttpSecurity http, JwtAutenticacionFilter jwt) throws Exception {
         return http
                 .cors(Customizer.withDefaults())
@@ -83,6 +85,11 @@ public class SeguridadConfiguration {
                         sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/scouting/config/oidc-identities/**").hasRole(ADMINISTRA)
+                        .requestMatchers("/api/v1/scouting/**").hasAnyRole(
+                                "SCOUT", "COORDINADOR_SCOUTING", "RECLUTADOR", "EVALUADOR",
+                                "RESPONSABLE_SALVAGUARDA", "SCOUTING_AUDITOR", "SCOUTING_CONFIG",
+                                "SCOUTING_STATUS")
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                         // Los administradores solo los asigna otro administrador.

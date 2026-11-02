@@ -38,7 +38,8 @@ public class RegistroAccesoService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rechazado(String metodo, String ruta, Long usuarioId, String motivo) {
         Auditoria fila = new Auditoria();
-        fila.setModulo(ruta != null && ruta.startsWith("/api/v1/torneos") ? "TORNEOS" : "COMUN");
+        fila.setModulo(ruta != null && ruta.startsWith("/api/v1/torneos") ? "TORNEOS"
+                : ruta != null && ruta.startsWith("/api/v1/scouting") ? "SCOUTING" : "COMUN");
         fila.setTabla(TABLA);
         fila.setAccion(ACCION);
         fila.setValorNuevo("{\"metodo\":\"%s\",\"ruta\":\"%s\"}".formatted(metodo, ruta));

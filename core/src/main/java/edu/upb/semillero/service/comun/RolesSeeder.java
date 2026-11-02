@@ -26,6 +26,14 @@ public class RolesSeeder implements ApplicationRunner {
         ROLES.put(Roles.ENTRENADOR, "Entrenador");
         ROLES.put(Roles.MESA_CONTROL, "Mesa de control");
         ROLES.put(Roles.CONSULTA, "Consulta");
+        ROLES.put(Roles.SCOUT, "Scout");
+        ROLES.put(Roles.COORDINADOR_SCOUTING, "Coordinador de scouting");
+        ROLES.put(Roles.RECLUTADOR, "Reclutador");
+        ROLES.put(Roles.EVALUADOR, "Evaluador");
+        ROLES.put(Roles.RESPONSABLE_SALVAGUARDA, "Responsable de salvaguarda");
+        ROLES.put(Roles.SCOUTING_AUDITOR, "Auditor de scouting");
+        ROLES.put(Roles.SCOUTING_CONFIG, "Configuración de scouting");
+        ROLES.put(Roles.SCOUTING_STATUS, "Consulta de estado de scouting");
     }
 
     private final RolRepository repository;

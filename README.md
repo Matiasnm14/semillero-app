@@ -13,6 +13,8 @@ Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerM
 
 Para crear el canal y preparar la primera subida de prueba, seguir la [configuración inicial de YouTube](docs/YOUTUBE_SETUP.md).
 
+La [API de scouting](docs/scouting/API.md) implementa prospectos, asignaciones, criterios versionados, observaciones offline idempotentes, consentimiento y comunicaciones, etapas con segunda revisión, pruebas, auditoría, exportación temporal, retención y enlace con la ficha técnica. Los endpoints están en `/api/v1/scouting`; el front-end no se modifica desde este módulo.
+
 La [implementación de HU01](docs/HU01_CARGA_VIDEOS.md) añade carga multipart de videos de partidos, validación con FFmpeg, almacenamiento del original, metadatos y publicación en YouTube en segundo plano. Para publicar, autorizar el canal y configurar `VIDEO_YOUTUBE_ENABLED=true`; la carga local también funciona con YouTube deshabilitado.
 
 ## Organización
@@ -66,7 +68,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-Las migraciones [V000–V012](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 la identidad remota, progreso y limpieza de análisis Spark, y V012 la procedencia de las cargas y la espera de YouTube. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+Las migraciones [V000–V013](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 la identidad remota, progreso y limpieza de análisis Spark, V012 la procedencia de las cargas y la espera de YouTube, y V013 agrega el módulo de scouting. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Preparación del VPS
 

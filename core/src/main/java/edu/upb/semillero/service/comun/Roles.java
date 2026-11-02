@@ -11,6 +11,14 @@ public final class Roles {
     public static final String ENTRENADOR = "ENTRENADOR";
     public static final String MESA_CONTROL = "MESA_CONTROL";
     public static final String CONSULTA = "CONSULTA";
+    public static final String SCOUT = "SCOUT";
+    public static final String COORDINADOR_SCOUTING = "COORDINADOR_SCOUTING";
+    public static final String RECLUTADOR = "RECLUTADOR";
+    public static final String EVALUADOR = "EVALUADOR";
+    public static final String RESPONSABLE_SALVAGUARDA = "RESPONSABLE_SALVAGUARDA";
+    public static final String SCOUTING_AUDITOR = "SCOUTING_AUDITOR";
+    public static final String SCOUTING_CONFIG = "SCOUTING_CONFIG";
+    public static final String SCOUTING_STATUS = "SCOUTING_STATUS";
 
     private Roles() {
     }

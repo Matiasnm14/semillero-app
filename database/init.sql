@@ -28,7 +28,8 @@ $$;
 \ir migrations/V010__club_profile.sql
 \ir migrations/V011__spark_analysis_contract.sql
 \ir migrations/V012__persistent_video_uploads.sql
+\ir migrations/V013__scouting_module.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-012).'
+\echo 'Semillero: esquema completo inicializado (000-013).'

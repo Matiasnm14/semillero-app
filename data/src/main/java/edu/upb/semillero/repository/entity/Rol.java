@@ -10,7 +10,7 @@ import lombok.Setter;
  * {@code auditoria}: la crea torneos en la migración V008 porque ficha técnica
  * no llegó a hacerlo (puntos 6 y 21 del acuerdo de la S1-04).
  *
- * <p>Los códigos son ADMIN, ORGANIZADOR, ENTRENADOR, MESA_CONTROL y CONSULTA.
+ * <p>Los códigos incluyen ADMIN, ORGANIZADOR, roles de club, consulta y scouting.
  * ADMIN y ENTRENADOR igual se derivan de {@code administrador} y de
  * {@code usuario_trabaja}, así que acá se usan para los otros tres y para
  * sumarle roles a alguien a mano.
@@ -23,7 +23,7 @@ import lombok.Setter;
         uniqueConstraints = @UniqueConstraint(name = "uk_rol_codigo", columnNames = "codigo"))
 public class Rol extends BaseEntity {
 
-    @Column(name = "codigo", length = 20, nullable = false)
+    @Column(name = "codigo", length = 40, nullable = false)
     private String codigo;
 
     @Column(name = "nombre", length = 60, nullable = false)

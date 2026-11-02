@@ -22,7 +22,14 @@ public class DatabaseMigrationConfiguration {
             "sedes", "canchas", "torneos", "reglamentos", "criterios_desempate", "reglamento_desempates",
             "torneo_categorias", "grupos", "inscripciones_equipo", "lista_buena_fe", "reprogramaciones",
             "planillas", "planilla_cuerpo_tecnico", "eventos_partido", "sanciones", "apelaciones",
-            "auditoria", "notificaciones", "roles", "usuarios_roles");
+            "auditoria", "notificaciones", "roles", "usuarios_roles", "scouting_prospects",
+            "scouting_user_scopes", "scouting_oidc_identities", "scouting_criteria_sets", "scouting_criteria", "scouting_assignments",
+            "scouting_duplicate_reviews",
+            "scouting_observation_reports", "scouting_observation_scores", "scouting_report_evidence", "scouting_stage_history",
+            "scouting_exports",
+            "scouting_tutor_consents", "scouting_message_templates", "scouting_communications",
+            "scouting_trials", "scouting_player_links", "scouting_outbox", "scouting_audit_events",
+            "scouting_security_alerts");
     private static final Map<String, Set<String>> LEGACY_SIGNATURE = Map.of(
             "clubes", Set.of("id", "nombre_club", "ciudad_id"),
             "users", Set.of("id", "email", "password_hash"),
