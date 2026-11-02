@@ -25,3 +25,9 @@ El runtime no debe pedir permisos para modificar el esquema. El migrador central
 Antes de iniciar, revisar que el puerto esté libre y no haya otro backend desplegado. Conservar cualquier configuración y volumen existentes. Validar Compose con `docker compose config --quiet`, comprobar salud, una consulta SQL a través de la API y una ruta protegida sin token. Verificar desde el host que el proceso escucha exclusivamente en loopback.
 
 La URL HTTPS pública y los orígenes de la web aún deben confirmarse. CORS vacío admite uso desde el mismo origen; otros orígenes requieren una lista explícita. La validación local del contenedor no sustituye las pruebas HTTP a través del proxy, ni la de inferencia real, que permanece deshabilitada.
+
+## Resultado de la comprobación real del 2026-11-02
+
+La imagen `semillero-backend:0c1e00666991` se transfirió al usuario `backend`, se verificaron sus checksums y se probó con la configuración acordada. PostgreSQL respondió, pero Hibernate canceló el arranque con `Schema validation: missing column [remote_analysis_id] in table [analysis_jobs]`. El contenedor quedó detenido, sin ejecutar Flyway ni modificar el esquema.
+
+El migrador central debe incorporar V011 y verificar/aplicar V012 antes de reintentar esta imagen. Las migraciones oficiales y el detalle del error quedaron disponibles en `~/proyecto/backend/releases/0c1e00666991/`, incluido `PARA_ADMIN.md`. El runtime conserva Flyway desactivado y no solicita permisos DDL adicionales. La prueba todavía no valida salud HTTP ni acceso público porque no se completó el arranque.

@@ -2,7 +2,7 @@
 
 - Repositorio: `Matiasnm14/semillero-app`.
 - Artefacto: `semillero-api`, Java 21. Integra `core`, `data` y los módulos del equipo.
-- Estado: configuración e imagen verificadas localmente; instalación y URL pública por confirmar.
+- Estado: imagen transferida y arranque probado; detenido por columna `analysis_jobs.remote_analysis_id` ausente. Requiere actualizar el esquema mediante el migrador central.
 - Cuenta SSH verificada: `backend@80.241.208.3`, Docker rootless; cuota máxima 4 GiB y cuatro CPU.
 - Red: `network_mode: host`; Spring y healthcheck en `127.0.0.1:18083`; prefijo REST `/api/v1`.
 - Imagen: `semillero-backend:<versión>`, construida en la computadora para la arquitectura del VPS.
@@ -22,3 +22,5 @@
 Procedimiento completo en [`backend-compartido/README.md`](backend-compartido/README.md).
 
 Validación actual del 2026-11-02: imagen `semillero-backend:vps-20261102-videos`, 50 pruebas y 45 comprobaciones locales del contenedor aprobadas. Carga mayor de 128 MiB, actualización de volumen anterior, original/PNG persistentes y JWT válido después de recrear. No se ha transferido al VPS.
+
+Prueba real posterior: imagen `semillero-backend:0c1e00666991`, 11 pruebas del perfil VPS/CORS aprobadas. Conectividad PostgreSQL confirmada durante el arranque; Hibernate detectó la columna pendiente de V011. Contenedor detenido hasta completar V011 y verificar/aplicar V012 desde el migrador central.
