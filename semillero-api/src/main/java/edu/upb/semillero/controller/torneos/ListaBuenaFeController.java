@@ -6,6 +6,7 @@ import edu.upb.semillero.repository.dto.response.torneos.ListaBuenaFeConfirmacio
 import edu.upb.semillero.repository.dto.response.torneos.ListaBuenaFeResponseDto;
 import edu.upb.semillero.service.torneos.ListaBuenaFeService;
 import edu.upb.semillero.service.torneos.PdfTorneosService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * HU 5 - Lista de buena fe (tareas S2-06, S2-07 y S2-08). Cuelga de la
  * inscripción porque el equipo es el club inscrito en una categoría.
  */
+@Tag(name = "Torneos - HU 5", description = "Lista de buena fe, elegibilidad y PDF")
 @RestController
 @RequestMapping("/api/v1/torneos/inscripciones/{inscripcionEquipoId}/lista-buena-fe")
 public class ListaBuenaFeController {

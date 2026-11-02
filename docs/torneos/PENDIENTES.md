@@ -1,6 +1,7 @@
 # Pendientes del módulo de Torneos para acordar con los otros grupos
 
-Grupo 4 (Torneos). Actualizado: 26/10/2026.
+Grupo 4 (Torneos). Actualizado: 28/10/2026. El backend del sprint 3 está en la sección 8 y el del
+sprint 4 en la sección 9.
 
 El módulo de Torneos ya tiene sus 16 tablas propias como entidades JPA (tareas S1-05 y S1-06).
 La referencia completa es `docs/torneos/bd_torneos_propuesta.sql` (sección D).
@@ -32,7 +33,7 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 4 | `PartidoService` rechaza también fechas iguales, para alinearse con `chk_partido_fechas` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
 | 6 | `roles` y `usuarios_roles`: las creó **torneos** en la V008, con el JWT (S2-01 a S2-04) | Hecho | 28/10/2026 | Miguel (torneos) |
-| 7 | `documentos_jugador` la crea **ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
+| 7 | `documentos_jugador`: la implementó **torneos** (V013 + `FichaTecnicaServiceImpl`); ficha técnica puede tomarla | Hecho | 02/11/2026 | Miguel (torneos) |
 | 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 9 | `notificaciones` la crea **torneos**, mismo criterio | Hecho | 26/10/2026 | Miguel (torneos) |
 | 10 | `FichaTecnicaService`: interfaz y stub escritos; la implementación real es de ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
@@ -87,9 +88,26 @@ Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos
 - Los puntos **6 y 11 los terminó haciendo torneos** en el sprint 2, porque la HU 16 no se podía
   cerrar sin ellos: ver "Lo que el sprint 2 agregó fuera de torneos" más abajo. Si ficha técnica
   los quiere tomar, el código está listo para que su `@Service` reemplace al nuestro.
-- El punto **7 (`documentos_jugador`) sigue sin dueño confirmado**, y mientras no exista, las
-  validaciones de documentos y apto médico de la HU 5 no comprueban nada: el servicio responde
-  siempre que están vigentes y lo deja anotado en el log.
+- El punto **7 (`documentos_jugador`) lo implementó torneos** el 02/11/2026 (ver "Actualización"
+  abajo): la tabla existe y las validaciones de la HU 5 ya comprueban de verdad.
+
+### Actualización 02/11/2026
+
+- **Columnas nuevas (puntos 1, 2 y 3): confirmadas por todos los grupos.** Las columnas que torneos
+  agregó a `partidos`, `participaciones_partido` y `jugadores` quedaron acordadas; ya no están a la
+  espera del visto bueno de los dueños.
+- **`documentos_jugador` (punto 7): implementada por torneos.** Migración `V013`, entidad
+  `DocumentoJugador`, repos, enums, CRUD en `/api/v1/documentos-jugador`, e implementación real
+  `service.fichatecnica.FichaTecnicaServiceImpl`, que valida documentos y apto médico vigentes en la
+  HU 5 (antes el stub respondía siempre `true`). El stub `MocksExternosConfiguration` quedó inactivo;
+  si ficha técnica quiere tomar la tabla, el código está listo para reemplazarse.
+- **Aviso `PartidoFinalizado` al microservicio de video (HU 15 / punto 13): opcional y diferido.**
+  Se revisó el código del módulo de video: su análisis se dispara al **subir el video** de un partido
+  (`POST /api/v1/partidos/{partidoId}/videos`) y solo exige que el partido exista; **no consume** el
+  aviso `PartidoFinalizado` ni el endpoint `/partidos/finalizados` (no hay receptor del lado de
+  video). Para la entrega se presenta sin ese aviso en tiempo real. El `POST` sigue en el código,
+  inofensivo sin URL configurada, y se puede activar más adelante si el grupo de video decide
+  consumirlo (con su URL y, si quieren, un token). No bloquea nada de torneos.
 
 ### Lo que el sprint 2 agregó fuera de torneos
 
@@ -336,3 +354,254 @@ revisión de otro integrante.
 Las 16 tablas propias, la HU 1 (crear torneo y categorías, S1-08 a S1-10), la HU 2 (reglamento y
 orden de desempates, S1-12 y S1-13), la HU 3 (sedes y canchas, S1-16 y S1-17) y la HU 4
 (inscripción de equipo con duplicado y cupo, S1-20 y S1-21).
+
+## 8. Estado del sprint 3
+
+Hecho el 28/10/2026 en la rama `torneos`: todo el backend del sprint 3. Faltan las cuatro pantallas
+(S3-05, S3-11, S3-15 y S3-20), que van en Flutter. **Ninguna tarea está Completada** según la
+definición de terminado: falta el PR, la revisión de otro integrante y probarlo contra PostgreSQL.
+
+| HU | Tareas | Endpoints (todos bajo `/api/v1/torneos`) |
+| --- | --- | --- |
+| 8 Reprogramar | S3-16 a S3-19 | `POST /partidos/{id}/reprogramaciones` y `GET` del mismo, el historial |
+| 9 Planilla | S3-01 a S3-04 | `GET` y `PUT /partidos/{id}/planilla`, `POST .../planilla/confirmar?usuarioId=`, `GET .../planilla/pdf` |
+| 10 Eventos y cierre | S3-06 a S3-10 | `GET` y `POST /partidos/{id}/eventos`, `DELETE .../eventos/{eventoId}`, `POST .../cerrar`, `POST .../reabrir`, `GET .../resultado`, `GET .../historial` |
+| 11 Tabla | S3-12 a S3-14 | `GET /{torneoId}/categorias/{categoriaId}/tabla?grupoId=` |
+| — | S3-21 y S3-22 | `FlujoCompletoPartidoApiTest` y 44 pruebas más (ver abajo) |
+
+**No hizo falta ninguna migración**: el sprint 3 usa solo tablas y columnas que ya estaban en la
+`V007`. Tampoco se tocó ninguna entidad.
+
+### Permisos (HU 16)
+
+`SeguridadConfiguration` suma una regla: la planilla, los eventos y el cierre admiten
+`MESA_CONTROL`, además de `ORGANIZADOR` y `ADMIN`. Que la mesa toque solo el partido que tiene
+asignado (`partidos.mesa_control_id`) lo controla `AccesoTorneos.requirePartidoAsignado`, que ya
+estaba escrito desde la S2-03. Reprogramar y reabrir quedan solo para el organizador. **Ojo al
+mergear**: el commit `7444f0e` de la rama `video-data-analysis` también cambia
+`SeguridadConfiguration`.
+
+### Decisiones que tomamos al implementarlo y hay que validar con el grupo
+
+Los criterios de aceptación no dicen todo. Lo que sigue se decidió para poder escribir el código;
+si el grupo decide otra cosa, se cambia:
+
+1. **Reprogramación.** Un partido EN_CURSO también se reprograma (el partido suspendido que se
+   termina otro día) y vuelve a PROGRAMADO conservando su planilla y sus eventos. La nueva fecha
+   no puede estar en el pasado. "Avisar a los equipos" es dejar una fila en `notificaciones` para
+   los usuarios del club (`usuario_trabaja`), el entrenador que inscribió al equipo y los jugadores
+   de su lista que tienen cuenta, una sola vez por usuario. Falta el endpoint para leerlas, que es
+   la S4-16.
+2. **Planilla.** Se guarda incompleta como BORRADOR. Para confirmar, cada equipo con lista de buena
+   fe necesita entre 1 y `jugadores_en_cancha` titulares y exactamente un capitán; el rival de un
+   campeonato externo no tiene lista y no se controla. Aparece bloqueado el jugador con
+   `habilitado = false` en la lista, con una sanción VIGENTE en el torneo o que no está ACTIVO en
+   ficha técnica. Confirmada se puede seguir corrigiendo hasta que se cierra el partido, pero no se
+   saca a un jugador que ya tiene eventos.
+3. **Eventos.** Solo con la planilla confirmada; el primero pone el partido EN_CURSO. El autor de un
+   gol, la asistencia y el que sale en un cambio tienen que estar en cancha en ese minuto; entra
+   solo un suplente que todavía no jugó, sin pasar `max_sustituciones`. Las tarjetas piden motivo.
+   Como mucho dos amarillas por jugador: la tercera se rechaza y hay que cargar la roja (no se
+   genera sola). Un expulsado no tiene más eventos.
+4. **Minutos (S3-08).** Se cuentan dentro del tiempo reglamentario (los dos tiempos de la
+   categoría). Se calculan recién al cerrar, desde los eventos, así un evento mal cargado se borra
+   sin dejar nada a medias.
+5. **Cierre (S3-09).** En un torneo interno los goles salen de los eventos. En un campeonato
+   externo el rival no tiene planilla, así que el resultado se manda a mano y no puede tener menos
+   goles que los eventos cargados. Los penales van solo en un partido de eliminación que terminó
+   empatado, y ahí son obligatorios, porque `/fixture/avanzar` necesita un ganador. El W.O. no pide
+   planilla, no admite eventos y le da al ganador los `goles_walkover` del reglamento.
+6. **Reapertura (S3-10).** Solo un partido FINALIZADO, con motivo, y queda en `auditoria` con la
+   acción `REABRIR` y el resultado anterior. Se borran el resultado y los minutos; un W.O. vuelve a
+   PROGRAMADO. No se reabre si la ronda siguiente de las llaves ya se armó con su ganador.
+7. **Tabla (S3-12 a S3-14).** Pide reglamento, por los puntos. No hay tabla en un campeonato externo
+   ni en eliminación directa. Fair play: 1 punto por amarilla y 3 por roja, menos es mejor. El
+   enfrentamiento directo es una mini tabla entre los empatados, con puntos y después diferencia
+   de goles. El sorteo es reproducible (un número fijo por categoría y club), para que la tabla no
+   cambie en cada consulta. Si se terminan los criterios, desempata el id del club.
+
+### Lo que el cierre todavía no hace
+
+La regla 7 dice que el cierre también guarda las sanciones y avisa al microservicio de video. Son
+del sprint 4 y tienen su lugar marcado en `CierrePartidoService`:
+
+- **S4-01 y S4-02**, acumulación de tarjetas y suspensión automática. Hoy la planilla ya bloquea a
+  un suspendido, pero las sanciones no se crean solas.
+- **S4-03**, descontar las fechas cumplidas.
+- **S4-09**, el evento `PartidoFinalizado`. Mientras tanto el microservicio puede leer los partidos
+  FINALIZADO por `fecha_cierre`, como dice el punto 13 del acuerdo.
+
+### Pruebas
+
+`clean verify` (sin `VideoPartidoIntegrationTest`, que necesita FFmpeg) pasa con todas las pruebas
+anteriores y 45 nuevas:
+
+| Clase | Qué cubre |
+| --- | --- |
+| `FlujoCompletoPartidoApiTest` | S3-21: fixture, planilla, eventos, cierre con minutos, tabla, PDF, reapertura y reprogramación |
+| `ReprogramacionApiTest`, `ReprogramacionServiceTest` | HU 8: historial, aviso, motivo, choques de cancha, equipo y descanso, partido cerrado |
+| `PlanillaApiTest` | HU 9: borrador y confirmación, validaciones, bloqueados, PDF |
+| `EventosYCierreApiTest`, `MinutosJugadosTest` | HU 10: goles, tarjetas, cambios, borrado, cierre interno, externo, W.O., penales, reapertura y minutos |
+| `TablaPosicionesApiTest`, `TablaPosicionesServiceTest` | HU 11: cálculo, grupos, y cada criterio de desempate |
+| `SeguridadPartidoApiTest` | HU 16 con token: la mesa asignada sí, otra mesa no, y la mesa no reprograma ni reabre |
+
+`EscenarioTorneo` arma por la API un torneo con reglamento, equipos aprobados y listas de buena fe;
+lo comparten las pruebas de API del sprint 3.
+
+### Probado contra PostgreSQL y en la colección de Postman
+
+Hecho el 28/10/2026, que era lo que faltaba. La colección pasó a **123 requests y 162 aserciones en
+9 carpetas**, con una nueva (`08 · Sprint 3`) que hace el flujo completo contra la API levantada con
+el perfil `dev`: reprogramar con motivo y ver el historial, la planilla en borrador y confirmada con
+su PDF, un gol, una amarilla y un cambio, el cierre con los minutos de cada jugador, la tabla de
+posiciones y la reapertura. Se corrió tres veces seguidas sin limpiar la base: **162 de 162**.
+
+Dos cosas que hubo que arreglar para que la colección corriera entera, y que conviene saber:
+
+1. **Ya no hace falta cargar roles por SQL.** La carpeta 00 crea el usuario organizador, lo da de
+   alta en `administrador` con `POST /api/v1/administradores` y se loguea: de ahí sale el rol ADMIN
+   por el punto 21 del acuerdo. El `{{sufijo}}` del `prerequest` se recalcula en cada request, así
+   que el email del organizador se guarda en una variable para poder iniciar sesión con él.
+2. **Las carpetas 07 y 08 crean su propia sede, cancha, clubes, torneo y jugadores.** No pueden usar
+   los IDs del sprint 1 porque la carpeta 04 termina borrando su cancha, y el fixture la necesita
+   viva.
+
+Lo que la colección deja comprobado del sprint 3, además de lo que ya cubren las pruebas con H2: los
+minutos jugados salen 60, 10, 70 y 0 en un partido de 70 minutos con un cambio en el 60; la tabla da
+3 puntos al que ganó y 1 de fair play al amonestado; y los dos PDF nuevos salen con su
+`Content-Type` y con contenido.
+
+## 9. Estado del sprint 4
+
+Hecho el 28/10/2026 en la rama `torneos`: todo el backend del sprint 4, después de traer `main`
+(el commit `7444f0e` del grupo de video) sin conflictos. Faltan las pantallas (S4-06, S4-13 y
+S4-14) y las pruebas en dispositivos (S4-17), que van con el frontend en Flutter. **Ninguna tarea
+está Completada** según la definición de terminado: falta el PR, la revisión de otro integrante y
+probarlo contra PostgreSQL.
+
+| HU | Tareas | Endpoints (todos bajo `/api/v1/torneos`) |
+| --- | --- | --- |
+| 13 Suspensiones | S4-01 a S4-05 | Las automáticas no tienen endpoint: las genera el cierre. `GET /{torneoId}/sanciones?estado=&categoriaId=`, `GET /{torneoId}/categorias/{categoriaId}/sancionados?jornada=`, `POST /{torneoId}/sanciones` (manual), `GET /sanciones/{id}`, `GET /sanciones/{id}/historial`, `GET` y `POST /sanciones/{id}/apelaciones`, `PUT /apelaciones/{id}/resolucion` |
+| 15 API | S4-07 a S4-10 | `TorneosConsultaServiceImpl` (Java). `GET /partidos/{id}`, `GET /partidos/finalizados?desde=`, `GET /jugadores/{jugadorId}/sanciones?vigentes=`. OpenAPI en `/v3/api-docs` con `bearerAuth` y el esquema `PartidoFinalizado` |
+| 12 Estadísticas | S4-11 y S4-12 | `GET /{torneoId}/categorias/{categoriaId}/estadisticas?limite=`, `GET /{torneoId}/jugadores/{jugadorId}/estadisticas` |
+| 14 App | S4-15 y S4-16 (backend) | `GET /mi-cuenta`, `GET /jugadores/{jugadorId}/proximos-partidos`, `GET /{torneoId}/categorias/{categoriaId}/proximos-partidos`, `GET /notificaciones?soloNoLeidas=`, `PUT /notificaciones/{id}/leida`, `PUT /notificaciones/leidas` |
+| — | S4-18 a S4-20 | `ContratoTorneosConsultaTest`, `PartidoFinalizadoApiTest`, `PRUEBAS_ACEPTACION.md` y la regresión completa |
+
+**No hizo falta ninguna migración**: `sanciones`, `apelaciones`, `notificaciones` y `auditoria` ya
+estaban en la `V007`.
+
+### Cómo funciona el régimen disciplinario (HU 13)
+
+El cierre del partido (`CierrePartidoService`) llama a `SancionesAutomaticas` dentro de su misma
+transacción, como pide la regla 7:
+
+1. **Descuento (S4-03).** A cada sanción VIGENTE de los jugadores de los dos equipos le cuenta la
+   fecha, si el partido es posterior al que originó la sanción (o al alta, si es manual). Al llegar
+   a las fechas de la suspensión queda CUMPLIDA. El W.O. cuenta como fecha.
+2. **Roja (S4-02).** Una suspensión de `fechas_suspension_roja` por cada roja del partido.
+3. **Acumulación (S4-01).** Por cada jugador con amarillas en el partido se cuentan sus amarillas en
+   todos los partidos cerrados del torneo; cada múltiplo de `umbral_amarillas` es una suspensión de
+   `fechas_suspension_amarillas`.
+
+El bloqueo en la planilla ya estaba desde la S3-02: un jugador con una sanción VIGENTE en el
+torneo aparece bloqueado y no entra.
+
+**Reabrir y volver a cerrar no duplica nada.** Cada fecha descontada queda en `auditoria`
+(`DESCONTAR_FECHA`, con el partido en el motivo) y la reapertura la devuelve
+(`REVERTIR_DESCUENTO`). Al volver a cerrar, las sanciones se concilian con los eventos que quedaron:
+si se borró la roja o la amarilla que la originó, la sanción queda ANULADA.
+
+**Los sancionados de una fecha** (S4-04) son los que tienen una sanción no anulada que cubre esa
+jornada: las primeras `fechas_suspension` fechas que juega su equipo después del partido que la
+originó. Sirve para la fecha que viene y para revisar una que pasó.
+
+### `PartidoFinalizado` (S4-09)
+
+Al cerrar, el servicio publica el evento `PartidoFinalizado(partidoId, fechaCierre)`, que es el
+contrato mínimo del punto 13. Lo escucha `AvisoPartidoFinalizado`, que **recién cuando la
+transacción se confirmó** hace un `POST` asíncrono a `TORNEOS_PARTIDO_FINALIZADO_URL` (con
+`TORNEOS_PARTIDO_FINALIZADO_TOKEN` como Bearer, si se configura). Si la URL está vacía no avisa, y si
+el microservicio no responde queda en el log: nunca falla el cierre. En cualquier caso, el
+microservicio puede leer `GET /partidos/finalizados?desde=`. Cualquier otro módulo del monolito
+puede escuchar el mismo evento de Spring.
+
+**Hay que acordarlo con el grupo de video**: la ruta donde lo reciben y si quieren token.
+
+### Seguridad (S4-10)
+
+- El 401 dice si falta el token o si el que vino no es válido o venció, así la app sabe si mandar al
+  login.
+- "Mi cuenta" y las notificaciones son del dueño del token: pedir las de otro da 403, salvo al
+  administrador. Las notificaciones las puede leer cualquier usuario con sesión.
+- Apelar una sanción: ENTRENADOR (solo de su club, por `AccesoTorneos`), ORGANIZADOR y ADMIN.
+  Resolverla, la sanción manual y todo lo demás que escribe: ORGANIZADOR o ADMIN.
+- OpenAPI declara el esquema `bearerAuth` y lo pide solo en las rutas de torneos.
+
+### Decisiones tomadas al implementarlo, para validar con el grupo
+
+1. **Acumulación**: cuentan todas las amarillas del torneo, también las dos que terminaron en roja
+   en un mismo partido. Si el grupo quiere excluirlas, es un filtro en `SancionesAutomaticas`.
+2. **El W.O. descuenta fecha** al suspendido del equipo, porque el equipo pasó esa fecha.
+3. **Sin reglamento** se usan los valores por defecto de las columnas: umbral 3, una fecha por
+   amarillas y una por roja.
+4. **Apelación**: una pendiente a la vez; solo se apela una sanción VIGENTE. REDUCIDA exige menos
+   fechas que las que tenía, y si ya las cumplió queda CUMPLIDA.
+5. **Estadísticas**: el autogol no suma al goleador (va aparte en el resumen del jugador). Las vallas
+   no cuentan los W.O., que no se jugaron. A igual cantidad de goles, comparten el puesto.
+6. **Avisos (S4-16)**: el resultado publicado le llega a los dos equipos con los mismos
+   destinatarios que la reprogramación; la suspensión, al jugador si tiene cuenta.
+7. **`TorneosConsultaService`**: no muestra torneos en BORRADOR (HU 1), y en un torneo por grupos
+   la tabla trae las filas de todos los grupos seguidas. Nunca le tira excepciones a otro módulo:
+   lo que no existe vuelve vacío.
+
+### Arreglos de la regresión (S4-20)
+
+- **Traer `main`** no tuvo conflictos y las 318 pruebas siguieron pasando, más las 20 nuevas de
+  `main`: 338.
+- **La colección de Postman se rompió con ese merge**, como ya había anotado Miguel en el README: la
+  carpeta 00 da de alta al administrador con `POST /api/v1/administradores`, que ahora pide ADMIN.
+  Hay que volver a cargar el primer administrador por SQL (paso 1b del README) y sacar ese request
+  de la carpeta 00.
+- Encontrado al escribir `ContratoTorneosConsultaTest`: si `TorneosConsultaService` atrapaba una
+  excepción de otro servicio, la transacción del que llamaba quedaba marcada para rollback. Ahora
+  consulta sin excepciones.
+
+### Pruebas del sprint 4
+
+`clean verify` (sin `VideoPartidoIntegrationTest`, que necesita FFmpeg) pasa con **359 pruebas**:
+las 338 de después del merge y 21 nuevas.
+
+| Clase | Qué cubre |
+| --- | --- |
+| `RegimenDisciplinarioApiTest` | Roja, descuento, bloqueo, sancionados por fecha, reapertura, acumulación con corrección, sanción manual y apelación |
+| `EstadisticasApiTest` | Las cuatro tablas de la categoría y el resumen por jugador |
+| `ConsultaAppApiTest` | Próximos partidos, mi cuenta con la suspensión, notificaciones, partido por ID y los cerrados |
+| `SeguridadSprint4ApiTest` | El 401 claro, cada uno sus avisos, quién apela y quién resuelve |
+| `PartidoFinalizadoApiTest` | El `POST` al microservicio de video, y que no salga si el cierre falla |
+| `ContratoTorneosConsultaTest` | S4-18: la interfaz Java da lo mismo que la API |
+| `OpenApiDocsTest` | Tres casos nuevos: rutas, `bearerAuth` y `PartidoFinalizado` |
+
+El detalle criterio por criterio de las 16 HU está en `PRUEBAS_ACEPTACION.md` (S4-19).
+
+### Probado contra PostgreSQL y en la colección de Postman
+
+Hecho el 28/10/2026, que era lo que quedaba. La colección pasó a **150 requests y 190 aserciones en
+10 carpetas** y corre entera contra la API con el perfil `dev`: **190 de 190**, tres veces seguidas
+sin limpiar la base.
+
+**La carpeta 00 quedó arreglada.** Ya no da de alta al administrador con `POST /api/v1/administradores`,
+que desde el merge de `main` pide ADMIN. Ahora el login usa las variables `adminEmail` y
+`adminPassword`, y el usuario se prepara una sola vez por base con los dos comandos del paso 1b del
+README: crearlo por la API, que sigue pública, y cargarle el rol por SQL con `docker exec psql`.
+
+**La carpeta 09 cubre el sprint 4** sobre el partido que dejó la 08: lo reabre para cargar la roja
+del minuto 65, lo cierra y comprueba que el cierre generó la suspensión (`origen = ROJA`, una fecha,
+VIGENTE, con su `jornadaOrigen`), que el expulsado queda bloqueado en la planilla, y que sus minutos
+quedaron en 65. Después, sanción manual con su apelación y la resolución que la reduce a una fecha;
+las cuatro tablas de estadísticas (el goleador, las vallas con el club que no recibió goles primero,
+y los 4 puntos de fair play de una amarilla más una roja); el resumen por jugador; el partido por su
+id y los cerrados para el microservicio de video; mi cuenta y las notificaciones; el 401 sin token; y
+que `/v3/api-docs` declare `bearerAuth`, el esquema `PartidoFinalizado` y las rutas nuevas.
+
+Un solo arreglo hizo falta en la colección: el request de OpenAPI apunta a la raíz del servidor, que
+está fuera de `/api/v1`, así que el `prerequest` ahora calcula `rootUrl` a partir de `baseUrl`.

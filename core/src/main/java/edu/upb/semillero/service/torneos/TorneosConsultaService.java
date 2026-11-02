@@ -11,10 +11,8 @@ import java.util.Optional;
  * REST: los otros m&oacute;dulos inyectan esta interfaz y nunca los repositorios ni
  * las entidades de torneos.
  *
- * <p>La implementaci&oacute;n es la tarea S4-07 del sprint 4, porque depende de la
- * tabla de posiciones (HU 11, S3-12) y de las estad&iacute;sticas (HU 12, S4-11). Ac&aacute;
- * est&aacute; el contrato, que es lo que la S1-04 pide acordar: si a ficha t&eacute;cnica o
- * a scouting les falta algo, se agrega ahora y no cuando est&eacute; escrita.
+ * <p>La implementaci&oacute;n es {@link TorneosConsultaServiceImpl} (tarea S4-07),
+ * que usa los mismos servicios que la API REST de torneos.
  */
 public interface TorneosConsultaService {
 

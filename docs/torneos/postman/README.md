@@ -1,13 +1,22 @@
-# Pruebas manuales de los sprints 1 y 2 · Módulo de Torneos
+# Pruebas manuales de los sprints 1 a 4 · Módulo de Torneos
 
-Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: las 54
-requests del sprint 1 más 14 del sprint 2, en 8 carpetas.
+Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: **303 requests
+y 343 aserciones** en 12 carpetas, contra PostgreSQL de verdad.
 
-> **Desde el sprint 2 la API pide token.** Todo lo que está bajo `/api/v1/torneos` necesita un JWT
-> con el rol que corresponda (HU 16, tareas S2-01 a S2-04). La colección tiene la autenticación
-> *Bearer `{{token}}`* a nivel colección y el primer request de la carpeta 07 hace el login y guarda
-> el token. **Antes de correrla hay que crear un usuario con rol** y poner su email y contraseña en
-> las variables `adminEmail` y `adminPassword`; está explicado en el paso 3.
+> **Documentos del jugador (HU 5).** Desde que `documentos_jugador` existe y `FichaTecnicaService`
+> valida de verdad, un jugador entra a la lista de buena fe solo con su CI, su certificado de
+> nacimiento y su apto médico **VIGENTE**. Por eso, antes de cada alta en la lista, la colección
+> carga esos tres documentos con `POST /api/v1/documentos-jugador`. Y como el `name` de usuario es
+> único, la carpeta 00 crea el organizador y el entrenador con un sufijo único: así la colección
+> se puede volver a correr sobre la misma base sin chocar.
+
+> **La API pide token.** Todo lo que está bajo `/api/v1/torneos` necesita un JWT con el rol que
+> corresponda (HU 16, tareas S2-01 a S2-04). La colección trae la autenticación *Bearer `{{token}}`*
+> a nivel colección, y la carpeta 00 hace el login con el usuario de las variables `adminEmail` y
+> `adminPassword`. **Ese usuario se crea una sola vez por base, y el rol se carga por SQL**: el
+> paso 1b explica cómo. Antes se daba de alta solo con `POST /api/v1/administradores`, pero el
+> commit `7444f0e` de `main` cerró ese endpoint detrás de `hasRole(ADMIN)`, y con razón: dejarlo
+> abierto permitía conseguir ADMIN desde una cuenta recién registrada.
 
 | Carpeta | Qué cubre | Tareas |
 | --- | --- | --- |
@@ -18,12 +27,27 @@ requests del sprint 1 más 14 del sprint 2, en 8 carpetas.
 | 04 · HU 3 Sedes y canchas | CRUD, superficie, dimensiones, descripción | S1-16, S1-17 |
 | 05 · HU 4 Inscripción | Inscribir equipo, duplicado, cupo | S1-20, S1-21 |
 | 06 · Torneo en BORRADOR | Que no se pueda inscribir ni abrir sin categorías | S1-10, S1-20 |
-| 07 · Sprint 2 | Login con token, aprobación e historial de inscripciones, lista de buena fe con su PDF, fixture de liga con su PDF y publicación, y el 401 sin token | S2-01, S2-02, S2-06 a S2-18 |
+| 07 · Sprint 2 | Aprobación e historial de inscripciones, lista de buena fe con sus validaciones y su PDF, fixture de liga con su PDF y su publicación | S2-06 a S2-18 |
+| 08 · Sprint 3 | Reprogramación con motivo e historial, planilla en borrador y confirmada con su PDF, goles, tarjetas y cambios, cierre con minutos jugados, tabla de posiciones y reapertura | S3-01 a S3-19 |
+| 09 · Sprint 4 | Reapertura para cargar una roja, la suspensión que genera el cierre, el bloqueo en la planilla, sanción manual con apelación y resolución, las cuatro tablas de estadísticas, el resumen por jugador, los partidos cerrados para video, mi cuenta, notificaciones y OpenAPI | S4-02 a S4-16 |
+| 10 · CRUD por id y consultas restantes | GET por id / PUT / DELETE de sede, cancha, torneo, categoría, inscripción y lista de buena fe; GET de criterio por id; GET y DELETE de reglamento; CRUD de `documentos-jugador`; GET del fixture; GET de apelaciones de una sanción | todas las HU |
+| 11 · Fixture: eliminación, avanzar, externo y ajuste | Llaves de eliminación directa con 4 equipos, cierre de las dos semifinales (con borrado de evento), `avanzar` a la final y su cierre; ajuste manual de un partido; `DELETE` del fixture; campeonato externo con carga manual de partido y cierre con el resultado a mano | S2-15, S2-17 |
+
+La carpeta 00 cierra con el login y con los dos casos de la HU 16 que no necesitan rol: sin token y
+con un token inventado, los dos dan 401.
 
 La colección se corre entera de arriba abajo: cada carpeta deja en variables los IDs que usa la
 siguiente. **Las fechas se calculan solas respecto de hoy**, en el script `prerequest` de la
 colección, porque la ventana de inscripción depende de `now()` y con fechas fijas la colección se
-vencía. Se puede correr muchas veces seguidas sin limpiar la base.
+vencía. Se puede correr muchas veces seguidas sin limpiar la base: las carpetas 07 y 08 crean su propio
+torneo, su sede, su cancha, sus clubes y sus jugadores, así que no dependen de los IDs del sprint 1
+ni se pisan entre corridas.
+
+Para correrla desde la consola, con la API levantada:
+
+```bash
+npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json --env-var baseUrl=http://localhost:8080/api/v1
+```
 
 ---
 
@@ -60,25 +84,34 @@ el contenedor no va a poder levantar. O paras el servicio de Windows (`postgresq
 
 ---
 
-## Paso 1b · Un usuario con rol, para el token
+## Paso 1b · El usuario administrador de las pruebas
 
-El endpoint que asigna roles lo puede usar solo un administrador, así que el primero se carga a
-mano, una sola vez, con la API levantada y el usuario ya creado (lo crea la carpeta 00 de la
-colección, o `POST /api/v1/usuarios`):
+Una sola vez por base. Con la API levantada, se crea el usuario por la API, que sigue siendo
+pública, y se le carga el rol `ADMIN` por SQL, porque el endpoint que asigna roles ya pide ser
+administrador:
 
-```sql
-INSERT INTO usuarios_roles (users_id, roles_id)
-SELECT u.id, r.id FROM users u, roles r
-WHERE u.email = 'organizador@example.com' AND r.codigo = 'ORGANIZADOR'
-ON CONFLICT DO NOTHING;
+```bash
+curl -X POST http://localhost:8080/api/v1/usuarios -H "Content-Type: application/json" -d '{"name":"postman-admin","nombres":"Postman","apellidos":"Admin","email":"postman-admin@example.com","password":"secreto123"}'
 ```
 
-Después, en el entorno de Postman, poné ese email en `adminEmail` y su contraseña en
-`adminPassword`. Con un usuario ADMIN alcanza para repartir el resto de los roles por
-`PUT /api/v1/usuarios/{id}/roles` con un cuerpo como `["ORGANIZADOR","ENTRENADOR"]`.
+```bash
+docker exec semillero-app-db-1 psql -U semillero -d semillero -c "INSERT INTO usuarios_roles (users_id, roles_id) SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'postman-admin@example.com' AND r.codigo = 'ADMIN' ON CONFLICT DO NOTHING;"
+```
+
+Si usás el PostgreSQL instalado en Windows en vez del contenedor, el `psql` está en
+`"C:\Program Files\PostgreSQL8in\psql.exe"`.
+
+Ese email y esa contraseña son los valores por defecto de las variables `adminEmail` y
+`adminPassword`, así que la colección corre sin tocar nada más. **Es un usuario de prueba local**:
+no va a ningún entorno de verdad.
 
 Los cinco roles (`ADMIN`, `ORGANIZADOR`, `ENTRENADOR`, `MESA_CONTROL`, `CONSULTA`) los siembra la
 migración `V008` y también `RolesSeeder` al arrancar, así que la tabla `roles` ya viene cargada.
+Desde este administrador, el resto de las cuentas se arreglan por la API:
+
+```bash
+PUT /api/v1/usuarios/{id}/roles   con   ["ORGANIZADOR","ENTRENADOR"]
+```
 
 ---
 
@@ -154,7 +187,7 @@ conviene la colección.
 
 ### Opción A · Por terminal, recomendada
 
-Da un reporte de las 93 aserciones en una sola corrida:
+Da un reporte de las 190 aserciones en una sola corrida:
 
 ```bash
 npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection.json
@@ -167,8 +200,7 @@ npx newman run docs/torneos/postman/semillero-torneos-sprint1.postman_collection
 ```
 
 Las URLs de los requests van como texto plano (`{{baseUrl}}/torneos`), no como objeto con `raw`:
-newman no resuelve un objeto que solo trae `raw` y falla con `request url is empty` en los 54
-requests. Si alguien edita la colección a mano, conviene no cambiar eso.
+newman no resuelve un objeto que solo trae `raw` y falla con `request url is empty`. Si alguien edita la colección a mano, conviene no cambiar eso.
 
 Al final imprime una tabla. **Lo que hay que mirar es que `assertions` tenga 0 en la columna
 `failed`.**

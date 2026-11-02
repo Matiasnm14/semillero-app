@@ -3,6 +3,7 @@ package edu.upb.semillero.controller.torneos;
 import edu.upb.semillero.controller.dto.PageResponse;
 import edu.upb.semillero.repository.dto.response.torneos.CriterioDesempateResponseDto;
 import edu.upb.semillero.service.torneos.CriterioDesempateService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Catálogo de criterios de desempate, de solo lectura (tarea S1-13).
  */
+@Tag(name = "Torneos - HU 2", description = "Criterios de desempate disponibles")
 @RestController
 @RequestMapping("/api/v1/torneos/criterios-desempate")
 public class CriterioDesempateController {

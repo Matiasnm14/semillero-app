@@ -9,6 +9,7 @@ import edu.upb.semillero.repository.enums.torneos.EstadoTorneo;
 import edu.upb.semillero.repository.repos.torneos.TorneoCategoriaRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
@@ -29,13 +30,15 @@ public class TorneoService {
     private final TorneoCategoriaRepository categorias;
     private final TorneoCategoriaService categoriaService;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public TorneoService(TorneoRepository repository, TorneoCategoriaRepository categorias,
-            TorneoCategoriaService categoriaService, EntityRelations relations) {
+            TorneoCategoriaService categoriaService, EntityRelations relations, AccesoTorneos acceso) {
         this.repository = repository;
         this.categorias = categorias;
         this.categoriaService = categoriaService;
         this.relations = relations;
+        this.acceso = acceso;
     }
 
     public Page<TorneoResponseDto> findAll(Pageable pageable) {
@@ -106,7 +109,8 @@ public class TorneoService {
         entity.setFechaInicio(request.fechaInicio());
         entity.setFechaFin(request.fechaFin());
         entity.setFechaLimiteInscripcion(request.fechaLimiteInscripcion());
-        entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        entity.setUsuario(relations.find(Usuario.class,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos")));
     }
 
     private TorneoResponseDto toResponse(Torneo entity) {
