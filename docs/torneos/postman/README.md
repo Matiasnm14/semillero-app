@@ -1,7 +1,14 @@
 # Pruebas manuales de los sprints 1 a 4 · Módulo de Torneos
 
-Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: **150 requests
-y 190 aserciones** en 10 carpetas, contra PostgreSQL de verdad.
+Colección de Postman que prueba de punta a punta lo que entregó el módulo de Torneos: **212 requests
+y 252 aserciones** en 11 carpetas, contra PostgreSQL de verdad.
+
+> **Documentos del jugador (HU 5).** Desde que `documentos_jugador` existe y `FichaTecnicaService`
+> valida de verdad, un jugador entra a la lista de buena fe solo con su CI, su certificado de
+> nacimiento y su apto médico **VIGENTE**. Por eso, antes de cada alta en la lista, la colección
+> carga esos tres documentos con `POST /api/v1/documentos-jugador`. Y como el `name` de usuario es
+> único, la carpeta 00 crea el organizador y el entrenador con un sufijo único: así la colección
+> se puede volver a correr sobre la misma base sin chocar.
 
 > **La API pide token.** Todo lo que está bajo `/api/v1/torneos` necesita un JWT con el rol que
 > corresponda (HU 16, tareas S2-01 a S2-04). La colección trae la autenticación *Bearer `{{token}}`*
@@ -23,6 +30,7 @@ y 190 aserciones** en 10 carpetas, contra PostgreSQL de verdad.
 | 07 · Sprint 2 | Aprobación e historial de inscripciones, lista de buena fe con sus validaciones y su PDF, fixture de liga con su PDF y su publicación | S2-06 a S2-18 |
 | 08 · Sprint 3 | Reprogramación con motivo e historial, planilla en borrador y confirmada con su PDF, goles, tarjetas y cambios, cierre con minutos jugados, tabla de posiciones y reapertura | S3-01 a S3-19 |
 | 09 · Sprint 4 | Reapertura para cargar una roja, la suspensión que genera el cierre, el bloqueo en la planilla, sanción manual con apelación y resolución, las cuatro tablas de estadísticas, el resumen por jugador, los partidos cerrados para video, mi cuenta, notificaciones y OpenAPI | S4-02 a S4-16 |
+| 10 · CRUD por id y consultas restantes | GET por id / PUT / DELETE de sede, cancha, torneo, categoría, inscripción y lista de buena fe; GET de criterio por id; GET y DELETE de reglamento; CRUD de `documentos-jugador`; GET del fixture; GET de apelaciones de una sanción | todas las HU |
 
 La carpeta 00 cierra con el login y con los dos casos de la HU 16 que no necesitan rol: sin token y
 con un token inventado, los dos dan 401.
