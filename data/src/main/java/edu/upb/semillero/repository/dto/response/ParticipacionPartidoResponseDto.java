@@ -10,5 +10,6 @@ public record ParticipacionPartidoResponseDto(
         Short minutoEntrada,
         Short minutoSalida,
         Double velocidadProm,
-        Double distanciaRecorrida
+        Double distanciaRecorrida,
+        Short minutosJugados
 ) {}

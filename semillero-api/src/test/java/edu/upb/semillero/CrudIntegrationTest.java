@@ -1,7 +1,10 @@
 package edu.upb.semillero;
 
 import edu.upb.semillero.repository.repos.UsuarioRepository;
+import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.test.context.TestSecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,6 +71,11 @@ class CrudIntegrationTest {
         posicionId = create("posiciones", Map.of("posicion", "Delantero", "codigoPosicion", "DEL"));
         otraPosicionId = create("posiciones", Map.of("posicion", "Arquero", "codigoPosicion", "ARQ"));
         partidoId = create("partidos", partido(localId, visitanteId));
+        // Los permisos por propiedad leen el mismo tipo de principal que entrega el filtro JWT.
+        TestSecurityContextHolder.setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(
+                        new UsuarioAutenticado(usuarioId, "crud-admin", List.of("ADMIN"), null),
+                        null, AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
     }
 
     @ParameterizedTest(name = "CRUD de {0}")
@@ -112,6 +123,25 @@ class CrudIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
         assertThat(passwordEncoder.matches("otraClave123", usuarios.findById(id).orElseThrow().getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void rejectsDuplicateLoginIdentifiersButAllowsKeepingTheSameAccountIdentity() throws Exception {
+        Map<String, Object> original = usuario("identidad@example.com");
+        long id = create("usuarios", original);
+        Map<String, Object> duplicateEmail = new LinkedHashMap<>(usuario("otro@example.com"));
+        duplicateEmail.put("email", original.get("email").toString().toUpperCase(Locale.ROOT));
+        postJson("usuarios", duplicateEmail).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya existe una cuenta con este correo electrónico"));
+
+        Map<String, Object> duplicateName = new LinkedHashMap<>(usuario("otro@example.com"));
+        duplicateName.put("name", original.get("name").toString().toUpperCase(Locale.ROOT));
+        postJson("usuarios", duplicateName).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya existe una cuenta con este nombre de usuario"));
+
+        mvc.perform(put(BASE + "usuarios/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(original)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id));
     }
 
     @Test
@@ -198,7 +228,9 @@ class CrudIntegrationTest {
     }
 
     private Map<String, Object> usuario(String email) {
-        return Map.of("name", "ana", "nombres", "Ana", "apellidos", "Pérez", "email", email, "password", "secreto123");
+        String suffix = Long.toUnsignedString(System.nanoTime());
+        return Map.of("name", "ana" + suffix, "nombres", "Ana", "apellidos", "Pérez",
+                "email", email.replace("@", "+" + suffix + "@"), "password", "secreto123");
     }
 
     private Map<String, Object> partido(long local, long visitante) {

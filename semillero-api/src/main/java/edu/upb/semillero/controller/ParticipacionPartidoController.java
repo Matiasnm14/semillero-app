@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,8 +30,12 @@ public class ParticipacionPartidoController {
     }
 
     @GetMapping
-    public PageResponse<ParticipacionPartidoResponseDto> findAll(@PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        return PageResponse.from(service.findAll(pageable));
+    public PageResponse<ParticipacionPartidoResponseDto> findAll(
+            @RequestParam(required = false) @Positive Long jugadorId,
+            @RequestParam(required = false) @Positive Long partidoId,
+            @RequestParam(required = false) @Positive Long clubId,
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return PageResponse.from(service.findAll(jugadorId, partidoId, clubId, pageable));
     }
 
     @GetMapping("/{id}")

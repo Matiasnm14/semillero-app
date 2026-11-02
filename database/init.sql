@@ -24,7 +24,9 @@ $$;
 \ir migrations/V006__normalize_image_text_storage.sql
 \ir migrations/V007__torneos.sql
 \ir migrations/V008__roles_y_usuarios_roles.sql
+\ir migrations/V009__highlights_and_text_profile_images.sql
+\ir migrations/V010__club_profile.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-008).'
+\echo 'Semillero: esquema completo inicializado (000-010).'

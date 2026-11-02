@@ -36,7 +36,7 @@ class ReglamentoApiTest {
 
     @BeforeEach
     void fixtures() throws Exception {
-        organizadorId = create("/api/v1/usuarios", Map.of("name", "org",
+        organizadorId = create("/api/v1/usuarios", Map.of("name", "org" + System.nanoTime(),
                 "nombres", "Ignacio", "apellidos", "Daza",
                 "email", "reglamento" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));

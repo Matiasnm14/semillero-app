@@ -66,7 +66,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-Las migraciones [V000–V008](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos y V008 los roles compartidos. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+Las migraciones [V000–V010](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Rutas CRUD
 
@@ -182,17 +182,25 @@ Errores HTTP en formato `ProblemDetail`: `400` para datos/reglas inválidos, `40
 | Ruta / operación | Acceso |
 | --- | --- |
 | `/api/v1/administradores`, incluido listado y consulta | ADMIN |
-| POST, PUT y DELETE de `/api/v1/usuarios-club` y `/api/v1/usuarios-trabaja` | ADMIN; sus consultas GET siguen públicas |
-| PUT y DELETE de `/api/v1/usuarios/{id}` | Titular de la cuenta con JWT o ADMIN |
+| POST de `/api/v1/usuarios-club` y `/api/v1/usuarios-trabaja` | Público para el registro de cuentas de club, según la integración actual de ficha técnica |
+| PUT y DELETE de `/api/v1/usuarios-club` y `/api/v1/usuarios-trabaja` | ADMIN; sus consultas GET siguen públicas |
+| PUT de `/api/v1/usuarios/{id}` | Titular, ADMIN o personal del club con el jugador fichado actualmente, según las validaciones del servicio |
+| DELETE de `/api/v1/usuarios/{id}` | Titular de la cuenta con JWT o ADMIN |
+| PUT de `/api/v1/jugadores/{id}` | Titular, ADMIN o personal del club con el jugador fichado actualmente |
 | `/api/v1/roles` y `/api/v1/usuarios/{id}/roles` | ADMIN |
 | GET de `/api/v1/torneos/**` | Usuario autenticado |
 | Escrituras de torneos | ORGANIZADOR o ADMIN; inscripciones y lista de buena fe también admiten ENTRENADOR, con las validaciones de propiedad del servicio |
 
-Los demás CRUD compartidos conservan su acceso público de desarrollo. Las asignaciones que determinan roles y pertenencia a clubes requieren ADMIN para impedir que una cuenta se otorgue permisos. Para crear el primer administrador, registrar la cuenta e insertar una vez su vínculo al rol `ADMIN` desde una conexión autorizada a la base; ver el [procedimiento de alta inicial](docs/torneos/PENDIENTES.md#lo-que-el-sprint-2-agregó-fuera-de-torneos). Configurar `JWT_SECRET` en el entorno de producción.
+Los demás CRUD compartidos conservan su acceso público de desarrollo. Las asignaciones de ADMIN y los cambios de roles requieren ADMIN; el registro inicial de vínculos de club sigue público en `main`. Para crear el primer administrador, registrar la cuenta e insertar una vez su vínculo al rol `ADMIN` desde una conexión autorizada a la base; ver el [procedimiento de alta inicial](docs/torneos/PENDIENTES.md#lo-que-el-sprint-2-agregó-fuera-de-torneos). Configurar `JWT_SECRET` en el entorno de producción.
 
 Flutter Web puede usar orígenes `http://localhost:<puerto>` y `http://127.0.0.1:<puerto>`. Spring Security procesa CORS antes de autenticar: el preflight no necesita JWT y las peticiones reales conservan sus permisos. Los orígenes externos no están habilitados en esta configuración local.
 
 ## Pruebas
+
+El [contrato del comparador de jugadores](docs/COMPARADOR_JUGADORES.md) expone estadísticas de
+partidos finalizados y una comparación de dos jugadores por temporada o torneo. Usa
+participaciones y eventos deportivos, sin depender del análisis de video. El listado de
+participaciones admite filtros por jugador, partido y club y devuelve `minutosJugados`.
 
 ```bash
 ./mvnw clean verify
