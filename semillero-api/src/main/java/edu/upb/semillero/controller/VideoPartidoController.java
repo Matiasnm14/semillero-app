@@ -28,8 +28,8 @@ public class VideoPartidoController {
             @RequestPart("file") MultipartFile file) {
         try (var input = file.getInputStream()) {
             var response = service.create(partidoId, file.getOriginalFilename(), file.getSize(), input);
-            return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}").buildAndExpand(response.id()).toUri()).body(response);
+            return ResponseEntity.accepted().location(ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/api/v1/analisis/{id}").buildAndExpand(response.analysisId()).toUri()).body(response);
         } catch (IOException e) {
             throw new StorageUnavailableException("No se pudo leer el archivo recibido");
         }

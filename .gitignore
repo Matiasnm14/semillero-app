@@ -18,6 +18,7 @@ Análisis de Rendimiento para Fútbol - Product Backlog.tsv
 /.local/youtube/
 /.local/backlog/
 /.local/videos/
+/.local/analysis/
 __pycache__/
 *.py[cod]
 

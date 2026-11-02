@@ -3,6 +3,7 @@ package edu.upb.semillero.config;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,7 +20,11 @@ public class AnalysisProperties {
     private boolean enabled;
     private boolean workerEnabled = true;
     private URI baseUrl;
-    private String evaluationPath = "/internal/v1/evaluaciones";
+    private String evaluationPath = "/analyses";
+    private boolean readJerseys = true;
+    private Path artifactsDir = Path.of(".local/analysis");
+    @Min(1024)
+    private int maxHeatmapBytes = 10 * 1024 * 1024;
     private String token = "";
     private Duration pollInterval = Duration.ofSeconds(5);
     private Duration connectTimeout = Duration.ofSeconds(10);

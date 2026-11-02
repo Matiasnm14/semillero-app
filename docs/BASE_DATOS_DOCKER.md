@@ -31,7 +31,7 @@ Conservar `.env` y el volumen `db_data`. Después de actualizar el código, arra
 
 1. Comprueba las 17 tablas base conocidas y columnas características. Acepta también las tablas opcionales de videos, análisis, métricas, torneos (V007) y roles compartidos (V008). Un esquema incompleto, ajeno o con tablas adicionales sin historial se detiene para revisión.
 2. Registra una base histórica `-1`, que no omite ninguna migración del proyecto.
-3. Ejecuta V000–V010. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta; V007 incorpora torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes.
+3. Ejecuta V000–V012. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta; V007 incorpora torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 el contrato HTTP Spark y V012 la procedencia de cargas y espera de YouTube.
 4. Valida las entidades y permite arrancar la API.
 
 Esto cubre bases creadas con los SQL anteriores, incluidas instalaciones que ya aplicaron 004, y bases creadas mediante `ddl-auto=update`. Los datos incompatibles con una restricción detienen la migración; no se borran ni se corrigen silenciosamente. La migración fallida se revierte y puede ejecutarse de nuevo tras corregir la causa. Las anteriores que ya terminaron permanecen registradas.
@@ -49,7 +49,7 @@ docker compose exec db psql -U semillero -d semillero -c '\dt'
 docker compose exec db psql -U semillero -d semillero -c 'SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;'
 ```
 
-Las versiones SQL actuales son 000–010: once entradas SQL en el historial. Las bases adoptadas tienen además la entrada `BASELINE` con versión `-1`. En una base nueva no se necesita esa entrada.
+Las versiones SQL actuales son 000–012: trece entradas SQL en el historial. Las bases adoptadas tienen además la entrada `BASELINE` con versión `-1`. En una base nueva no se necesita esa entrada.
 
 | Archivo | Contenido |
 | --- | --- |
@@ -64,8 +64,10 @@ Las versiones SQL actuales son 000–010: once entradas SQL en el historial. Las
 | [V008__roles_y_usuarios_roles.sql](../database/migrations/V008__roles_y_usuarios_roles.sql) | Roles compartidos y asignaciones a usuarios |
 | [V009__highlights_and_text_profile_images.sql](../database/migrations/V009__highlights_and_text_profile_images.sql) | Publicación de highlights y columnas de imágenes de texto |
 | [V010__club_profile.sql](../database/migrations/V010__club_profile.sql) | Año de fundación y descripción del club |
+| [V011__spark_analysis_contract.sql](../database/migrations/V011__spark_analysis_contract.sql) | Identidad remota Spark, progreso en segundos y limpieza posterior al commit |
+| [V012__persistent_video_uploads.sql](../database/migrations/V012__persistent_video_uploads.sql) | Usuario de carga y publicación en YouTube después del análisis |
 
-Los nombres siguen `V<versión>__<descripción>.sql`. La fuente única es `database/migrations`; Maven la empaqueta en `db/migration`. No editar archivos ya registrados por Flyway: un checksum distinto detiene el arranque. Para un cambio nuevo añadir, por ejemplo, `V011__descripcion.sql` y reconstruir el JAR. No se necesita ejecutar SQL manual. Si una instalación anterior sin historial ya creó tablas nuevas mediante Hibernate, revisar también la lista explícita de tablas reconocidas en `DatabaseMigrationConfiguration`; nunca aceptar nombres ajenos automáticamente.
+Los nombres siguen `V<versión>__<descripción>.sql`. La fuente única es `database/migrations`; Maven la empaqueta en `db/migration`. No editar archivos ya registrados por Flyway: un checksum distinto detiene el arranque. Para un cambio nuevo añadir, por ejemplo, `V013__descripcion.sql` y reconstruir el JAR. No se necesita ejecutar SQL manual. Si una instalación anterior sin historial ya creó tablas nuevas mediante Hibernate, revisar también la lista explícita de tablas reconocidas en `DatabaseMigrationConfiguration`; nunca aceptar nombres ajenos automáticamente.
 
 Las entidades de fotos usan `String` sobre `TEXT`. La V006 también cubre instalaciones donde `@Lob` creó columnas OID: lee el contenido del objeto grande y conserva los valores nulos. No modifica la V005 ya distribuida ni elimina objetos grandes originales, que pueden tener otras referencias. Si un OID no puede leerse, la migración falla y se revierte; no sustituye fotos por el identificador numérico. Ver la [explicación de Hibernate sobre TEXT y LOB](https://docs.hibernate.org/orm/7.1/introduction/html_single/#lobs).
 
@@ -83,7 +85,7 @@ Los archivos se montan de solo lectura en `/opt/semillero/database`, fuera de la
 
 ## Analizador y YouTube
 
-Migrar la base no necesita acceso a Google ni al servicio de análisis. Los CRUD arrancan con las integraciones deshabilitadas. Cargar videos requiere configurar y habilitar Python según la [integración automática](INTEGRACION_AUTOMATICA_VIDEO.md); sin él, la carga responde `503`. YouTube sigue siendo opcional.
+Migrar la base no necesita acceso a Google ni al servicio de análisis. Los CRUD arrancan con las integraciones deshabilitadas. Las [cargas persistentes](CARGAS_PERSISTENTES_Y_PERMISOS.md) requieren JWT, acceso al partido, almacenamiento y FFmpeg; pueden quedar pendientes con Spark deshabilitada. El worker necesita configurar y habilitar Spark para procesarlas. YouTube sigue siendo opcional.
 
 ## Persistencia y pruebas
 
