@@ -72,10 +72,12 @@ Las migraciones [V000–V012](database/migrations) se incluyen en el JAR y Flywa
 
 La [entrega del backend compartido](VPS-Implementacion/backend-compartido/README.md) incluye una
 imagen Java 21 y Compose, construidos en la computadora para transferir al VPS. El perfil `vps`
-requiere credenciales y un secreto JWT explícitos, aplica Flyway y mantiene el análisis de video,
+requiere credenciales y un secreto JWT explícitos, desactiva Flyway en el runtime (el migrador
+central administra el esquema) y mantiene el análisis de video,
 sus workers y YouTube deshabilitados para esta entrega. `CORS_ALLOWED_ORIGINS` configura los
 orígenes públicos permitidos; vacío corresponde al uso desde el mismo origen. La configuración
-publica la API únicamente en un puerto local del servidor, pendiente del proxy HTTPS.
+usa `network_mode: host`, escucha en `127.0.0.1:18083` y conserva Hibernate `validate`.
+La conexión estable a PostgreSQL es `jdbc:postgresql://127.0.0.1:5432/semillero`.
 
 ## Rutas CRUD
 
