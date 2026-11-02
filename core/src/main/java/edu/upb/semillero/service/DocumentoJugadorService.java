@@ -8,6 +8,8 @@ import edu.upb.semillero.repository.enums.EstadoDocumentoJugador;
 import edu.upb.semillero.repository.repos.DocumentoJugadorRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.service.exception.NotFoundException;
+import edu.upb.semillero.service.seguridad.AccesoDocumentos;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,28 +18,50 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * CRUD de los documentos del jugador (ficha técnica). Torneos no lo usa para
  * escribir: lee la tabla a través de {@code FichaTecnicaService}.
+ *
+ * <p>HU 16: la autenticación la exige {@code SeguridadConfiguration}; aquí se
+ * controla, por jugador, quién puede ver y administrar cada documento, y que
+ * aprobar a VIGENTE quede reservado al administrador (ver {@link AccesoDocumentos}).
  */
 @Service
 @Transactional(readOnly = true)
 public class DocumentoJugadorService {
+    private static final String RUTA = "/api/v1/documentos-jugador";
+
     private final DocumentoJugadorRepository repository;
     private final JugadorRepository jugadores;
+    private final AccesoDocumentos acceso;
 
-    public DocumentoJugadorService(DocumentoJugadorRepository repository, JugadorRepository jugadores) {
+    public DocumentoJugadorService(DocumentoJugadorRepository repository, JugadorRepository jugadores,
+            AccesoDocumentos acceso) {
         this.repository = repository;
         this.jugadores = jugadores;
+        this.acceso = acceso;
     }
 
     public Page<DocumentoJugadorResponseDto> findAll(Pageable pageable) {
-        return repository.findAll(pageable).map(this::toResponse);
+        Set<Long> permitidos = acceso.jugadoresAdministrables();
+        if (permitidos == null) {          // administrador: ve todos
+            return repository.findAll(pageable).map(this::toResponse);
+        }
+        if (permitidos.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return repository.findByJugadorIdIn(permitidos, pageable).map(this::toResponse);
     }
 
     public DocumentoJugadorResponseDto findById(Long id) {
-        return toResponse(require(id));
+        DocumentoJugador entity = require(id);
+        acceso.requireAdministrar("GET", RUTA + "/" + id, entity.getJugador().getId());
+        return toResponse(entity);
     }
 
     @Transactional
     public DocumentoJugadorResponseDto create(DocumentoJugadorRequestDto request) {
+        acceso.requireAdministrar("POST", RUTA, request.jugadorId());
+        if (request.estado() == EstadoDocumentoJugador.VIGENTE) {
+            acceso.requireAprobacion("POST", RUTA);
+        }
         DocumentoJugador entity = new DocumentoJugador();
         apply(entity, request);
         return toResponse(repository.saveAndFlush(entity));
@@ -46,13 +70,23 @@ public class DocumentoJugadorService {
     @Transactional
     public DocumentoJugadorResponseDto update(Long id, DocumentoJugadorRequestDto request) {
         DocumentoJugador entity = require(id);
+        acceso.requireAdministrar("PUT", RUTA + "/" + id, entity.getJugador().getId());
+        // Cambiar jugadorId no debe trasladar el documento a un jugador ajeno.
+        if (!entity.getJugador().getId().equals(request.jugadorId())) {
+            acceso.requireAdministrar("PUT", RUTA + "/" + id, request.jugadorId());
+        }
+        if (request.estado() == EstadoDocumentoJugador.VIGENTE) {
+            acceso.requireAprobacion("PUT", RUTA + "/" + id);
+        }
         apply(entity, request);
         return toResponse(repository.saveAndFlush(entity));
     }
 
     @Transactional
     public void delete(Long id) {
-        repository.delete(require(id));
+        DocumentoJugador entity = require(id);
+        acceso.requireAdministrar("DELETE", RUTA + "/" + id, entity.getJugador().getId());
+        repository.delete(entity);
         repository.flush();
     }
 
