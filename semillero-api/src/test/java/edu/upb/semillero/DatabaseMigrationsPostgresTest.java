@@ -99,6 +99,25 @@ class DatabaseMigrationsPostgresTest {
     }
 
     @Test
+    void upgrades012AddingDocumentosJugadorWithoutLosingDataOrRoles() {
+        Flyway.configure().dataSource(source).target("12").load().migrate();
+        jdbc.update("insert into clubes(nombre_club) values ('Antes de V013')");
+        jdbc.update("insert into users(id,name,email,password_hash) values (60,'Org','org@example.test','hash')");
+        jdbc.update("insert into usuarios_roles(users_id,roles_id) select 60,id from roles where codigo='ORGANIZADOR'");
+        assertThat(jdbc.queryForObject("select to_regclass('public.documentos_jugador')", String.class)).isNull();
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            // La migración V013 agrega documentos_jugador sin tocar los datos ni los permisos.
+            assertThat(jdbc.queryForObject("select nombre_club from clubes", String.class)).isEqualTo("Antes de V013");
+            assertThat(jdbc.queryForObject("select count(*) from documentos_jugador", Integer.class)).isZero();
+            assertThat(jdbc.queryForList("""
+                    select r.codigo from usuarios_roles ur join roles r on r.id=ur.roles_id where ur.users_id=60
+                    """, String.class)).containsExactly("ORGANIZADOR");
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
+        }
+    }
+
+    @Test
     void readsSportsStatisticsAndFilteredParticipationsOnPostgresWithoutVideoAnalysis() throws Exception {
         try (var context = start(true, "validate")) {
             try (Connection connection = source.getConnection()) {
@@ -231,7 +250,7 @@ class DatabaseMigrationsPostgresTest {
                     """);
             jdbc.update("""
                     insert into usuarios_roles(users_id,roles_id)
-                    select 50,id from roles where codigo='USUARIO_SISTEMA'
+                    select 50,id from roles where codigo='ORGANIZADOR'
                     """);
         }
         assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
@@ -248,8 +267,8 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select users_id from torneos where id=50", Long.class)).isEqualTo(50L);
             assertThat(jdbc.queryForList("""
                     select r.codigo from usuarios_roles ur join roles r on r.id=ur.roles_id where ur.users_id=50
-                    """, String.class)).containsExactly("USUARIO_SISTEMA");
-            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(1);
+                    """, String.class)).containsExactly("ORGANIZADOR");
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
             assertThat(jdbc.queryForObject("select count(*) from criterios_desempate", Integer.class)).isEqualTo(5);
         }
     }
@@ -309,7 +328,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 14 : 13);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 15 : 14);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -324,11 +343,11 @@ class DatabaseMigrationsPostgresTest {
     }
 
     private void assertCurrent() {
-        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(41);
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(42);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(13);
+                .isEqualTo(14);
     }
 
     private void assertBaseline() {
