@@ -35,9 +35,7 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponseDto create(UsuarioRequestDto request) {
         Usuario entity = new Usuario();
-        if (request.password() == null || request.password().isBlank()) {
-            throw new BusinessException("La contraseña es obligatoria");
-        }
+        validateRegistration(request);
         apply(entity, request);
         return toResponse(repository.saveAndFlush(entity));
     }
@@ -86,6 +84,18 @@ public class UsuarioService {
                 ? repository.existsByNameIgnoreCase(name)
                 : repository.existsByNameIgnoreCaseAndIdNot(name, userId))) {
             throw new ConflictException("Ya existe una cuenta con este nombre de usuario");
+        }
+    }
+
+    private void validateRegistration(UsuarioRequestDto request) {
+        if (request.password() == null || request.password().isBlank()) {
+            throw new BusinessException("La contraseña es obligatoria");
+        }
+        if (normalize(request.name()) == null || normalize(request.nombres()) == null
+                || normalize(request.apellidos()) == null || normalize(request.email()) == null
+                || normalize(request.telefonoUsuario()) == null
+                || normalize(request.docIdentidadUsuario()) == null) {
+            throw new BusinessException("Todos los campos de la cuenta son obligatorios");
         }
     }
 
