@@ -33,7 +33,7 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 4 | `PartidoService` rechaza también fechas iguales, para alinearse con `chk_partido_fechas` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
 | 6 | `roles` y `usuarios_roles`: las creó **torneos** en la V008, con el JWT (S2-01 a S2-04) | Hecho | 28/10/2026 | Miguel (torneos) |
-| 7 | `documentos_jugador` la crea **ficha técnica** | Asignado | 26/10/2026 | Ficha técnica |
+| 7 | `documentos_jugador`: la implementó **torneos** (V011 + `FichaTecnicaServiceImpl`); ficha técnica puede tomarla | Hecho | 02/11/2026 | Miguel (torneos) |
 | 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 9 | `notificaciones` la crea **torneos**, mismo criterio | Hecho | 26/10/2026 | Miguel (torneos) |
 | 10 | `FichaTecnicaService`: interfaz y stub escritos; la implementación real es de ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
@@ -88,9 +88,26 @@ Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos
 - Los puntos **6 y 11 los terminó haciendo torneos** en el sprint 2, porque la HU 16 no se podía
   cerrar sin ellos: ver "Lo que el sprint 2 agregó fuera de torneos" más abajo. Si ficha técnica
   los quiere tomar, el código está listo para que su `@Service` reemplace al nuestro.
-- El punto **7 (`documentos_jugador`) sigue sin dueño confirmado**, y mientras no exista, las
-  validaciones de documentos y apto médico de la HU 5 no comprueban nada: el servicio responde
-  siempre que están vigentes y lo deja anotado en el log.
+- El punto **7 (`documentos_jugador`) lo implementó torneos** el 02/11/2026 (ver "Actualización"
+  abajo): la tabla existe y las validaciones de la HU 5 ya comprueban de verdad.
+
+### Actualización 02/11/2026
+
+- **Columnas nuevas (puntos 1, 2 y 3): confirmadas por todos los grupos.** Las columnas que torneos
+  agregó a `partidos`, `participaciones_partido` y `jugadores` quedaron acordadas; ya no están a la
+  espera del visto bueno de los dueños.
+- **`documentos_jugador` (punto 7): implementada por torneos.** Migración `V011`, entidad
+  `DocumentoJugador`, repos, enums, CRUD en `/api/v1/documentos-jugador`, e implementación real
+  `service.fichatecnica.FichaTecnicaServiceImpl`, que valida documentos y apto médico vigentes en la
+  HU 5 (antes el stub respondía siempre `true`). El stub `MocksExternosConfiguration` quedó inactivo;
+  si ficha técnica quiere tomar la tabla, el código está listo para reemplazarse.
+- **Aviso `PartidoFinalizado` al microservicio de video (HU 15 / punto 13): opcional y diferido.**
+  Se revisó el código del módulo de video: su análisis se dispara al **subir el video** de un partido
+  (`POST /api/v1/partidos/{partidoId}/videos`) y solo exige que el partido exista; **no consume** el
+  aviso `PartidoFinalizado` ni el endpoint `/partidos/finalizados` (no hay receptor del lado de
+  video). Para la entrega se presenta sin ese aviso en tiempo real. El `POST` sigue en el código,
+  inofensivo sin URL configurada, y se puede activar más adelante si el grupo de video decide
+  consumirlo (con su URL y, si quieren, un token). No bloquea nada de torneos.
 
 ### Lo que el sprint 2 agregó fuera de torneos
 
