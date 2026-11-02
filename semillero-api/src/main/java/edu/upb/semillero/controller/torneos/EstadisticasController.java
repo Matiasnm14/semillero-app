@@ -1,7 +1,7 @@
 package edu.upb.semillero.controller.torneos;
 
 import edu.upb.semillero.repository.dto.response.torneos.EstadisticasCategoriaResponseDto;
-import edu.upb.semillero.repository.dto.response.torneos.EstadisticasJugadorResponseDto;
+import edu.upb.semillero.repository.dto.response.torneos.ResumenJugadorTorneoResponseDto;
 import edu.upb.semillero.service.torneos.EstadisticasService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -32,7 +32,7 @@ public class EstadisticasController {
 
     /** Tarea S4-12: el resumen de un jugador en el torneo. */
     @GetMapping("/api/v1/torneos/{torneoId}/jugadores/{jugadorId}/estadisticas")
-    public EstadisticasJugadorResponseDto deJugador(@PathVariable @Positive Long torneoId,
+    public ResumenJugadorTorneoResponseDto deJugador(@PathVariable @Positive Long torneoId,
             @PathVariable @Positive Long jugadorId) {
         return service.deJugador(torneoId, jugadorId);
     }

@@ -7,6 +7,12 @@ Análisis de Rendimiento para Fútbol - Product Backlog.tsv
 .env.*
 !.env.example
 
+### Acceso personal al VPS ###
+/guia-acceso-vps.md
+/respuesta-acceso-vps.md
+/respuesta-acceso-vps.md.*
+/.local/vps/
+
 ### Pruebas locales de YouTube ###
 /cronoshift.mp4
 /.local/youtube/

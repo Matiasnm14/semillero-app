@@ -3,6 +3,8 @@ package edu.upb.semillero;
 import edu.upb.semillero.repository.repos.ClubRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
 import edu.upb.semillero.config.DatabaseMigrationConfiguration;
+import edu.upb.semillero.service.ParticipacionPartidoService;
+import edu.upb.semillero.service.torneos.EstadisticasJugadorService;
 import java.sql.Connection;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +19,7 @@ import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -51,6 +54,31 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForList("select version, checksum, installed_on from flyway_schema_history order by installed_rank"))
                     .isEqualTo(history);
             assertCurrent();
+        }
+    }
+
+    @Test
+    void readsSportsStatisticsAndFilteredParticipationsOnPostgresWithoutVideoAnalysis() throws Exception {
+        try (var context = start(true, "validate")) {
+            try (Connection connection = source.getConnection()) {
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/comparador-fixture.sql"));
+            }
+            var service = context.getBean(EstadisticasJugadorService.class);
+            var comparison = service.compare(72001L, 72002L, 2026, null);
+            assertThat(comparison.jugadorA().partidosJugados()).isEqualTo(1);
+            assertThat(comparison.jugadorA().goles()).isEqualTo(2);
+            assertThat(comparison.jugadorA().asistencias()).isEqualTo(1);
+            assertThat(comparison.jugadorA().minutosJugados()).isEqualTo(80L);
+            assertThat(comparison.jugadorA().dorsal()).isEqualTo((short) 9);
+            assertThat(comparison.jugadorB().goles()).isEqualTo(1);
+            assertThat(comparison.jugadorB().minutosJugados()).isEqualTo(90L);
+            assertThat(service.forPlayer(72001L, null, null).goles()).isEqualTo(2);
+            assertThat(service.forPlayer(72001L, 2027, null).partidosJugados()).isZero();
+            var page = context.getBean(ParticipacionPartidoService.class)
+                    .findAll(72001L, null, null, PageRequest.of(0, 1));
+            assertThat(page.getTotalElements()).isEqualTo(1);
+            assertThat(page.getContent().getFirst().minutosJugados()).isEqualTo((short) 80);
+            assertThat(jdbc.queryForObject("select count(*) from player_match_metrics", Integer.class)).isZero();
         }
     }
 
@@ -238,7 +266,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 10 : 9);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 12 : 11);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -255,9 +283,9 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(41);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(9);
+                .isEqualTo(11);
     }
 
     private void assertBaseline() {

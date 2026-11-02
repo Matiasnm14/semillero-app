@@ -1,9 +1,9 @@
 package edu.upb.semillero.service.torneos;
 
 import edu.upb.semillero.repository.dto.response.torneos.EstadisticasCategoriaResponseDto;
-import edu.upb.semillero.repository.dto.response.torneos.EstadisticasJugadorResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.FairPlayResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.RankingJugadorResponseDto;
+import edu.upb.semillero.repository.dto.response.torneos.ResumenJugadorTorneoResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.VallaResponseDto;
 import edu.upb.semillero.repository.entity.Club;
 import edu.upb.semillero.repository.entity.ParticipacionPartido;
@@ -132,7 +132,7 @@ public class EstadisticasService {
     }
 
     /** Tarea S4-12: el resumen del jugador en el torneo. */
-    public EstadisticasJugadorResponseDto deJugador(Long torneoId, Long jugadorId) {
+    public ResumenJugadorTorneoResponseDto deJugador(Long torneoId, Long jugadorId) {
         if (!torneos.existsById(torneoId)) {
             throw new NotFoundException("Torneo con id " + torneoId + " no existe");
         }
@@ -147,7 +147,7 @@ public class EstadisticasService {
      * una excepción dentro de esta transacción la dejaría marcada para rollback
      * en la de quien llama.
      */
-    public Optional<EstadisticasJugadorResponseDto> buscarDeJugador(Long torneoId, Long jugadorId) {
+    public Optional<ResumenJugadorTorneoResponseDto> buscarDeJugador(Long torneoId, Long jugadorId) {
         if (torneoId == null || jugadorId == null
                 || listas.findByTorneoIdAndJugadorId(torneoId, jugadorId).isEmpty()) {
             return Optional.empty();
@@ -165,7 +165,7 @@ public class EstadisticasService {
                         jugadorId, torneoId, EstadoPartido.FINALIZADO).stream()
                 .filter(evento -> evento.getTipo() == TipoEventoPartido.GOL)
                 .count();
-        return Optional.of(new EstadisticasJugadorResponseDto(
+        return Optional.of(new ResumenJugadorTorneoResponseDto(
                 jugadorId,
                 torneoId,
                 jugadas.size(),
