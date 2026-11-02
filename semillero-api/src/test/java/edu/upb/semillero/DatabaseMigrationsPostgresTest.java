@@ -188,7 +188,7 @@ class DatabaseMigrationsPostgresTest {
                     """);
             jdbc.update("""
                     insert into usuarios_roles(users_id,roles_id)
-                    select 50,id from roles where codigo='ORGANIZADOR'
+                    select 50,id from roles where codigo='USUARIO_SISTEMA'
                     """);
         }
         assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conname='fk_pmm_participation'", Integer.class))
@@ -205,8 +205,8 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select users_id from torneos where id=50", Long.class)).isEqualTo(50L);
             assertThat(jdbc.queryForList("""
                     select r.codigo from usuarios_roles ur join roles r on r.id=ur.roles_id where ur.users_id=50
-                    """, String.class)).containsExactly("ORGANIZADOR");
-            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
+                    """, String.class)).containsExactly("USUARIO_SISTEMA");
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("select count(*) from criterios_desempate", Integer.class)).isEqualTo(5);
         }
     }

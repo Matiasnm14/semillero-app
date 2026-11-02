@@ -51,7 +51,7 @@ public class AccesoTorneos {
      */
     public void requireClubPropio(Long clubId, String queIntento) {
         Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty() || mandaEnTodo(actual.get()) || !actual.get().tieneRol(Roles.ENTRENADOR)) {
+        if (actual.isEmpty() || mandaEnTodo(actual.get()) || !actual.get().tieneRol(Roles.USUARIO_CLUB)) {
             return;
         }
         UsuarioAutenticado usuario = actual.get();
@@ -70,7 +70,7 @@ public class AccesoTorneos {
     public void requirePartidoAsignado(Long partidoId, Long mesaControlId) {
         Optional<UsuarioAutenticado> actual = actual();
         if (actual.isEmpty() || mandaEnTodo(actual.get())
-                || !actual.get().tieneRol(Roles.MESA_CONTROL)) {
+                || !actual.get().tieneRol(Roles.USUARIO_SISTEMA)) {
             return;
         }
         UsuarioAutenticado usuario = actual.get();
@@ -97,7 +97,8 @@ public class AccesoTorneos {
             return pedido;
         }
         UsuarioAutenticado usuario = actual.get();
-        if (pedido == null || pedido.equals(usuario.usuarioId()) || usuario.tieneRol(Roles.ADMIN)) {
+        if (pedido == null || pedido.equals(usuario.usuarioId())
+                || usuario.tieneRol(Roles.ADMINISTRADOR_GENERAL)) {
             return pedido == null ? usuario.usuarioId() : pedido;
         }
         registro.rechazado("", queIntento, usuario.usuarioId(),
@@ -106,6 +107,6 @@ public class AccesoTorneos {
     }
 
     private boolean mandaEnTodo(UsuarioAutenticado usuario) {
-        return usuario.tieneRol(Roles.ORGANIZADOR) || usuario.tieneRol(Roles.ADMIN);
+        return usuario.tieneRol(Roles.USUARIO_SISTEMA) || usuario.tieneRol(Roles.ADMINISTRADOR_GENERAL);
     }
 }

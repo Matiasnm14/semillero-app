@@ -146,30 +146,30 @@ class ContratosEntreModulosTest {
      */
     @Test
     void comunNoConcedeRolesQueElUsuarioNoTiene() {
-        assertThat(comun.tieneRol(1L, Roles.ORGANIZADOR)).isFalse();
+        assertThat(comun.tieneRol(1L, Roles.USUARIO_SISTEMA)).isFalse();
         assertThat(comun.tieneRol(1L, "ROL_QUE_NO_EXISTE")).isFalse();
-        assertThat(comun.tieneRol(null, Roles.ADMIN)).isFalse();
+        assertThat(comun.tieneRol(null, Roles.ADMINISTRADOR_GENERAL)).isFalse();
         assertThat(comun.clubesDondeTrabaja(1L)).isEmpty();
     }
 
     @Test
     void comunDaElRolQueEstaEnUsuariosRoles() {
         Usuario usuario = usuario();
-        Rol organizador = roles.findByCodigo(Roles.ORGANIZADOR).orElseThrow();
+        Rol sistema = roles.findByCodigo(Roles.USUARIO_SISTEMA).orElseThrow();
         UsuarioRol asignacion = new UsuarioRol();
         asignacion.setUsuario(usuario);
-        asignacion.setRol(organizador);
+        asignacion.setRol(sistema);
         asignacion.setFechaAlta(LocalDateTime.now());
         usuariosRoles.saveAndFlush(asignacion);
 
-        assertThat(comun.tieneRol(usuario.getId(), Roles.ORGANIZADOR)).isTrue();
-        assertThat(comun.rolesDe(usuario.getId())).contains(Roles.ORGANIZADOR);
+        assertThat(comun.tieneRol(usuario.getId(), Roles.USUARIO_SISTEMA)).isTrue();
+        assertThat(comun.rolesDe(usuario.getId())).contains(Roles.USUARIO_SISTEMA);
     }
 
-    /** Sin ningún rol asignado, el usuario solo puede consultar. */
+    /** Una cuenta sin administrador, jugador, club ni usuarios_roles no tiene ningún rol. */
     @Test
-    void sinRolesAsignadosElUsuarioQuedaEnConsulta() {
-        assertThat(comun.rolesDe(usuario().getId())).containsExactly(Roles.CONSULTA);
+    void sinClasificacionElUsuarioNoTieneRoles() {
+        assertThat(comun.rolesDe(usuario().getId())).isEmpty();
     }
 
     @Test

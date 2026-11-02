@@ -21,11 +21,10 @@ public class RolesSeeder implements ApplicationRunner {
     private static final Map<String, String> ROLES = new LinkedHashMap<>();
 
     static {
-        ROLES.put(Roles.ADMIN, "Administrador");
-        ROLES.put(Roles.ORGANIZADOR, "Organizador del torneo");
-        ROLES.put(Roles.ENTRENADOR, "Entrenador");
-        ROLES.put(Roles.MESA_CONTROL, "Mesa de control");
-        ROLES.put(Roles.CONSULTA, "Consulta");
+        // Único rol almacenable: marca a una cuenta operativa como USUARIO_SISTEMA.
+        // Los demás (ADMINISTRADOR_GENERAL, JUGADOR, USUARIO_CLUB) salen de sus
+        // propias tablas, no de aquí.
+        ROLES.put(Roles.USUARIO_SISTEMA, "Usuario del sistema");
     }
 
     private final RolRepository repository;

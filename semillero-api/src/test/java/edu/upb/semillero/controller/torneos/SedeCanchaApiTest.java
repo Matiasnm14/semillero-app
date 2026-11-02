@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "ORGANIZADOR")
+@WithMockUser(roles = "USUARIO_SISTEMA")
 class SedeCanchaApiTest {
     private static final String SEDES = "/api/v1/torneos/sedes";
     private static final String CANCHAS = "/api/v1/torneos/canchas";

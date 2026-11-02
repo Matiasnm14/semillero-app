@@ -66,8 +66,9 @@ public class SeguridadConfiguration {
             "/api/v1/torneos/partidos/*/cerrar"};
     private static final String[] NOTIFICACIONES = {
             "/api/v1/torneos/notificaciones", "/api/v1/torneos/notificaciones/**"};
-    private static final String ORGANIZA = Roles.ORGANIZADOR;
-    private static final String ADMINISTRA = Roles.ADMIN;
+    private static final String SISTEMA = Roles.USUARIO_SISTEMA;
+    private static final String CLUB = Roles.USUARIO_CLUB;
+    private static final String ADMINISTRA = Roles.ADMINISTRADOR_GENERAL;
 
     private final RegistroAccesoService registro;
     private final JugadorRepository jugadores;
@@ -122,21 +123,21 @@ public class SeguridadConfiguration {
                         .access(this::jugadorPropioOClubOAdministrador)
                         .requestMatchers(HttpMethod.GET, TORNEOS).authenticated()
                         .requestMatchers(LISTA_BUENA_FE)
-                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")
-                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
                         // La planilla, los eventos y el cierre los carga la mesa de control
                         // (HU 9 y 10); qué partido puede tocar lo controla AccesoTorneos.
                         .requestMatchers(MESA_DE_CONTROL)
-                        .hasAnyRole(Roles.MESA_CONTROL, ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(SISTEMA, ADMINISTRA)
                         // Cada uno maneja sus avisos (HU 14); de quién son lo controla
                         // AccesoTorneos con el token.
                         .requestMatchers(NOTIFICACIONES).authenticated()
                         // El entrenador apela una sanción de su equipo (HU 13); resolverla
                         // es del organizador.
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/sanciones/*/apelaciones")
-                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
-                        .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
+                        .requestMatchers(TORNEOS).hasAnyRole(SISTEMA, ADMINISTRA)
                         .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(this::sinSesion)

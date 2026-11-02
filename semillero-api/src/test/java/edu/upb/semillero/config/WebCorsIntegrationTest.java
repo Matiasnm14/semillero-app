@@ -73,7 +73,7 @@ class WebCorsIntegrationTest {
     @Test
     void laWebPuedeLeerConJwtPeroNoEscribirConRolConsulta() throws Exception {
         String origen = "http://localhost:3000";
-        String token = jwt.emitir(999_999L, "cors-consulta", List.of(Roles.CONSULTA), null);
+        String token = jwt.emitir(999_999L, "cors-consulta", List.of(Roles.JUGADOR), null);
         mvc.perform(get(TORNEOS).header(HttpHeaders.ORIGIN, origen)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())

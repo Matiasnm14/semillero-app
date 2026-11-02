@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "ADMIN")
+@WithMockUser(roles = "ADMINISTRADOR_GENERAL")
 class CrudIntegrationTest {
     private static final String BASE = "/api/v1/";
     @Autowired MockMvc mvc;
@@ -75,7 +75,7 @@ class CrudIntegrationTest {
         TestSecurityContextHolder.setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(
                         new UsuarioAutenticado(usuarioId, "crud-admin", List.of("ADMIN"), null),
-                        null, AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
+                        null, AuthorityUtils.createAuthorityList("ROLE_ADMINISTRADOR_GENERAL")));
     }
 
     @ParameterizedTest(name = "CRUD de {0}")

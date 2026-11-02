@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "ORGANIZADOR")
+@WithMockUser(roles = "USUARIO_SISTEMA")
 class EstadisticasApiTest {
 
     @Autowired MockMvc mvc;

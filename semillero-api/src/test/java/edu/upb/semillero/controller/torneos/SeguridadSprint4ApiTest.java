@@ -1,8 +1,12 @@
 package edu.upb.semillero.controller.torneos;
 
+import edu.upb.semillero.repository.entity.Administrador;
+import edu.upb.semillero.repository.entity.Jugador;
 import edu.upb.semillero.repository.entity.Rol;
 import edu.upb.semillero.repository.entity.Usuario;
 import edu.upb.semillero.repository.entity.UsuarioRol;
+import edu.upb.semillero.repository.repos.AdministradorRepository;
+import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.RolRepository;
 import edu.upb.semillero.repository.repos.UsuarioRepository;
 import edu.upb.semillero.repository.repos.UsuarioRolRepository;
@@ -27,10 +31,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * HU 15 - Tarea S4-10, seguridad de la API, sobre lo que agregó el sprint 4:
- * el error dice si falta el token o si no sirve, cada uno ve solo sus avisos,
- * el entrenador apela pero solo el organizador resuelve, y la consulta lee.
- * Con token de verdad, como la web y la app.
+ * HU 15 - Tarea S4-10, seguridad de la API, con los roles unificados del login
+ * común: el error dice si falta el token o si no sirve, cada uno ve solo sus
+ * avisos (salvo el administrador), un usuario del sistema escribe y uno de solo
+ * lectura no, y las consultas se leen con cualquier sesión.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -44,6 +48,8 @@ class SeguridadSprint4ApiTest {
     @Autowired UsuarioRepository usuarios;
     @Autowired RolRepository roles;
     @Autowired UsuarioRolRepository usuariosRoles;
+    @Autowired AdministradorRepository administradores;
+    @Autowired JugadorRepository jugadores;
     @Autowired PasswordEncoder passwordEncoder;
 
     /** El 401 dice si hay que iniciar sesión o si el token no sirve. */
@@ -59,8 +65,8 @@ class SeguridadSprint4ApiTest {
     /** Cada uno ve sus avisos y su cuenta; pedir los de otro da 403, salvo al administrador. */
     @Test
     void cadaUnoVeSoloSusNotificaciones() throws Exception {
-        Usuario uno = usuarioCon(Roles.CONSULTA);
-        Usuario otro = usuarioCon(Roles.CONSULTA);
+        Usuario uno = usuarioSistema();
+        Usuario otro = usuarioSistema();
         String token = token(uno);
 
         con(token, get(TORNEOS + "/notificaciones")).andExpect(status().isOk())
@@ -73,45 +79,46 @@ class SeguridadSprint4ApiTest {
                 .andExpect(jsonPath("$.detail").value(containsString("tus propios datos")));
         con(token, put(TORNEOS + "/notificaciones/leidas")).andExpect(status().isOk());
 
-        String admin = token(usuarioCon(Roles.ADMIN));
+        String admin = token(usuarioAdmin());
         con(admin, get(TORNEOS + "/mi-cuenta").param("usuarioId", String.valueOf(otro.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuarioId").value(otro.getId()));
     }
 
-    /** Apela el entrenador (y el organizador); resuelve solo el organizador. */
+    /** El usuario del sistema escribe sanciones y apelaciones; el de solo lectura (jugador) no. */
     @Test
-    void elEntrenadorApelaYElOrganizadorResuelve() throws Exception {
-        String consulta = token(usuarioCon(Roles.CONSULTA));
-        String entrenador = token(usuarioCon(Roles.ENTRENADOR));
-        String mesa = token(usuarioCon(Roles.MESA_CONTROL));
+    void elUsuarioSistemaEscribeYElDeSoloLecturaNo() throws Exception {
+        String sistema = token(usuarioSistema());
+        String jugador = token(usuarioJugador());
         Map<String, Object> apelacion = Map.of("motivo", "No fue roja", "usuarioId", 1);
         Map<String, Object> resolucion = Map.of("estado", "ACEPTADA", "resolucion", "Ok", "usuarioId", 1);
+        Map<String, Object> sancion = Map.of("jugadorId", 1, "fechasSuspension", 1, "motivo", "x", "usuarioId", 1);
 
-        con(consulta, post(TORNEOS + "/sanciones/999999/apelaciones"), apelacion)
+        // El jugador (solo lectura) no puede escribir: 403 por rol.
+        con(jugador, post(TORNEOS + "/sanciones/999999/apelaciones"), apelacion)
                 .andExpect(status().isForbidden());
-        // El rol lo deja pasar: llega al servicio, que no encuentra la sanción.
-        con(entrenador, post(TORNEOS + "/sanciones/999999/apelaciones"), apelacion)
+        con(jugador, put(TORNEOS + "/apelaciones/999999/resolucion"), resolucion)
+                .andExpect(status().isForbidden());
+        con(jugador, post(TORNEOS + "/999999/sanciones"), sancion).andExpect(status().isForbidden());
+
+        // El usuario del sistema sí: el rol lo deja pasar y llega al servicio (404, no existe).
+        con(sistema, post(TORNEOS + "/sanciones/999999/apelaciones"), apelacion)
                 .andExpect(status().isNotFound());
-        con(entrenador, put(TORNEOS + "/apelaciones/999999/resolucion"), resolucion)
-                .andExpect(status().isForbidden());
-        con(mesa, put(TORNEOS + "/apelaciones/999999/resolucion"), resolucion)
-                .andExpect(status().isForbidden());
-        con(entrenador, post(TORNEOS + "/999999/sanciones"), Map.of("jugadorId", 1,
-                        "fechasSuspension", 1, "motivo", "x", "usuarioId", 1))
-                .andExpect(status().isForbidden());
+        con(sistema, put(TORNEOS + "/apelaciones/999999/resolucion"), resolucion)
+                .andExpect(status().isNotFound());
+        con(sistema, post(TORNEOS + "/999999/sanciones"), sancion).andExpect(status().isNotFound());
     }
 
     /** Las estadísticas, las sanciones y los partidos cerrados se leen con cualquier rol. */
     @Test
     void laConsultaLeeLasEstadisticasYLasSanciones() throws Exception {
-        String consulta = token(usuarioCon(Roles.CONSULTA));
+        String sesion = token(usuarioJugador());
 
-        con(consulta, get(TORNEOS + "/999999/categorias/999999/estadisticas"))
+        con(sesion, get(TORNEOS + "/999999/categorias/999999/estadisticas"))
                 .andExpect(status().isNotFound());
-        con(consulta, get(TORNEOS + "/999999/sanciones")).andExpect(status().isNotFound());
-        con(consulta, get(TORNEOS + "/jugadores/999999/sanciones")).andExpect(status().isOk());
-        con(consulta, get(TORNEOS + "/partidos/finalizados")).andExpect(status().isOk());
+        con(sesion, get(TORNEOS + "/999999/sanciones")).andExpect(status().isNotFound());
+        con(sesion, get(TORNEOS + "/jugadores/999999/sanciones")).andExpect(status().isOk());
+        con(sesion, get(TORNEOS + "/partidos/finalizados")).andExpect(status().isOk());
         mvc.perform(get(TORNEOS + "/partidos/finalizados")).andExpect(status().isUnauthorized());
     }
 
@@ -126,20 +133,40 @@ class SeguridadSprint4ApiTest {
                 .content(json.writeValueAsString(body)));
     }
 
-    private Usuario usuarioCon(String codigoRol) {
+    private Usuario nuevoUsuario() {
         Usuario usuario = new Usuario();
         usuario.setName("s4" + System.nanoTime());
         usuario.setNombres("Prueba");
         usuario.setApellidos("Sprint4");
         usuario.setEmail("s4" + System.nanoTime() + "@example.com");
         usuario.setPasswordHash(passwordEncoder.encode(CLAVE));
-        usuario = usuarios.saveAndFlush(usuario);
-        Rol rol = roles.findByCodigo(codigoRol).orElseThrow();
+        return usuarios.saveAndFlush(usuario);
+    }
+
+    private Usuario usuarioSistema() {
+        Usuario usuario = nuevoUsuario();
+        Rol rol = roles.findByCodigo(Roles.USUARIO_SISTEMA).orElseThrow();
         UsuarioRol asignacion = new UsuarioRol();
         asignacion.setUsuario(usuario);
         asignacion.setRol(rol);
         asignacion.setFechaAlta(LocalDateTime.now());
         usuariosRoles.saveAndFlush(asignacion);
+        return usuario;
+    }
+
+    private Usuario usuarioAdmin() {
+        Usuario usuario = nuevoUsuario();
+        Administrador administrador = new Administrador();
+        administrador.setUsuario(usuario);
+        administradores.saveAndFlush(administrador);
+        return usuario;
+    }
+
+    private Usuario usuarioJugador() {
+        Usuario usuario = nuevoUsuario();
+        Jugador jugador = new Jugador();
+        jugador.setUsuario(usuario);
+        jugadores.saveAndFlush(jugador);
         return usuario;
     }
 
