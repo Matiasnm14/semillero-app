@@ -6,7 +6,7 @@ Configuración indicada por el administrador para `backend@80.241.208.3`, Docker
 
 Compose utiliza `network_mode: host`, sin publicación `ports`. Spring escucha exclusivamente en `127.0.0.1:18083`, igual que el healthcheck y el destino configurado en Caddy. El administrador verificó el acceso desde esta red a `jdbc:postgresql://127.0.0.1:5432/semillero`. No reemplazar esa entrada estable por `172.20.0.2`.
 
-Las credenciales existentes están en `/home/backend/proyecto/.env.db`. El archivo no se copia a Git, a la imagen ni al paquete compartible. El despliegue prepara su `.env` privado con permisos `0600`, conserva cualquier `JWT_SECRET` existente y toma únicamente las variables necesarias. No ejecutar el contenido de los archivos de configuración como código shell.
+Las credenciales existentes están en `/home/backend/proyecto/.env.db`. El archivo no se copia a Git, a la imagen ni al paquete compartible. Compose lee ese archivo con `--env-file /home/backend/proyecto/.env.db` y después un `.env` privado del despliegue, con permisos `0600`, que conserva `JWT_SECRET`, versión y CORS sin duplicar las credenciales SQL. No ejecutar el contenido de los archivos de configuración como código shell.
 
 El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. El backend de esta entrega necesita el esquema compatible con V000–V012. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
 
@@ -48,9 +48,9 @@ Preparar un directorio privado `~/proyecto/backend` con Compose, plantilla, imag
 ```bash
 docker context show
 docker load -i imagen.tar
-docker compose config --quiet
-docker compose up -d --no-build --pull never --wait --wait-timeout 180
-docker compose ps
+docker compose --env-file /home/backend/proyecto/.env.db --env-file .env config --quiet
+docker compose --env-file /home/backend/proyecto/.env.db --env-file .env up -d --no-build --pull never --wait --wait-timeout 180
+docker compose --env-file /home/backend/proyecto/.env.db --env-file .env ps
 curl --fail --silent http://127.0.0.1:18083/api/v1/paises?size=1
 ss -ltn 'sport = :18083'
 ```
