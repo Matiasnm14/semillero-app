@@ -1,0 +1,15 @@
+{
+  "inicioUtc": "2026-11-02T22:37:01.086971+00:00",
+  "commitBase": "659ec7c42d61be21600a7f8220e709e73e1c1d55",
+  "rama": "video-data-analysis",
+  "cambiosLocalesSha256": "eeeff46d8f0034a8165eedd7830dfc3455d83e294c239d93b6751fb380a96d98",
+  "archivos": {
+    "core/src/main/java/edu/upb/semillero/service/seguridad/JwtService.java": "89d6a49f2e0ab9bd7cea3789afe7c883ef6d1e918e4a65c365f387fc27aa2bd3",
+    "semillero-api/src/main/resources/application-vps.properties": "e06220be3b4a445467d48c51bf23e8883e8b646e6005c3a35420aec7eb7b49c2",
+    "VPS-Implementacion/backend-compartido/compose.yaml": "1400a05edd8dfff6cf19e6cea882dff74df94db1c2a266c808aa06d86ca2a0ed",
+    "VPS-Implementacion/backend-compartido/.env.example": "64fec13604435a1ed62045d5064187be28200c757628d82a20ead9ca8b0cfde6",
+    "VPS-Implementacion/backend-compartido/README.md": "4c0a9df793217c2f9907e9efc23ad8e212efdde861c5727f257449e1939c00dc",
+    "semillero-api/src/test/java/edu/upb/semillero/config/JwtAutenticacionIntegrationTest.java": "21e207c80f5c52cd47029005aa102d6cd534ec4d96e1612cc2b74245fa19aa95",
+    "semillero-api/src/test/java/edu/upb/semillero/config/VpsPublicOriginCorsIntegrationTest.java": "c56f96d76d5ef3d324e78b34b0db195b2e63b7b05ef29610cfca273087488fe5"
+  }
+}

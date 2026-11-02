@@ -1,0 +1,3325 @@
+{
+  "fechaUtc": "2026-11-02T22:43:46+00:00",
+  "fuentes": {
+    "inicioUtc": "2026-11-02T22:37:01.086971+00:00",
+    "commitBase": "659ec7c42d61be21600a7f8220e709e73e1c1d55",
+    "rama": "video-data-analysis",
+    "cambiosLocalesSha256": "eeeff46d8f0034a8165eedd7830dfc3455d83e294c239d93b6751fb380a96d98",
+    "archivos": {
+      "core/src/main/java/edu/upb/semillero/service/seguridad/JwtService.java": "89d6a49f2e0ab9bd7cea3789afe7c883ef6d1e918e4a65c365f387fc27aa2bd3",
+      "semillero-api/src/main/resources/application-vps.properties": "e06220be3b4a445467d48c51bf23e8883e8b646e6005c3a35420aec7eb7b49c2",
+      "VPS-Implementacion/backend-compartido/compose.yaml": "1400a05edd8dfff6cf19e6cea882dff74df94db1c2a266c808aa06d86ca2a0ed",
+      "VPS-Implementacion/backend-compartido/.env.example": "64fec13604435a1ed62045d5064187be28200c757628d82a20ead9ca8b0cfde6",
+      "VPS-Implementacion/backend-compartido/README.md": "4c0a9df793217c2f9907e9efc23ad8e212efdde861c5727f257449e1939c00dc",
+      "semillero-api/src/test/java/edu/upb/semillero/config/JwtAutenticacionIntegrationTest.java": "21e207c80f5c52cd47029005aa102d6cd534ec4d96e1612cc2b74245fa19aa95",
+      "semillero-api/src/test/java/edu/upb/semillero/config/VpsPublicOriginCorsIntegrationTest.java": "c56f96d76d5ef3d324e78b34b0db195b2e63b7b05ef29610cfca273087488fe5"
+    }
+  },
+  "suiteJava": {
+    "totales": {
+      "tests": 416,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "f8b433c21de6ee4fce91b8fd11b671081ace264887aa5f7a17f8dbd17b80a052"
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisPostgresIntegrationTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "7ad86107ff3619c4f3fde83aa39befbc5728d32564f5369bfeab173506145b9e"
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "d9baced79d1281dfdb7327be3a0a04e66b1023b450ce442b985c5b4f9f8a0dd3"
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "tests": 24,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "d73b3440c2b43923491b185a643c50f548b11c5e76b43c11be5c9441040f57fc"
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "tests": 16,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "6526754de85212930fd6555457c918521272b3c311cf00150d06045685288d40"
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "b99ff8535e0ddb97cdd7ee19b909d380f87cd205e4b8cd6deb0adcc13baee726"
+      },
+      {
+        "clase": "edu.upb.semillero.HighlightVisibilityIntegrationTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "a31f0c1916131d363bfac7c3b990a2fc5f817337ff7a748e7ecf8e44a2f21e19"
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "tests": 16,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "97c9e6ad36d90c2288177a98f7da7ce26d77cb5fc79bda74f701b239fb0fbbe7"
+      },
+      {
+        "clase": "edu.upb.semillero.OpenApiDocsTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "cfdd7eca3e3291cdf50116b3ed8ed17e1628b313be32aff1f7a1755551662876"
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "tests": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "8472159307a84aef89b1b1103c1bebdf4c571f4afc0762958c43892188a78a56"
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsPostgresTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "36d029b491e2c118e7e6143aa0c9a867b646230dcbc9de4f1255064b956b07db"
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "e7e48910732a6b1f327eca3bbb809745d4953b9b0b9354cab29c3c8b3bb6364f"
+      },
+      {
+        "clase": "edu.upb.semillero.SparkWorkflowIntegrationTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "027e1387b6d56d80d16963e89b1343540f684da5990b55c14e9212f71f076887"
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "tests": 29,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "271f54314e6889ab5f74f99927f67a6d838c8e27da943bceee979a12020b01a8"
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "591d183d53912e5674ec52f9d60918ca4136c15c603475618702a3e0aeb5680a"
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "5306b29c3522a2ed489569fb45d9a24cd3fb6a894088e664185498d42d54c505"
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "a6b534f33b296b7ca4e01d1a24f44cb135bfda48db2a34c081390d381226156c"
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "4477aeed65b02356fcca7cb43bfb2856228ffaa8d8a28e20592c9b5dc1894528"
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsSameOriginCorsIntegrationTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "78a637cd25659ec4413f9ce0abb43147f1e1d7acef9a250014092a209232e0b7"
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "bfd5f5fa5d32bbc88e1847010e463d1fe1e8a52ab07def2ec82a9c4d60682518"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "tests": 28,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "d63398e280b88a710581ec739723eed291b289d48fa250ebae48ab818384c3fd"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "9c4b8624e50019ca7c2509c21706cb81167a1c2e2f026fac3df26001faef5969"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "eff402378877b2d59e28515cd8ac0a36a29aa594046ac3c3e89acd83608a15ba"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "1c31acc73a3ebfb569dab5bab3c2b3551d843ceef71a51b4980e3f8a4d40fd80"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "49677537c3b7f1960389fa5582fde89c89735209a65241becab479fa69c432b1"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "f414216d78211760269f0d9905602b81b36659773610de9c03b33ea6520241c6"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "32beca5351e5455243aba4366ab4d378a107a84419678eae842d63189b85cbe3"
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "4bd4fc13dab78b7e51e128d07804889e6294e25e5b66e9137e67e26970cbd8bc"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "2895b5e9e6c25e32f0e7e794fd4de0dd7a09eb9b91f0f8fe44073c3c812f66ca"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "09ee8be175e5bc55e3cbf034e796df67808a6e098c490c8e732a4c23be8248fd"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "313b8b56089ed283ae47c732d3314aa6998517b0956f32ef73251a96851eeedd"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "0eb67fbf62e086bff034ef6aff22162e97f7d08a8f733da400c86bf784066a41"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "e09bac26adff6adb1487564d3f1fd2130ad5d0de01a9d87c118ef3d1e90a3dab"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "1a7e34ae8f4bb5e30cdfaa3d345a0e05a7f654d356cf475a39577c771600d8f7"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "f363f0f704b141121bd5fa53d458af029f9e46d6e9c7223c0407a4dbd9606d64"
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "8af1b86b1fece9f110c3f207451465dfd5fc290f68486710895ef9f4bdcd381d"
+      }
+    ],
+    "invocaciones": [
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "sparkProgressIsPersistedWithoutInventingFrameCounts",
+        "invocacion": "sparkProgressIsPersistedWithoutInventingFrameCounts",
+        "estado": "Aprobado",
+        "segundos": 0.289
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "futureKeepsJobProcessingAndPublicApiResponsiveThenStoresUnmappedJson",
+        "invocacion": "futureKeepsJobProcessingAndPublicApiResponsiveThenStoresUnmappedJson",
+        "estado": "Aprobado",
+        "segundos": 0.106
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "concurrentRequestsProduceOneJobButDifferentVideosCanRunIndependently",
+        "invocacion": "concurrentRequestsProduceOneJobButDifferentVideosCanRunIndependently",
+        "estado": "Aprobado",
+        "segundos": 0.041
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "rejectsMissingOriginalAndDisabledAnalysisWithoutCreatingJobs",
+        "invocacion": "rejectsMissingOriginalAndDisabledAnalysisWithoutCreatingJobs",
+        "estado": "Aprobado",
+        "segundos": 0.049
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "conflictPointsToExistingAnalysisAndCompletedWorkRequiresExplicitReprocessing",
+        "invocacion": "conflictPointsToExistingAnalysisAndCompletedWorkRequiresExplicitReprocessing",
+        "estado": "Aprobado",
+        "segundos": 0.06
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "malformedFinalPayloadIsNotStoredOrPublished",
+        "invocacion": "malformedFinalPayloadIsNotStoredOrPublished",
+        "estado": "Aprobado",
+        "segundos": 0.046
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "missingOriginalAndExceededDeadlineNeverCallPython",
+        "invocacion": "missingOriginalAndExceededDeadlineNeverCallPython",
+        "estado": "Aprobado",
+        "segundos": 0.034
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "expiredForeignReservationBecomesErrorWithoutResendingUncertainEvaluation",
+        "invocacion": "expiredForeignReservationBecomesErrorWithoutResendingUncertainEvaluation",
+        "estado": "Aprobado",
+        "segundos": 0.027
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "futureAfterLeaseExpirationIsRejected",
+        "invocacion": "futureAfterLeaseExpirationIsRejected",
+        "estado": "Aprobado",
+        "segundos": 0.033
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "rejectsMissingResourcesAndCrossMatchRelationships",
+        "invocacion": "rejectsMissingResourcesAndCrossMatchRelationships",
+        "estado": "Aprobado",
+        "segundos": 0.028
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "acceptsPersistsAndListsPendingJobWithoutCallingPythonOrYoutube",
+        "invocacion": "acceptsPersistsAndListsPendingJobWithoutCallingPythonOrYoutube",
+        "estado": "Aprobado",
+        "segundos": 0.032
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "overallDeadlineCancelsPendingFuture",
+        "invocacion": "overallDeadlineCancelsPendingFuture",
+        "estado": "Aprobado",
+        "segundos": 0.03
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "renewsLeaseWhileFutureIsPendingWithoutPollingPython",
+        "invocacion": "renewsLeaseWhileFutureIsPendingWithoutPollingPython",
+        "estado": "Aprobado",
+        "segundos": 0.05
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "remoteCleanupRetriesAfterFailureAndOnlyAfterJsonWasCommitted",
+        "invocacion": "remoteCleanupRetriesAfterFailureAndOnlyAfterJsonWasCommitted",
+        "estado": "Aprobado",
+        "segundos": 0.046
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "limitsConcurrentFuturesAndStartsQueuedWorkWhenCapacityReturns",
+        "invocacion": "limitsConcurrentFuturesAndStartsQueuedWorkWhenCapacityReturns",
+        "estado": "Aprobado",
+        "segundos": 0.049
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "timeoutAndTransportErrorsAreTerminalWithoutAutomaticResubmission",
+        "invocacion": "timeoutAndTransportErrorsAreTerminalWithoutAutomaticResubmission",
+        "estado": "Aprobado",
+        "segundos": 0.054
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "lateFutureCannotOverwriteReplacementToken",
+        "invocacion": "lateFutureCannotOverwriteReplacementToken",
+        "estado": "Aprobado",
+        "segundos": 0.021
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "futuresCompletingOutOfOrderKeepTheirOriginalAnalysisContext",
+        "invocacion": "futuresCompletingOutOfOrderKeepTheirOriginalAnalysisContext",
+        "estado": "Aprobado",
+        "segundos": 0.052
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "expiredSparkReservationResumesRemoteIdentityEvenWithoutLocalVideo",
+        "invocacion": "expiredSparkReservationResumesRemoteIdentityEvenWithoutLocalVideo",
+        "estado": "Aprobado",
+        "segundos": 0.028
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "sqlCommitFailureRetriesSavingTheCompletedFutureWithoutCallingPythonAgain",
+        "invocacion": "sqlCommitFailureRetriesSavingTheCompletedFutureWithoutCallingPythonAgain",
+        "estado": "Aprobado",
+        "segundos": 0.02
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisJobIntegrationTest",
+        "metodo": "returns404ForUnknownAnalysisAnd400ForMalformedIdentifiers",
+        "invocacion": "returns404ForUnknownAnalysisAnd400ForMalformedIdentifiers",
+        "estado": "Aprobado",
+        "segundos": 0.02
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisPostgresIntegrationTest",
+        "metodo": "storesSparkResultsAndRecoversRemoteJobsWithoutUploadingAgain",
+        "invocacion": "storesSparkResultsAndRecoversRemoteJobsWithoutUploadingAgain",
+        "estado": "Aprobado",
+        "segundos": 3.218
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "countsUtf8BytesRatherThanCharacters",
+        "invocacion": "countsUtf8BytesRatherThanCharacters",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "preservesExactNumbersAndAcceptsUnknownFieldsWithoutInventingPlayerIds",
+        "invocacion": "preservesExactNumbersAndAcceptsUnknownFieldsWithoutInventingPlayerIds",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[7]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[8]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[9]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.AnalysisResultValidatorTest",
+        "metodo": "rejectsUnstructuredMalformedOrTrailingPayloads",
+        "invocacion": "rejectsUnstructuredMalformedOrTrailingPayloads(String)[10]",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "optionalRelationshipsFollowTheDbmlNullability",
+        "invocacion": "optionalRelationshipsFollowTheDbmlNullability",
+        "estado": "Aprobado",
+        "segundos": 0.46
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "rejectsInvalidFieldsAndMalformedRequests",
+        "invocacion": "rejectsInvalidFieldsAndMalformedRequests",
+        "estado": "Aprobado",
+        "segundos": 0.159
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "matchesRequireDifferentClubsAndOrderedDates",
+        "invocacion": "matchesRequireDifferentClubsAndOrderedDates",
+        "estado": "Aprobado",
+        "segundos": 0.141
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "passwordsAreHashedAndNeverReturned",
+        "invocacion": "passwordsAreHashedAndNeverReturned",
+        "estado": "Aprobado",
+        "segundos": 0.382
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "rejectsDuplicateLoginIdentifiersButAllowsKeepingTheSameAccountIdentity",
+        "invocacion": "rejectsDuplicateLoginIdentifiersButAllowsKeepingTheSameAccountIdentity",
+        "estado": "Aprobado",
+        "segundos": 0.262
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "participationMustBeUniqueAndBelongToTheMatch",
+        "invocacion": "participationMustBeUniqueAndBelongToTheMatch",
+        "estado": "Aprobado",
+        "segundos": 0.167
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.15
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.147
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.153
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.273
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.149
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.145
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[7]",
+        "estado": "Aprobado",
+        "segundos": 0.151
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[8]",
+        "estado": "Aprobado",
+        "segundos": 0.153
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[9]",
+        "estado": "Aprobado",
+        "segundos": 0.144
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[10]",
+        "estado": "Aprobado",
+        "segundos": 0.144
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[11]",
+        "estado": "Aprobado",
+        "segundos": 0.15
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[12]",
+        "estado": "Aprobado",
+        "segundos": 0.145
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[13]",
+        "estado": "Aprobado",
+        "segundos": 0.142
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[14]",
+        "estado": "Aprobado",
+        "segundos": 0.158
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[15]",
+        "estado": "Aprobado",
+        "segundos": 0.139
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[16]",
+        "estado": "Aprobado",
+        "segundos": 0.144
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "fullCrud",
+        "invocacion": "fullCrud(String)[17]",
+        "estado": "Aprobado",
+        "segundos": 0.15
+      },
+      {
+        "clase": "edu.upb.semillero.CrudIntegrationTest",
+        "metodo": "foreignKeysMustExistAndDeletesDoNotCascade",
+        "invocacion": "foreignKeysMustExistAndDeletesDoNotCascade",
+        "estado": "Aprobado",
+        "segundos": 0.134
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "upgrades010WithSparkIdentityAndKeepsHistoricalJson",
+        "invocacion": "upgrades010WithSparkIdentityAndKeepsHistoricalJson",
+        "estado": "Aprobado",
+        "segundos": 1.636
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "keepsExistingProfileAndClubImagesWhenApplying005",
+        "invocacion": "keepsExistingProfileAndClubImagesWhenApplying005",
+        "estado": "Aprobado",
+        "segundos": 0.767
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "completesHibernateCreatedSchemaIncludingCompositeForeignKeyAndPartialIndex",
+        "invocacion": "completesHibernateCreatedSchemaIncludingCompositeForeignKeyAndPartialIndex",
+        "estado": "Aprobado",
+        "segundos": 1.415
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "refusesUnknownSchemaBeforeCreatingHistoryOrProjectTables",
+        "invocacion": "refusesUnknownSchemaBeforeCreatingHistoryOrProjectTables",
+        "estado": "Aprobado",
+        "segundos": 0.21
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "convertsLegacyOidImagesPreservingContentNullsAndJpaReadWrite",
+        "invocacion": "convertsLegacyOidImagesPreservingContentNullsAndJpaReadWrite",
+        "estado": "Aprobado",
+        "segundos": 1.046
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "refusesUnknownTableEvenWhenTheSemilleroBaseExists",
+        "invocacion": "refusesUnknownTableEvenWhenTheSemilleroBaseExists",
+        "estado": "Aprobado",
+        "segundos": 0.197
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "upgradesThrough004AndAutomaticallyAdds005PreservingImagesAndCompletedJobs",
+        "invocacion": "upgradesThrough004AndAutomaticallyAdds005PreservingImagesAndCompletedJobs",
+        "estado": "Aprobado",
+        "segundos": 0.658
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "adoptsLegacyBaseAndCreatesRemainingTablesWithoutLosingData",
+        "invocacion": "adoptsLegacyBaseAndCreatesRemainingTablesWithoutLosingData",
+        "estado": "Aprobado",
+        "segundos": 0.745
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "adoptsLegacyDockerDatabaseAddingOnlySparkConstraintsWithoutChangingJson",
+        "invocacion": "adoptsLegacyDockerDatabaseAddingOnlySparkConstraintsWithoutChangingJson",
+        "estado": "Aprobado",
+        "segundos": 0.675
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "serializesConcurrentMigrationsAndLegacyAdoption",
+        "invocacion": "serializesConcurrentMigrationsAndLegacyAdoption(boolean)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.723
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "serializesConcurrentMigrationsAndLegacyAdoption",
+        "invocacion": "serializesConcurrentMigrationsAndLegacyAdoption(boolean)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.789
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "readsSportsStatisticsAndFilteredParticipationsOnPostgresWithoutVideoAnalysis",
+        "invocacion": "readsSportsStatisticsAndFilteredParticipationsOnPostgresWithoutVideoAnalysis",
+        "estado": "Aprobado",
+        "segundos": 0.696
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "rollsBackFailingMigrationAndKeepsExistingRowsForCorrection",
+        "invocacion": "rollsBackFailingMigrationAndKeepsExistingRowsForCorrection",
+        "estado": "Aprobado",
+        "segundos": 0.903
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "rejectsChangedChecksumsInsteadOfRepairingHistory",
+        "invocacion": "rejectsChangedChecksumsInsteadOfRepairingHistory",
+        "estado": "Aprobado",
+        "segundos": 0.802
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "createsEmptyDatabaseBeforeJpaValidationAndDoesNotRepeatOnRestart",
+        "invocacion": "createsEmptyDatabaseBeforeJpaValidationAndDoesNotRepeatOnRestart",
+        "estado": "Aprobado",
+        "segundos": 1.0
+      },
+      {
+        "clase": "edu.upb.semillero.DatabaseMigrationsPostgresTest",
+        "metodo": "upgrades011WithUploaderAndDeferredYoutubeWithoutChangingHistoricalVideos",
+        "invocacion": "upgrades011WithUploaderAndDeferredYoutubeWithoutChangingHistoricalVideos",
+        "estado": "Aprobado",
+        "segundos": 1.101
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "restriccionesUniqueDelScript",
+        "invocacion": "restriccionesUniqueDelScript",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "lasColumnasNuevasNoRompenElCrudExistente",
+        "invocacion": "lasColumnasNuevasNoRompenElCrudExistente",
+        "estado": "Aprobado",
+        "segundos": 0.022
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "restriccionesCheckDelScript",
+        "invocacion": "restriccionesCheckDelScript",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "lasTablasCompartidasQueCreaTorneos",
+        "invocacion": "lasTablasCompartidasQueCreaTorneos",
+        "estado": "Aprobado",
+        "segundos": 0.01
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "lasColumnasDeTorneosLlegaronALasTablasAcordadas",
+        "invocacion": "lasColumnasDeTorneosLlegaronALasTablasAcordadas",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[7]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[8]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[9]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[10]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[11]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[12]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[13]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[14]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[15]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.EsquemaTorneosTest",
+        "metodo": "tablasDeTorneos",
+        "invocacion": "tablasDeTorneos(String)[16]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.HighlightVisibilityIntegrationTest",
+        "metodo": "hiddenHighlightStaysInOwnerHistoryAndIsNotPublic",
+        "invocacion": "hiddenHighlightStaysInOwnerHistoryAndIsNotPublic",
+        "estado": "Aprobado",
+        "segundos": 0.425
+      },
+      {
+        "clase": "edu.upb.semillero.HighlightVisibilityIntegrationTest",
+        "metodo": "rejectsDuplicateLoginIdentifiers",
+        "invocacion": "rejectsDuplicateLoginIdentifiers",
+        "estado": "Aprobado",
+        "segundos": 0.111
+      },
+      {
+        "clase": "edu.upb.semillero.HighlightVisibilityIntegrationTest",
+        "metodo": "loginAcceptsEmailOrUsername",
+        "invocacion": "loginAcceptsEmailOrUsername",
+        "estado": "Aprobado",
+        "segundos": 0.244
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "failedSparkJobDoesNotExposeInternalErrors",
+        "invocacion": "failedSparkJobDoesNotExposeInternalErrors",
+        "estado": "Aprobado",
+        "segundos": 0.047
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "missingOriginalFailsBeforeMakingARequest",
+        "invocacion": "missingOriginalFailsBeforeMakingARequest",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "sanitizesErrorsAndNeverRetransmitsAfterServerOrAuthenticationFailure",
+        "invocacion": "sanitizesErrorsAndNeverRetransmitsAfterServerOrAuthenticationFailure",
+        "estado": "Aprobado",
+        "segundos": 0.047
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "queuedAndProcessingKeepFuturePendingAndReportRealProgress",
+        "invocacion": "queuedAndProcessingKeepFuturePendingAndReportRealProgress",
+        "estado": "Aprobado",
+        "segundos": 0.26
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "resumeSkipsUploadAndDoesNotNeedTheOriginal",
+        "invocacion": "resumeSkipsUploadAndDoesNotNeedTheOriginal",
+        "estado": "Aprobado",
+        "segundos": 0.091
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "invalidOrOversizedPngPreventsConfirmationAndRemoteDeletion",
+        "invocacion": "invalidOrOversizedPngPreventsConfirmationAndRemoteDeletion",
+        "estado": "Aprobado",
+        "segundos": 0.282
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "timeoutBoundsAnIncompleteAcknowledgementBody",
+        "invocacion": "timeoutBoundsAnIncompleteAcknowledgementBody",
+        "estado": "Aprobado",
+        "segundos": 0.203
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "rejectsRedirectsMalformedAcknowledgementsAndMismatchingIdentities",
+        "invocacion": "rejectsRedirectsMalformedAcknowledgementsAndMismatchingIdentities",
+        "estado": "Aprobado",
+        "segundos": 0.09
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "usesCompletedProgressOnlyWhenSparkActuallyReportsIt",
+        "invocacion": "usesCompletedProgressOnlyWhenSparkActuallyReportsIt",
+        "estado": "Aprobado",
+        "segundos": 0.308
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "rejectsInvalidProgressAndOversizedResults",
+        "invocacion": "rejectsInvalidProgressAndOversizedResults",
+        "estado": "Aprobado",
+        "segundos": 0.136
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "rejectsResultsFromAnotherAnalysisAndNumericHeatmaps",
+        "invocacion": "rejectsResultsFromAnotherAnalysisAndNumericHeatmaps",
+        "estado": "Aprobado",
+        "segundos": 0.215
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "existingIdentityRecoversStatusWithoutCreatingAnotherJob",
+        "invocacion": "existingIdentityRecoversStatusWithoutCreatingAnotherJob",
+        "estado": "Aprobado",
+        "segundos": 0.131
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "uploadsContractMultipartThenReceivesJsonAndPngWithoutDeletingRemoteFiles",
+        "invocacion": "uploadsContractMultipartThenReceivesJsonAndPngWithoutDeletingRemoteFiles",
+        "estado": "Aprobado",
+        "segundos": 0.134
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "retriesUploadOnlyAfterExplicitGpuBusy",
+        "invocacion": "retriesUploadOnlyAfterExplicitGpuBusy",
+        "estado": "Aprobado",
+        "segundos": 0.196
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "cancellationStopsPollingWithoutDeletingRemoteWork",
+        "invocacion": "cancellationStopsPollingWithoutDeletingRemoteWork",
+        "estado": "Aprobado",
+        "segundos": 0.012
+      },
+      {
+        "clase": "edu.upb.semillero.HttpAnalysisGatewayTest",
+        "metodo": "unavailableCalibrationStillPreservesMetricsAndNullMeasurements",
+        "invocacion": "unavailableCalibrationStillPreservesMetricsAndNullMeasurements",
+        "estado": "Aprobado",
+        "segundos": 0.129
+      },
+      {
+        "clase": "edu.upb.semillero.OpenApiDocsTest",
+        "metodo": "documentaLosEndpointsDeTorneos",
+        "invocacion": "documentaLosEndpointsDeTorneos",
+        "estado": "Aprobado",
+        "segundos": 0.901
+      },
+      {
+        "clase": "edu.upb.semillero.OpenApiDocsTest",
+        "metodo": "publicaElDocumentoOpenApi",
+        "invocacion": "publicaElDocumentoOpenApi",
+        "estado": "Aprobado",
+        "segundos": 0.021
+      },
+      {
+        "clase": "edu.upb.semillero.OpenApiDocsTest",
+        "metodo": "documentaTambienLosEndpointsDeLosOtrosGrupos",
+        "invocacion": "documentaTambienLosEndpointsDeLosOtrosGrupos",
+        "estado": "Aprobado",
+        "segundos": 0.029
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "rejectsParticipationWithAClubOutsideTheMatch",
+        "invocacion": "rejectsParticipationWithAClubOutsideTheMatch",
+        "estado": "Aprobado",
+        "segundos": 0.292
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "differentIntervalsOfOneAnalysisRemainDistinct",
+        "invocacion": "differentIntervalsOfOneAnalysisRemainDistinct",
+        "estado": "Aprobado",
+        "segundos": 0.061
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "checksRejectInvertedIntervalsAndAverageSpeedGreaterThanMaximum",
+        "invocacion": "checksRejectInvertedIntervalsAndAverageSpeedGreaterThanMaximum",
+        "estado": "Aprobado",
+        "segundos": 0.031
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "structuralValidationDoesNotPublishOrChangeAnalysisStatus",
+        "invocacion": "structuralValidationDoesNotPublishOrChangeAnalysisStatus",
+        "estado": "Aprobado",
+        "segundos": 0.023
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "storedMetricPreventsDeletingItsAnalysisPlayerOrMatch",
+        "invocacion": "storedMetricPreventsDeletingItsAnalysisPlayerOrMatch",
+        "estado": "Aprobado",
+        "segundos": 0.023
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "cannotDuplicateTheSameAnalysisPlayerAndIntervalEvenWithAnotherVersion",
+        "invocacion": "cannotDuplicateTheSameAnalysisPlayerAndIntervalEvenWithAnotherVersion",
+        "estado": "Aprobado",
+        "segundos": 0.022
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "rejectsExcessDecimalPrecisionBeforeTheDatabaseRoundsIt",
+        "invocacion": "rejectsExcessDecimalPrecisionBeforeTheDatabaseRoundsIt",
+        "estado": "Aprobado",
+        "segundos": 0.026
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "existingPlayerRegisteredOnlyInAnotherMatchIsRejected",
+        "invocacion": "existingPlayerRegisteredOnlyInAnotherMatchIsRejected",
+        "estado": "Aprobado",
+        "segundos": 0.027
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "storesAllRequiredFieldsAndRecoversExactDecimalsAndReferences",
+        "invocacion": "storesAllRequiredFieldsAndRecoversExactDecimalsAndReferences",
+        "estado": "Aprobado",
+        "segundos": 0.038
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.02
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.015
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.016
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.019
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.016
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.015
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[7]",
+        "estado": "Aprobado",
+        "segundos": 0.013
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[8]",
+        "estado": "Aprobado",
+        "segundos": 0.012
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "validatesIdsBeforeResolvingReferences",
+        "invocacion": "validatesIdsBeforeResolvingReferences(int, Long)[9]",
+        "estado": "Aprobado",
+        "segundos": 0.014
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "analysisCannotBeAssociatedWithAnotherExistingMatch",
+        "invocacion": "analysisCannotBeAssociatedWithAnotherExistingMatch",
+        "estado": "Aprobado",
+        "segundos": 0.019
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsIntegrationTest",
+        "metodo": "rejectsEachMissingReferenceWithItsOwnMessage",
+        "invocacion": "rejectsEachMissingReferenceWithItsOwnMessage",
+        "estado": "Aprobado",
+        "segundos": 0.023
+      },
+      {
+        "clase": "edu.upb.semillero.PlayerMatchMetricsPostgresTest",
+        "metodo": "migratesBothDevAndExistingSchemasEnforcesMembershipAndPreservesMetricsAfterRestart",
+        "invocacion": "migratesBothDevAndExistingSchemasEnforcesMembershipAndPreservesMetricsAfterRestart",
+        "estado": "Aprobado",
+        "segundos": 2.09
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "processingDoesNotMeanAvailable",
+        "invocacion": "processingDoesNotMeanAvailable",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "usesNonInteractiveResumableScriptWithMatchDateAndSportsCategory",
+        "invocacion": "usesNonInteractiveResumableScriptWithMatchDateAndSportsCategory",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "doesNotTrustSuccessfulExitWithWrongPrivacyOrTitle",
+        "invocacion": "doesNotTrustSuccessfulExitWithWrongPrivacyOrTitle",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput",
+        "invocacion": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput",
+        "invocacion": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput",
+        "invocacion": "remoteProblemsRequireReviewAndNeverSurfaceRawProcessOutput(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.PythonYouTubePublisherTest",
+        "metodo": "missingReceiptCannotReportSuccess",
+        "invocacion": "missingReceiptCannotReportSuccess",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.SparkWorkflowIntegrationTest",
+        "metodo": "videoUploadPersistsActualSparkResultAndPngBeforeAcknowledgingCleanup",
+        "invocacion": "videoUploadPersistsActualSparkResultAndPngBeforeAcknowledgingCleanup",
+        "estado": "Aprobado",
+        "segundos": 0.4
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "youtubeFailureKeepsOriginalAndRetryReusesSameReceiptAndTitle",
+        "invocacion": "youtubeFailureKeepsOriginalAndRetryReusesSameReceiptAndTitle",
+        "estado": "Aprobado",
+        "segundos": 0.161
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "transportFailureKeepsOriginalAndDoesNotExposeRemoteDetails",
+        "invocacion": "transportFailureKeepsOriginalAndDoesNotExposeRemoteDetails",
+        "estado": "Aprobado",
+        "segundos": 0.106
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "rejectsCorruptAndRenamedFilesEvenWithVideoMime",
+        "invocacion": "rejectsCorruptAndRenamedFilesEvenWithVideoMime",
+        "estado": "Aprobado",
+        "segundos": 0.087
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "rejectsEmptyAndMissingFiles",
+        "invocacion": "rejectsEmptyAndMissingFiles",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "missingInspectionToolReturns503AndCleansStagedFile",
+        "invocacion": "missingInspectionToolReturns503AndCleansStagedFile",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "cannotReadVideoThroughAnotherMatch",
+        "invocacion": "cannotReadVideoThroughAnotherMatch",
+        "estado": "Aprobado",
+        "segundos": 0.088
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "queuedUploadRemainsQueryableAndAnotherUploadCanBeAcceptedWhileSparkIsBusy",
+        "invocacion": "queuedUploadRemainsQueryableAndAnotherUploadCanBeAcceptedWhileSparkIsBusy",
+        "estado": "Aprobado",
+        "segundos": 0.205
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "expiredSessionRequiresReviewAndCannotBlindlyRetry",
+        "invocacion": "expiredSessionRequiresReviewAndCannotBlindlyRetry",
+        "estado": "Aprobado",
+        "segundos": 0.105
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "transactionCommitFailureRollsBackBothRecordsAndCleansConfirmedOriginal",
+        "invocacion": "transactionCommitFailureRollsBackBothRecordsAndCleansConfirmedOriginal",
+        "estado": "Aprobado",
+        "segundos": 0.089
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "rejectsUnknownMatchBeforeStoringAnyFile",
+        "invocacion": "rejectsUnknownMatchBeforeStoringAnyFile",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "acceptsDurableVideoAndPendingAnalysisWithoutContactingSparkOrYoutube",
+        "invocacion": "acceptsDurableVideoAndPendingAnalysisWithoutContactingSparkOrYoutube",
+        "estado": "Aprobado",
+        "segundos": 0.118
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "analysisPersistenceFailureRollsBackVideoAndCleansConfirmedOriginal",
+        "invocacion": "analysisPersistenceFailureRollsBackVideoAndCleansConfirmedOriginal",
+        "estado": "Aprobado",
+        "segundos": 0.085
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "rejectsAudioOnlyMp4",
+        "invocacion": "rejectsAudioOnlyMp4",
+        "estado": "Aprobado",
+        "segundos": 0.042
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "concurrentPollersCannotPublishTheSameClaim",
+        "invocacion": "concurrentPollersCannotPublishTheSameClaim",
+        "estado": "Aprobado",
+        "segundos": 0.105
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "rejectsCorruptPacketsEvenWhenContainerMetadataIsReadable",
+        "invocacion": "rejectsCorruptPacketsEvenWhenContainerMetadataIsReadable",
+        "estado": "Aprobado",
+        "segundos": 0.091
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "originalCommitFailureLeavesNoVideoOrJobAndCleansStaging",
+        "invocacion": "originalCommitFailureLeavesNoVideoOrJobAndCleansStaging",
+        "estado": "Aprobado",
+        "segundos": 0.086
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "disabledAnalysisStillAcceptsAndPersistsPendingWorkUntilEnabled",
+        "invocacion": "disabledAnalysisStillAcceptsAndPersistsPendingWorkUntilEnabled",
+        "estado": "Aprobado",
+        "segundos": 0.097
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "enforcesSizeLimitIncludingWhenDeclaredSizeIsWrong",
+        "invocacion": "enforcesSizeLimitIncludingWhenDeclaredSizeIsWrong",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "expiredClaimIsRecoverableAfterRestart",
+        "invocacion": "expiredClaimIsRecoverableAfterRestart",
+        "estado": "Aprobado",
+        "segundos": 0.104
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "disabledYoutubeStillAcceptsAndPreservesTheOriginal",
+        "invocacion": "disabledYoutubeStillAcceptsAndPreservesTheOriginal",
+        "estado": "Aprobado",
+        "segundos": 0.08
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "processingIsPolledUntilAvailableWithoutNewUploadRecord",
+        "invocacion": "processingIsPolledUntilAvailableWithoutNewUploadRecord",
+        "estado": "Aprobado",
+        "segundos": 0.114
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "normalizesClientPathsWithoutUsingThemAsStoragePaths",
+        "invocacion": "normalizesClientPathsWithoutUsingThemAsStoragePaths",
+        "estado": "Aprobado",
+        "segundos": 0.089
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.097
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.098
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.099
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.101
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.097
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure",
+        "invocacion": "invalidAnalysisPayloadKeepsAcceptedUploadAndRecordsFailure(String)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.102
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPartidoIntegrationTest",
+        "metodo": "persistenceFailureCleansConfirmedOriginal",
+        "invocacion": "persistenceFailureCleansConfirmedOriginal",
+        "estado": "Aprobado",
+        "segundos": 0.087
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "ownershipCannotBeForgedThroughPublicMatchParticipationOrFichajeWrites",
+        "invocacion": "ownershipCannotBeForgedThroughPublicMatchParticipationOrFichajeWrites",
+        "estado": "Aprobado",
+        "segundos": 0.023
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "matchingClubClaimAloneDoesNotGrantAccessWithoutDatabaseRelationship",
+        "invocacion": "matchingClubClaimAloneDoesNotGrantAccessWithoutDatabaseRelationship",
+        "estado": "Aprobado",
+        "segundos": 0.02
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "mesaCanUploadOnlyToItsAssignedMatch",
+        "invocacion": "mesaCanUploadOnlyToItsAssignedMatch",
+        "estado": "Aprobado",
+        "segundos": 0.113
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "ownCoachCreatesPendingUploadWithRecordedIdentityAndConsultableLocation",
+        "invocacion": "ownCoachCreatesPendingUploadWithRecordedIdentityAndConsultableLocation",
+        "estado": "Aprobado",
+        "segundos": 0.103
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "serviceCannotAcceptAnUploadWithoutAuthentication",
+        "invocacion": "serviceCannotAcceptAnUploadWithoutAuthentication",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "adminAndOrganizerHaveGlobalAccessButCannotCrossVideoMatchRelationships",
+        "invocacion": "adminAndOrganizerHaveGlobalAccessButCannotCrossVideoMatchRelationships",
+        "estado": "Aprobado",
+        "segundos": 0.173
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "anonymousOrInvalidTokenCannotUploadReadOrRetry",
+        "invocacion": "anonymousOrInvalidTokenCannotUploadReadOrRetry",
+        "estado": "Aprobado",
+        "segundos": 0.011
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "consultaWithoutMatchRelationshipCannotAccessVideos",
+        "invocacion": "consultaWithoutMatchRelationshipCannotAccessVideos",
+        "estado": "Aprobado",
+        "segundos": 0.014
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "removingClubRelationshipRevokesAccessEvenWithAnUnexpiredToken",
+        "invocacion": "removingClubRelationshipRevokesAccessEvenWithAnUnexpiredToken",
+        "estado": "Aprobado",
+        "segundos": 0.015
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "anotherClubCannotUploadOrReadUsingGuessedIdentifiers",
+        "invocacion": "anotherClubCannotUploadOrReadUsingGuessedIdentifiers",
+        "estado": "Aprobado",
+        "segundos": 0.109
+      },
+      {
+        "clase": "edu.upb.semillero.VideoPermissionsIntegrationTest",
+        "metodo": "participantCanReadOwnMatchButCannotUploadOrStartAnalysis",
+        "invocacion": "participantCanReadOwnMatchButCannotUploadOrStartAnalysis",
+        "estado": "Aprobado",
+        "segundos": 0.12
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unSeparadorAdicionalNoConvierteElTokenEnValido",
+        "invocacion": "unSeparadorAdicionalNoConvierteElTokenEnValido",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[5]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[6]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[7]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[8]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido",
+        "invocacion": "unaCabeceraNoPermitidaSeRechazaAunqueSuHmacSeaValido(String)[9]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unTokenFirmadoConOtraClaveDevuelve401",
+        "invocacion": "unTokenFirmadoConOtraClaveDevuelve401",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unTokenEmitidoPorElBackendPermiteLeerLaRutaProtegida",
+        "invocacion": "unTokenEmitidoPorElBackendPermiteLeerLaRutaProtegida",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unPayloadAlteradoSinActualizarLaFirmaDevuelve401",
+        "invocacion": "unPayloadAlteradoSinActualizarLaFirmaDevuelve401",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtAutenticacionIntegrationTest",
+        "metodo": "unTokenVencidoDevuelve401",
+        "invocacion": "unTokenVencidoDevuelve401",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "elOrigenConfiguradoNoEliminaLaAutenticacion",
+        "invocacion": "elOrigenConfiguradoNoEliminaLaAutenticacion",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "elRuntimeNoCreaFlywayYUsaElLoopbackYPuertoDelProxy",
+        "invocacion": "elRuntimeNoCreaFlywayYUsaElLoopbackYPuertoDelProxy",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "laConfiguracionDelVpsNoConservaLosOrigenesLocalesPorDefecto",
+        "invocacion": "laConfiguracionDelVpsNoConservaLosOrigenesLocalesPorDefecto",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "elPreflightAdmiteElPatchDeVisibilidadDeHighlights",
+        "invocacion": "elPreflightAdmiteElPatchDeVisibilidadDeHighlights",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "losVideosMapasYTemporalesUsanElVolumenPersistente",
+        "invocacion": "losVideosMapasYTemporalesUsanElVolumenPersistente",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "laWebConfiguradaPuedeCompletarElPreflightDeUnaRutaProtegida",
+        "invocacion": "laWebConfiguradaPuedeCompletarElPreflightDeUnaRutaProtegida",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsConfigurationIntegrationTest",
+        "metodo": "lasIntegracionesDeVideoQuedanDeshabilitadasEnEstaEntrega",
+        "invocacion": "lasIntegracionesDeVideoQuedanDeshabilitadasEnEstaEntrega",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elLoginIncompletoDevuelveValidacionEnLugarDeErrorCors",
+        "invocacion": "elLoginIncompletoDevuelveValidacionEnLugarDeErrorCors",
+        "estado": "Aprobado",
+        "segundos": 0.011
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elOrigenPublicoConservaLasRestriccionesDelRolConsulta",
+        "invocacion": "elOrigenPublicoConservaLasRestriccionesDelRolConsulta",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "laConsultaDesdeHttpsPublicoLlegaPorHttpLocalSinRechazoCors",
+        "invocacion": "laConsultaDesdeHttpsPublicoLlegaPorHttpLocalSinRechazoCors",
+        "estado": "Aprobado",
+        "segundos": 0.004
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy",
+        "invocacion": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy",
+        "invocacion": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy",
+        "invocacion": "unOrigenAjenoNoSeAutorizaFalsificandoCabecerasDelProxy(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elPreflightPublicoPermiteLasOperacionesSinPedirToken",
+        "invocacion": "elPreflightPublicoPermiteLasOperacionesSinPedirToken(String, String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elPreflightPublicoPermiteLasOperacionesSinPedirToken",
+        "invocacion": "elPreflightPublicoPermiteLasOperacionesSinPedirToken(String, String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elPreflightPublicoPermiteLasOperacionesSinPedirToken",
+        "invocacion": "elPreflightPublicoPermiteLasOperacionesSinPedirToken(String, String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsPublicOriginCorsIntegrationTest",
+        "metodo": "elOrigenPublicoNoPermiteLeerUnaRutaProtegidaSinJwt",
+        "invocacion": "elOrigenPublicoNoPermiteLeerUnaRutaProtegidaSinJwt",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsSameOriginCorsIntegrationTest",
+        "metodo": "laApiRespondeSinNecesitarUnOrigenExterno",
+        "invocacion": "laApiRespondeSinNecesitarUnOrigenExterno",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsSameOriginCorsIntegrationTest",
+        "metodo": "unaListaVaciaNoHabilitaOrigenesConComodin",
+        "invocacion": "unaListaVaciaNoHabilitaOrigenesConComodin(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsSameOriginCorsIntegrationTest",
+        "metodo": "unaListaVaciaNoHabilitaOrigenesConComodin",
+        "invocacion": "unaListaVaciaNoHabilitaOrigenesConComodin(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.VpsSameOriginCorsIntegrationTest",
+        "metodo": "unaListaVaciaNoHabilitaOrigenesConComodin",
+        "invocacion": "unaListaVaciaNoHabilitaOrigenesConComodin(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "laPeticionRealSiguePidiendoTokenYPermiteLeerElErrorDesdeLaWeb",
+        "invocacion": "laPeticionRealSiguePidiendoTokenYPermiteLeerElErrorDesdeLaWeb(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "laPeticionRealSiguePidiendoTokenYPermiteLeerElErrorDesdeLaWeb",
+        "invocacion": "laPeticionRealSiguePidiendoTokenYPermiteLeerElErrorDesdeLaWeb(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "laWebPuedeLeerConJwtPeroNoEscribirConRolConsulta",
+        "invocacion": "laWebPuedeLeerConJwtPeroNoEscribirConRolConsulta",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales",
+        "invocacion": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.006
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales",
+        "invocacion": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales",
+        "invocacion": "unOrigenNoPermitidoNoPuedeHacerPreflightNiPeticionesReales(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "unTokenInvalidoConservaElErrorDeAutenticacionYLasCabecerasCors",
+        "invocacion": "unTokenInvalidoConservaElErrorDeAutenticacionYLasCabecerasCors",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "elPreflightDeRutasPublicasYProtegidasNoPideToken",
+        "invocacion": "elPreflightDeRutasPublicasYProtegidasNoPideToken(String, String, String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.004
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "elPreflightDeRutasPublicasYProtegidasNoPideToken",
+        "invocacion": "elPreflightDeRutasPublicasYProtegidasNoPideToken(String, String, String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "elPreflightDeRutasPublicasYProtegidasNoPideToken",
+        "invocacion": "elPreflightDeRutasPublicasYProtegidasNoPideToken(String, String, String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.config.WebCorsIntegrationTest",
+        "metodo": "elPreflightDeRutasPublicasYProtegidasNoPideToken",
+        "invocacion": "elPreflightDeRutasPublicasYProtegidasNoPideToken(String, String, String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "devuelveElResumenIndividualSinDatosPersonales",
+        "invocacion": "devuelveElResumenIndividualSinDatosPersonales",
+        "estado": "Aprobado",
+        "segundos": 0.022
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "unaTitularidadNoSePierdePorLaFaltaDeCalculoDeMinutos",
+        "invocacion": "unaTitularidadNoSePierdePorLaFaltaDeCalculoDeMinutos",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "unDorsalCeroSePresentaComoNoDisponible",
+        "invocacion": "unDorsalCeroSePresentaComoNoDisponible",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noIncluyePartidosQueNoEstanFinalizados",
+        "invocacion": "noIncluyePartidosQueNoEstanFinalizados(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noIncluyePartidosQueNoEstanFinalizados",
+        "invocacion": "noIncluyePartidosQueNoEstanFinalizados(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noIncluyePartidosQueNoEstanFinalizados",
+        "invocacion": "noIncluyePartidosQueNoEstanFinalizados(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "comparaDosJugadoresConResultadosDiferentesSinAnalisisDeVideo",
+        "invocacion": "comparaDosJugadoresConResultadosDiferentesSinAnalisisDeVideo",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "utilizaLaTemporadaDelTorneoInclusoSiSeJuegaEnOtroAnio",
+        "invocacion": "utilizaLaTemporadaDelTorneoInclusoSiSeJuegaEnOtroAnio",
+        "estado": "Aprobado",
+        "segundos": 0.011
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "permiteCompararUnJugadorConsigoMismoSinDuplicarTotales",
+        "invocacion": "permiteCompararUnJugadorConsigoMismoSinDuplicarTotales",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noAsignaAsistenciasEntreClubesNiEntrePartidosDiferentes",
+        "invocacion": "noAsignaAsistenciasEntreClubesNiEntrePartidosDiferentes",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "filtraPorTorneoSinMezclarLasOtrasParticipaciones",
+        "invocacion": "filtraPorTorneoSinMezclarLasOtrasParticipaciones",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "usaElIntervaloDeEntradaYSalidaParaLosRegistrosAntiguos",
+        "invocacion": "usaElIntervaloDeEntradaYSalidaParaLosRegistrosAntiguos",
+        "estado": "Aprobado",
+        "segundos": 0.006
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "unAutogolAcreditaParticipacionSinConvertirseEnGolAFavor",
+        "invocacion": "unAutogolAcreditaParticipacionSinConvertirseEnGolAFavor",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noPierdeLosGolesCuandoLaPlanillaTieneCeroMinutos",
+        "invocacion": "noPierdeLosGolesCuandoLaPlanillaTieneCeroMinutos",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "lasEstadisticasYLaComparacionRequierenSesion",
+        "invocacion": "lasEstadisticasYLaComparacionRequierenSesion",
+        "estado": "Aprobado",
+        "segundos": 0.004
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "filtraParticipacionesYDevuelveLosMinutosPersistidos",
+        "invocacion": "filtraParticipacionesYDevuelveLosMinutosPersistidos",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "priorizaLosMinutosRegistradosSobreElIntervaloDeEntradaYSalida",
+        "invocacion": "priorizaLosMinutosRegistradosSobreElIntervaloDeEntradaYSalida",
+        "estado": "Aprobado",
+        "segundos": 0.01
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "conservaElDorsalMasRecienteConDesempatePorPartido",
+        "invocacion": "conservaElDorsalMasRecienteConDesempatePorPartido",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "unGolAcreditaParticipacionAunqueFaltenSusMinutos",
+        "invocacion": "unGolAcreditaParticipacionAunqueFaltenSusMinutos",
+        "estado": "Aprobado",
+        "segundos": 0.006
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "unSuplenteQueNoEntroNoCuentaComoPartidoJugado",
+        "invocacion": "unSuplenteQueNoEntroNoCuentaComoPartidoJugado",
+        "estado": "Aprobado",
+        "segundos": 0.006
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noCuentaParticipacionesDeUnWalkover",
+        "invocacion": "noCuentaParticipacionesDeUnWalkover",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "rechazaTemporadasInvalidas",
+        "invocacion": "rechazaTemporadasInvalidas(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.004
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "rechazaTemporadasInvalidas",
+        "invocacion": "rechazaTemporadasInvalidas(String)[2]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "rechazaTemporadasInvalidas",
+        "invocacion": "rechazaTemporadasInvalidas(String)[3]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "rechazaTemporadasInvalidas",
+        "invocacion": "rechazaTemporadasInvalidas(String)[4]",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "noSumaAutogolesNiLesAsignaAsistencias",
+        "invocacion": "noSumaAutogolesNiLesAsignaAsistencias",
+        "estado": "Aprobado",
+        "segundos": 0.01
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "distingueUnTotalIncompletoDeUnCeroReal",
+        "invocacion": "distingueUnTotalIncompletoDeUnCeroReal",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.EstadisticasJugadorApiTest",
+        "metodo": "rechazaIdsInexistentesYParametrosDeComparacionInvalidos",
+        "invocacion": "rechazaIdsInexistentesYParametrosDeComparacionInvalidos",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "ajustaUnPartidoAManoYRechazaElChoque",
+        "invocacion": "ajustaUnPartidoAManoYRechazaElChoque",
+        "estado": "Aprobado",
+        "segundos": 0.11
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "publicaElFixtureDelTorneo",
+        "invocacion": "publicaElFixtureDelTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.113
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "validaElTorneoYLaCategoriaDeLaRuta",
+        "invocacion": "validaElTorneoYLaCategoriaDeLaRuta",
+        "estado": "Aprobado",
+        "segundos": 0.086
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "generaLasLlavesYAvanzaDeRondaConLosGanadores",
+        "invocacion": "generaLasLlavesYAvanzaDeRondaConLosGanadores",
+        "estado": "Aprobado",
+        "segundos": 0.101
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "exportaElFixtureEnPdf",
+        "invocacion": "exportaElFixtureEnPdf",
+        "estado": "Aprobado",
+        "segundos": 0.09
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "avisaCuandoNoHayCanchaNiHorarioLibre",
+        "invocacion": "avisaCuandoNoHayCanchaNiHorarioLibre",
+        "estado": "Aprobado",
+        "segundos": 0.09
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "enUnCampeonatoExternoNoSeGeneraFixtureYSeCarganLosPartidosAMano",
+        "invocacion": "enUnCampeonatoExternoNoSeGeneraFixtureYSeCarganLosPartidosAMano",
+        "estado": "Aprobado",
+        "segundos": 0.083
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "conTresEquiposUnoPasaDirectoALaFinal",
+        "invocacion": "conTresEquiposUnoPasaDirectoALaFinal",
+        "estado": "Aprobado",
+        "segundos": 0.107
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "noGeneraDosVecesNiSinEquiposAprobados",
+        "invocacion": "noGeneraDosVecesNiSinEquiposAprobados",
+        "estado": "Aprobado",
+        "segundos": 0.115
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "nuncaPoneDosPartidosEnLaMismaCanchaYHorario",
+        "invocacion": "nuncaPoneDosPartidosEnLaMismaCanchaYHorario",
+        "estado": "Aprobado",
+        "segundos": 0.086
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "conUnNumeroImparDeEquiposUnoQuedaLibreCadaFecha",
+        "invocacion": "conUnNumeroImparDeEquiposUnoQuedaLibreCadaFecha",
+        "estado": "Aprobado",
+        "segundos": 0.092
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.FixtureApiTest",
+        "metodo": "generaLaLigaPorRotacionConTodosContraTodos",
+        "invocacion": "generaLaLigaPorRotacionConTodosContraTodos",
+        "estado": "Aprobado",
+        "segundos": 0.091
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "respetaElCupoMaximoDeLaCategoria",
+        "invocacion": "respetaElCupoMaximoDeLaCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.079
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "validaLasRelacionesDeLaInscripcion",
+        "invocacion": "validaLasRelacionesDeLaInscripcion",
+        "estado": "Aprobado",
+        "segundos": 0.073
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "noInscribeSiElTorneoSigueEnBorrador",
+        "invocacion": "noInscribeSiElTorneoSigueEnBorrador",
+        "estado": "Aprobado",
+        "segundos": 0.074
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "inscribeUnEquipoYQuedaPendiente",
+        "invocacion": "inscribeUnEquipoYQuedaPendiente",
+        "estado": "Aprobado",
+        "segundos": 0.074
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "elOrganizadorObservaRechazaYApruebaConMotivo",
+        "invocacion": "elOrganizadorObservaRechazaYApruebaConMotivo",
+        "estado": "Aprobado",
+        "segundos": 0.086
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "filtraLasInscripcionesPorCategoria",
+        "invocacion": "filtraLasInscripcionesPorCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.095
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "elMismoClubNoSeInscribeDosVecesEnLaCategoria",
+        "invocacion": "elMismoClubNoSeInscribeDosVecesEnLaCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.111
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "filtraElListadoPorTorneoYPorEstado",
+        "invocacion": "filtraElListadoPorTorneoYPorEstado",
+        "estado": "Aprobado",
+        "segundos": 0.086
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.InscripcionEquipoApiTest",
+        "metodo": "noInscribeDespuesDeLaFechaLimite",
+        "invocacion": "noInscribeDespuesDeLaFechaLimite",
+        "estado": "Aprobado",
+        "segundos": 0.074
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "confirmaLaListaSoloConElMinimoYDespuesNoLaDejaModificar",
+        "invocacion": "confirmaLaListaSoloConElMinimoYDespuesNoLaDejaModificar",
+        "estado": "Aprobado",
+        "segundos": 0.236
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "rechazaAlJugadorSinFechaDeNacimiento",
+        "invocacion": "rechazaAlJugadorSinFechaDeNacimiento",
+        "estado": "Aprobado",
+        "segundos": 0.122
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "unJugadorEstaEnUnSoloEquipoDelTorneo",
+        "invocacion": "unJugadorEstaEnUnSoloEquipoDelTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.118
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "agregaUnJugadorHabilitadoYLoListaConSuDorsal",
+        "invocacion": "agregaUnJugadorHabilitadoYLoListaConSuDorsal",
+        "estado": "Aprobado",
+        "segundos": 0.104
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "validaLaInscripcionYElCuerpoDelPedido",
+        "invocacion": "validaLaInscripcionYElCuerpoDelPedido",
+        "estado": "Aprobado",
+        "segundos": 0.092
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "rechazaAlJugadorFueraDelRangoDeEdadALaFechaDeCorte",
+        "invocacion": "rechazaAlJugadorFueraDelRangoDeEdadALaFechaDeCorte",
+        "estado": "Aprobado",
+        "segundos": 0.084
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "noRepiteElDorsalDentroDelEquipo",
+        "invocacion": "noRepiteElDorsalDentroDelEquipo",
+        "estado": "Aprobado",
+        "segundos": 0.093
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "noPasaDelMaximoDeJugadoresDelReglamento",
+        "invocacion": "noPasaDelMaximoDeJugadoresDelReglamento",
+        "estado": "Aprobado",
+        "segundos": 0.103
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "rechazaAlJugadorQueNoEstaFichadoEnElClub",
+        "invocacion": "rechazaAlJugadorQueNoEstaFichadoEnElClub",
+        "estado": "Aprobado",
+        "segundos": 0.08
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ListaBuenaFeApiTest",
+        "metodo": "exportaLaListaEnPdf",
+        "invocacion": "exportaLaListaEnPdf",
+        "estado": "Aprobado",
+        "segundos": 0.116
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "borraElReglamentoConSusDesempates",
+        "invocacion": "borraElReglamentoConSusDesempates",
+        "estado": "Aprobado",
+        "segundos": 0.075
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "rechazaCriteriosRepetidosOInexistentes",
+        "invocacion": "rechazaCriteriosRepetidosOInexistentes",
+        "estado": "Aprobado",
+        "segundos": 0.072
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "elCatalogoTraeLosCincoCriteriosDelScript",
+        "invocacion": "elCatalogoTraeLosCincoCriteriosDelScript",
+        "estado": "Aprobado",
+        "segundos": 0.071
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "soloHayUnReglamentoPorTorneo",
+        "invocacion": "soloHayUnReglamentoPorTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.067
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "rechazaElMinimoMayorQueElMaximo",
+        "invocacion": "rechazaElMinimoMayorQueElMaximo",
+        "estado": "Aprobado",
+        "segundos": 0.06
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "creaElReglamentoConSuOrdenDeDesempates",
+        "invocacion": "creaElReglamentoConSuOrdenDeDesempates",
+        "estado": "Aprobado",
+        "segundos": 0.069
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "elHistorialRegistraCadaCambioDelReglamento",
+        "invocacion": "elHistorialRegistraCadaCambioDelReglamento",
+        "estado": "Aprobado",
+        "segundos": 0.078
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "elHistorialGuardaElAntesYElDespues",
+        "invocacion": "elHistorialGuardaElAntesYElDespues",
+        "estado": "Aprobado",
+        "segundos": 0.071
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "elTorneoSinReglamentoYElTorneoInexistenteSon404",
+        "invocacion": "elTorneoSinReglamentoYElTorneoInexistenteSon404",
+        "estado": "Aprobado",
+        "segundos": 0.068
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "laFechaDeCorteEsEl31DeDiciembreDeLaTemporada",
+        "invocacion": "laFechaDeCorteEsEl31DeDiciembreDeLaTemporada",
+        "estado": "Aprobado",
+        "segundos": 0.064
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "elTorneoSinReglamentoNoTieneHistorial",
+        "invocacion": "elTorneoSinReglamentoNoTieneHistorial",
+        "estado": "Aprobado",
+        "segundos": 0.077
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.ReglamentoApiTest",
+        "metodo": "reemplazaElOrdenDeLosDesempates",
+        "invocacion": "reemplazaElOrdenDeLosDesempates",
+        "estado": "Aprobado",
+        "segundos": 0.074
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "metodo": "crudCompletoDeSedeYCancha",
+        "invocacion": "crudCompletoDeSedeYCancha",
+        "estado": "Aprobado",
+        "segundos": 0.033
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "metodo": "laCanchaNoSeRepiteDentroDeLaMismaSede",
+        "invocacion": "laCanchaNoSeRepiteDentroDeLaMismaSede",
+        "estado": "Aprobado",
+        "segundos": 0.011
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "metodo": "validaElCuerpoYLasRelacionesDeLaCancha",
+        "invocacion": "validaElCuerpoYLasRelacionesDeLaCancha",
+        "estado": "Aprobado",
+        "segundos": 0.01
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "metodo": "filtraLasCanchasPorSede",
+        "invocacion": "filtraLasCanchasPorSede",
+        "estado": "Aprobado",
+        "segundos": 0.015
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SedeCanchaApiTest",
+        "metodo": "lasRutasPlanasNoChocanConLaDeTorneoPorId",
+        "invocacion": "lasRutasPlanasNoChocanConLaDeTorneoPorId",
+        "estado": "Aprobado",
+        "segundos": 0.009
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elAccesoRechazadoQuedaRegistrado",
+        "invocacion": "elAccesoRechazadoQuedaRegistrado",
+        "estado": "Aprobado",
+        "segundos": 0.006
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elLoginDevuelveElTokenYLosRoles",
+        "invocacion": "elLoginDevuelveElTokenYLosRoles",
+        "estado": "Aprobado",
+        "segundos": 0.135
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elEntrenadorNoTocaLaListaDeOtroClub",
+        "invocacion": "elEntrenadorNoTocaLaListaDeOtroClub",
+        "estado": "Aprobado",
+        "segundos": 0.329
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "lasAsignacionesDePrivilegiosRequierenAdministrador",
+        "invocacion": "lasAsignacionesDePrivilegiosRequierenAdministrador(String)[1]",
+        "estado": "Aprobado",
+        "segundos": 0.129
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elAdministradorPuedeAsignarLosRolesDerivadosDelCrudCompartido",
+        "invocacion": "elAdministradorPuedeAsignarLosRolesDerivadosDelCrudCompartido",
+        "estado": "Aprobado",
+        "segundos": 0.374
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elRegistroPublicoPuedeCrearUsuarioClub",
+        "invocacion": "elRegistroPublicoPuedeCrearUsuarioClub",
+        "estado": "Aprobado",
+        "segundos": 0.129
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elRegistroPublicoNoPermiteConvertirseEnAdministrador",
+        "invocacion": "elRegistroPublicoNoPermiteConvertirseEnAdministrador",
+        "estado": "Aprobado",
+        "segundos": 0.131
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "noSePuedeCambiarLaClaveNiEliminarLaCuentaDeOtroUsuario",
+        "invocacion": "noSePuedeCambiarLaClaveNiEliminarLaCuentaDeOtroUsuario",
+        "estado": "Aprobado",
+        "segundos": 0.244
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elEntrenadorEntraALaListaDeBuenaFePeroNoAlTorneo",
+        "invocacion": "elEntrenadorEntraALaListaDeBuenaFePeroNoAlTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.122
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elUsuarioPuedeCambiarSuPropiaClave",
+        "invocacion": "elUsuarioPuedeCambiarSuPropiaClave",
+        "estado": "Aprobado",
+        "segundos": 0.356
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "soloElAdministradorAsignaRoles",
+        "invocacion": "soloElAdministradorAsignaRoles",
+        "estado": "Aprobado",
+        "segundos": 0.322
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "sinTokenNoSeEntraALosEndpointsDeTorneos",
+        "invocacion": "sinTokenNoSeEntraALosEndpointsDeTorneos",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elRolConsultaLeePeroNoEscribe",
+        "invocacion": "elRolConsultaLeePeroNoEscribe",
+        "estado": "Aprobado",
+        "segundos": 0.128
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.SeguridadTorneosApiTest",
+        "metodo": "elAdministradorPuedeEditarYEliminarOtrasCuentas",
+        "invocacion": "elAdministradorPuedeEditarYEliminarOtrasCuentas",
+        "estado": "Aprobado",
+        "segundos": 0.31
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "noGuardaFechasIncoherentes",
+        "invocacion": "noGuardaFechasIncoherentes",
+        "estado": "Aprobado",
+        "segundos": 0.07
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "validaLasCategoriasDelTorneo",
+        "invocacion": "validaLasCategoriasDelTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.074
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "validaElCuerpoYElOrganizador",
+        "invocacion": "validaElCuerpoYElOrganizador",
+        "estado": "Aprobado",
+        "segundos": 0.065
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "abreLasInscripcionesUnaSolaVez",
+        "invocacion": "abreLasInscripcionesUnaSolaVez",
+        "estado": "Aprobado",
+        "segundos": 0.068
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "elTorneoInternoNoGuardaOrganizadorExterno",
+        "invocacion": "elTorneoInternoNoGuardaOrganizadorExterno",
+        "estado": "Aprobado",
+        "segundos": 0.065
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "elTorneoExternoExigeOrganizador",
+        "invocacion": "elTorneoExternoExigeOrganizador",
+        "estado": "Aprobado",
+        "segundos": 0.064
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "laCategoriaViveDentroDeSuTorneo",
+        "invocacion": "laCategoriaViveDentroDeSuTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.071
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "creaElTorneoEnBorradorConSusCategorias",
+        "invocacion": "creaElTorneoEnBorradorConSusCategorias",
+        "estado": "Aprobado",
+        "segundos": 0.067
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "listaLosTorneosPaginados",
+        "invocacion": "listaLosTorneosPaginados",
+        "estado": "Aprobado",
+        "segundos": 0.066
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "noAbreInscripcionesSinCategorias",
+        "invocacion": "noAbreInscripcionesSinCategorias",
+        "estado": "Aprobado",
+        "segundos": 0.065
+      },
+      {
+        "clase": "edu.upb.semillero.controller.torneos.TorneoApiTest",
+        "metodo": "actualizarElTorneoNoCambiaSuEstado",
+        "invocacion": "actualizarElTorneoNoCambiaSuEstado",
+        "estado": "Aprobado",
+        "segundos": 0.067
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "aplicaLosValoresPorDefectoDeLosBooleanos",
+        "invocacion": "aplicaLosValoresPorDefectoDeLosBooleanos",
+        "estado": "Aprobado",
+        "segundos": 0.063
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "losPartidosQueBloquearSonSoloProgramadoYEnCurso",
+        "invocacion": "losPartidosQueBloquearSonSoloProgramadoYEnCurso",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "noBorraUnaCanchaConReprogramaciones",
+        "invocacion": "noBorraUnaCanchaConReprogramaciones",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "laCanchaQueNoExisteEs404",
+        "invocacion": "laCanchaQueNoExisteEs404",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "noAceptaDosCanchasConElMismoNombreEnLaSede",
+        "invocacion": "noAceptaDosCanchasConElMismoNombreEnLaSede",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "guardaLasDimensionesYLaDescripcion",
+        "invocacion": "guardaLasDimensionesYLaDescripcion",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "borraLaCanchaQueNadieUsa",
+        "invocacion": "borraLaCanchaQueNadieUsa",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.CanchaServiceTest",
+        "metodo": "noBorraUnaCanchaConPartidosProgramados",
+        "invocacion": "noBorraUnaCanchaConPartidosProgramados",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "losDocumentosYElAptoMedicoTodaviaNoSeVerifican",
+        "invocacion": "losDocumentosYElAptoMedicoTodaviaNoSeVerifican",
+        "estado": "Aprobado",
+        "segundos": 0.004
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "comunValidaQueLosIdsNoSeanNulos",
+        "invocacion": "comunValidaQueLosIdsNoSeanNulos",
+        "estado": "Aprobado",
+        "segundos": 0.008
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "devuelveEdadDesconocidaSiElJugadorNoTieneFechaDeNacimiento",
+        "invocacion": "devuelveEdadDesconocidaSiElJugadorNoTieneFechaDeNacimiento",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "devuelveVacioSiElJugadorNoExiste",
+        "invocacion": "devuelveVacioSiElJugadorNoExiste",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "comunDaElRolQueEstaEnUsuariosRoles",
+        "invocacion": "comunDaElRolQueEstaEnUsuariosRoles",
+        "estado": "Aprobado",
+        "segundos": 0.011
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "noCuentaUnFichajeQueYaTerminoALaFechaDeCorte",
+        "invocacion": "noCuentaUnFichajeQueYaTerminoALaFechaDeCorte",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "sinRolesAsignadosElUsuarioQuedaEnConsulta",
+        "invocacion": "sinRolesAsignadosElUsuarioQuedaEnConsulta",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "lasInterfacesEntreModulosSeInyectan",
+        "invocacion": "lasInterfacesEntreModulosSeInyectan",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "laEdadDependeDeLaFechaDeCorteYNoDeHoy",
+        "invocacion": "laEdadDependeDeLaFechaDeCorteYNoDeHoy",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "comunNoConcedeRolesQueElUsuarioNoTiene",
+        "invocacion": "comunNoConcedeRolesQueElUsuarioNoTiene",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "calculaLaEdadALaFechaDeCorteYLeeElEstado",
+        "invocacion": "calculaLaEdadALaFechaDeCorteYLeeElEstado",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ContratosEntreModulosTest",
+        "metodo": "leeElFichajeVigenteDeLaTablaFichado",
+        "invocacion": "leeElFichajeVigenteDeLaTablaFichado",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "laEliminacionNoSeUsaEnUnTorneoDeLiga",
+        "invocacion": "laEliminacionNoSeUsaEnUnTorneoDeLiga",
+        "estado": "Aprobado",
+        "segundos": 0.121
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "laLigaYLaEliminacionNoSeMezclan",
+        "invocacion": "laLigaYLaEliminacionNoSeMezclan",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "noGeneraConMenosDeDosEquiposAprobados",
+        "invocacion": "noGeneraConMenosDeDosEquiposAprobados",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "noPublicaUnTorneoSinPartidos",
+        "invocacion": "noPublicaUnTorneoSinPartidos",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "laCategoriaDeOtroTorneoEs404",
+        "invocacion": "laCategoriaDeOtroTorneoEs404",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "enUnCampeonatoExternoNoSeGeneraFixture",
+        "invocacion": "enUnCampeonatoExternoNoSeGeneraFixture",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "noPublicaDosVecesElMismoFixture",
+        "invocacion": "noPublicaDosVecesElMismoFixture",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.FixtureServiceTest",
+        "metodo": "noGeneraDosVecesElFixtureDeLaMismaCategoria",
+        "invocacion": "noGeneraDosVecesElFixtureDeLaMismaCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noSacaAUnEquipoAprobadoSiLaCategoriaYaTieneFixture",
+        "invocacion": "noSacaAUnEquipoAprobadoSiLaCategoriaYaTieneFixture",
+        "estado": "Aprobado",
+        "segundos": 0.064
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noInscribeSiElTorneoNoTieneLasInscripcionesAbiertas",
+        "invocacion": "noInscribeSiElTorneoNoTieneLasInscripcionesAbiertas",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noInscribeSiLaCategoriaLlegoAlCupo",
+        "invocacion": "noInscribeSiLaCategoriaLlegoAlCupo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noAceptaUnGrupoDeOtraCategoria",
+        "invocacion": "noAceptaUnGrupoDeOtraCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "aprobarLimpiaElMotivoDeLaObservacion",
+        "invocacion": "aprobarLimpiaElMotivoDeLaObservacion",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "observarYRechazarExigenMotivo",
+        "invocacion": "observarYRechazarExigenMotivo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "rechazarGuardaElMotivoYLoDejaEnElHistorial",
+        "invocacion": "rechazarGuardaElMotivoYLoDejaEnElHistorial",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "laCategoriaQueNoExisteEs404",
+        "invocacion": "laCategoriaQueNoExisteEs404",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noInscribeDespuesDeLaFechaLimite",
+        "invocacion": "noInscribeDespuesDeLaFechaLimite",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "laInscripcionNacePendienteYSinListaConfirmada",
+        "invocacion": "laInscripcionNacePendienteYSinListaConfirmada",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noCambiaAlMismoEstadoEnQueYaEsta",
+        "invocacion": "noCambiaAlMismoEstadoEnQueYaEsta",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "noInscribeDosVecesAlMismoClub",
+        "invocacion": "noInscribeDosVecesAlMismoClub",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.InscripcionEquipoServiceTest",
+        "metodo": "elHistorialDevuelveLosCambiosDeMasNuevoAMasViejo",
+        "invocacion": "elHistorialDevuelveLosCambiosDeMasNuevoAMasViejo",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noConfirmaConMenosJugadoresQueElMinimo",
+        "invocacion": "noConfirmaConMenosJugadoresQueElMinimo",
+        "estado": "Aprobado",
+        "segundos": 0.42
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "laInscripcionQueNoExisteEs404",
+        "invocacion": "laInscripcionQueNoExisteEs404",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noCargaLaListaDeUnaInscripcionRechazada",
+        "invocacion": "noCargaLaListaDeUnaInscripcionRechazada",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "exigeQueElJugadorEsteFichadoEnElClub",
+        "invocacion": "exigeQueElJugadorEsteFichadoEnElClub",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "rechazaAlJugadorConSancionVigenteEnEsteTorneo",
+        "invocacion": "rechazaAlJugadorConSancionVigenteEnEsteTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "registraAlJugadorElegibleConSuDorsalYSuTorneo",
+        "invocacion": "registraAlJugadorElegibleConSuDorsalYSuTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "confirmaLaListaYLaDejaMarcadaEnLaInscripcion",
+        "invocacion": "confirmaLaListaYLaDejaMarcadaEnLaInscripcion",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "elJugadorQueNoExisteEnFichaTecnicaEs404",
+        "invocacion": "elJugadorQueNoExisteEnFichaTecnicaEs404",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "soloRegistraJugadoresActivos",
+        "invocacion": "soloRegistraJugadoresActivos",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noCargaLaListaSiElTorneoNoTieneReglamento",
+        "invocacion": "noCargaLaListaSiElTorneoNoTieneReglamento",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noRegistraUnJugadorSinFechaDeNacimiento",
+        "invocacion": "noRegistraUnJugadorSinFechaDeNacimiento",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "laListaConfirmadaYaNoSeModifica",
+        "invocacion": "laListaConfirmadaYaNoSeModifica",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "exigeDocumentosYAptoMedicoVigentes",
+        "invocacion": "exigeDocumentosYAptoMedicoVigentes",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noRepiteElDorsalDentroDelEquipo",
+        "invocacion": "noRepiteElDorsalDentroDelEquipo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "unJugadorEstaEnUnSoloEquipoPorTorneo",
+        "invocacion": "unJugadorEstaEnUnSoloEquipoPorTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noPasaDelMaximoDeJugadoresDelReglamento",
+        "invocacion": "noPasaDelMaximoDeJugadoresDelReglamento",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "noRegistraUnJugadorFueraDelRangoDeEdadALaFechaDeCorte",
+        "invocacion": "noRegistraUnJugadorFueraDelRangoDeEdadALaFechaDeCorte",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ListaBuenaFeServiceTest",
+        "metodo": "registraInhabilitadoAlJugadorConSancionVigenteDeOtroTorneo",
+        "invocacion": "registraInhabilitadoAlJugadorConSancionVigenteDeOtroTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "laFechaDeCortePorDefectoEsFinDeLaTemporada",
+        "invocacion": "laFechaDeCortePorDefectoEsFinDeLaTemporada",
+        "estado": "Aprobado",
+        "segundos": 0.25
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "rechazaUnCriterioDeDesempateRepetido",
+        "invocacion": "rechazaUnCriterioDeDesempateRepetido",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "elTorneoInexistenteEs404",
+        "invocacion": "elTorneoInexistenteEs404",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "noPermiteUnSegundoReglamentoEnElMismoTorneo",
+        "invocacion": "noPermiteUnSegundoReglamentoEnElMismoTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "rechazaUnCriterioDeDesempateInexistente",
+        "invocacion": "rechazaUnCriterioDeDesempateInexistente",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "rechazaElMinimoMayorQueElMaximo",
+        "invocacion": "rechazaElMinimoMayorQueElMaximo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.ReglamentoServiceTest",
+        "metodo": "elTorneoSinReglamentoEs404",
+        "invocacion": "elTorneoSinReglamentoEs404",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "rechazaLaEdadMinimaMayorQueLaMaxima",
+        "invocacion": "rechazaLaEdadMinimaMayorQueLaMaxima",
+        "estado": "Aprobado",
+        "segundos": 0.063
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "rechazaDosCategoriasConElMismoNombreEnElTorneo",
+        "invocacion": "rechazaDosCategoriasConElMismoNombreEnElTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "noEncuentraLaCategoriaDeOtroTorneo",
+        "invocacion": "noEncuentraLaCategoriaDeOtroTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "creaLaCategoriaDelTorneo",
+        "invocacion": "creaLaCategoriaDelTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "rechazaUnCupoMenorADos",
+        "invocacion": "rechazaUnCupoMenorADos",
+        "estado": "Aprobado",
+        "segundos": 0.002
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoCategoriaServiceTest",
+        "metodo": "noAgregaCategoriasAUnTorneoQueNoExiste",
+        "invocacion": "noAgregaCategoriasAUnTorneoQueNoExiste",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "noAbreInscripcionesDeUnTorneoQueNoEstaEnBorrador",
+        "invocacion": "noAbreInscripcionesDeUnTorneoQueNoEstaEnBorrador",
+        "estado": "Aprobado",
+        "segundos": 0.062
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "noAbreInscripcionesSinNingunaCategoria",
+        "invocacion": "noAbreInscripcionesSinNingunaCategoria",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "elTorneoNaceEnBorrador",
+        "invocacion": "elTorneoNaceEnBorrador",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "noGuardaUnTorneoExternoSinOrganizador",
+        "invocacion": "noGuardaUnTorneoExternoSinOrganizador",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "noGuardaSiElLimiteDeInscripcionEsPosteriorAlInicio",
+        "invocacion": "noGuardaSiElLimiteDeInscripcionEsPosteriorAlInicio",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "elTorneoQueNoExisteNoSeEncuentra",
+        "invocacion": "elTorneoQueNoExisteNoSeEncuentra",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "noGuardaSiLaFechaDeFinEsAnteriorALaDeInicio",
+        "invocacion": "noGuardaSiLaFechaDeFinEsAnteriorALaDeInicio",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "elTorneoInternoNoGuardaOrganizadorExterno",
+        "invocacion": "elTorneoInternoNoGuardaOrganizadorExterno",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "elTorneoExternoGuardaSuOrganizador",
+        "invocacion": "elTorneoExternoGuardaSuOrganizador",
+        "estado": "Aprobado",
+        "segundos": 0.0
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "abreInscripcionesDesdeBorrador",
+        "invocacion": "abreInscripcionesDesdeBorrador",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      },
+      {
+        "clase": "edu.upb.semillero.service.torneos.TorneoServiceTest",
+        "metodo": "guardaLasCategoriasQueVienenAlCrearElTorneo",
+        "invocacion": "guardaLasCategoriasQueVienenAlCrearElTorneo",
+        "estado": "Aprobado",
+        "segundos": 0.001
+      }
+    ]
+  },
+  "diagnosticoOriginalRepetido": {
+    "totales": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "clase": "edu.upb.semillero.config.JwtStartupDiagnosticTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "e59984e13f05d9a154e997d3bf1a553543b8924e851119db2e8026ba68f71f4d"
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "2690344f5ebcbaf8cf494e0295c7285459063dc6966dadce53149127782d7d2a"
+      }
+    ],
+    "invocaciones": [
+      {
+        "clase": "edu.upb.semillero.config.JwtStartupDiagnosticTest",
+        "metodo": "missingVpsSecretReproducesTheExactReportedFailure",
+        "invocacion": "missingVpsSecretReproducesTheExactReportedFailure",
+        "estado": "Aprobado",
+        "segundos": 0.038
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtStartupDiagnosticTest",
+        "metodo": "devCanResolveItsExistingLocalDefault",
+        "invocacion": "devCanResolveItsExistingLocalDefault",
+        "estado": "Aprobado",
+        "segundos": 0.007
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtStartupDiagnosticTest",
+        "metodo": "providingTheSecretCreatesJwtServiceAndValidatesSignedTokens",
+        "invocacion": "providingTheSecretCreatesJwtServiceAndValidatesSignedTokens",
+        "estado": "Aprobado",
+        "segundos": 0.003
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "metodo": "validSignedTokenCanReadProtectedEndpoint",
+        "invocacion": "validSignedTokenCanReadProtectedEndpoint",
+        "estado": "Aprobado",
+        "segundos": 0.326
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "metodo": "unsupportedHeaderAlgorithmMustReturn401EvenWithValidHmac",
+        "invocacion": "unsupportedHeaderAlgorithmMustReturn401EvenWithValidHmac",
+        "estado": "Aprobado",
+        "segundos": 0.012
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "metodo": "tokenSignedWithAnotherSecretReturns401",
+        "invocacion": "tokenSignedWithAnotherSecretReturns401",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "metodo": "expiredTokenReturns401",
+        "invocacion": "expiredTokenReturns401",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      },
+      {
+        "clase": "edu.upb.semillero.config.JwtVariantsDiagnosticTest",
+        "metodo": "alteredPayloadWithoutNewSignatureReturns401",
+        "invocacion": "alteredPayloadWithoutNewSignatureReturns401",
+        "estado": "Aprobado",
+        "segundos": 0.005
+      }
+    ]
+  },
+  "regresionesNuevas": {
+    "JwtAutenticacionIntegrationTest": 14,
+    "VpsPublicOriginCorsIntegrationTest": 10
+  },
+  "compose": "config --quiet aprobado con variables sintéticas y --env-file /dev/null",
+  "vps": {
+    "desplegado": false,
+    "ssh": "Permission denied (publickey)",
+    "corsPublico": "La corrección local no está aplicada al runtime; conservar el fallo público histórico hasta desplegar y repetir las consultas."
+  },
+  "alcance": "Sin cambios de esquema, secretos, credenciales ni publicación. Base PostgreSQL local desechable retirada al terminar."
+}

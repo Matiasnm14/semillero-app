@@ -61,7 +61,9 @@ No ejecutar `up` hasta verificar que esa versión del esquema está instalada y 
 
 `JWT_SECRET` debe ser aleatorio y estable entre despliegues. No es un JWT de usuario ni `ANALYSIS_TOKEN`. Los secretos se mantienen fuera de Git; valores con caracteres especiales deben usar comillas simples de dotenv. No imprimir `.env` ni `docker compose config` sin `--quiet`.
 
-CORS vacío admite la web en el mismo origen. Confirmar las URLs HTTPS de web/API y configurar orígenes exactos cuando difieran. Las rutas protegidas conservan la autenticación y los permisos por partido. Antes de habilitar videos grandes a través del proxy, revisar sus límites de cuerpo y tiempos de espera.
+`PUBLIC_WEB_ORIGIN` identifica el origen HTTPS de la web publicada; su valor predeterminado es `https://semillero.mandarina-group.cc`. Se permite explícitamente porque Caddy conecta a Spring por HTTP local, aunque el navegador use HTTPS. Un `CORS_ALLOWED_ORIGINS` vacío conserva ese permiso; la variable sirve para agregar otros orígenes separados por comas. Usar orígenes sin ruta ni barra final. No es necesario habilitar confianza general en cabeceras reenviadas para esta corrección. Las rutas protegidas conservan la autenticación y los permisos por partido. Antes de habilitar videos grandes a través del proxy, revisar sus límites de cuerpo y tiempos de espera.
+
+La validación de JWT admite exclusivamente la cabecera `alg: HS256`, además de comprobar firma y vencimiento. Los tokens ya emitidos por el backend conservan su validez hasta expirar, sin cambiar `JWT_SECRET`.
 
 Para actualizar, cargar una imagen nueva, cambiar solo `APP_IMAGE` y recrear con Compose. Conservar secretos, base y volumen. Una reversión de imagen requiere comprobar compatibilidad con el esquema administrado centralmente.
 
