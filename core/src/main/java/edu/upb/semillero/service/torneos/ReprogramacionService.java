@@ -14,6 +14,7 @@ import edu.upb.semillero.repository.repos.torneos.PartidoFixtureRepository;
 import edu.upb.semillero.repository.repos.torneos.ReglamentoRepository;
 import edu.upb.semillero.repository.repos.torneos.ReprogramacionRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
@@ -61,16 +62,19 @@ public class ReprogramacionService {
     private final ReglamentoRepository reglamentos;
     private final AvisosTorneos avisos;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public ReprogramacionService(PartidoFixtureRepository partidos,
             ReprogramacionRepository repository, CanchaRepository canchas,
-            ReglamentoRepository reglamentos, AvisosTorneos avisos, EntityRelations relations) {
+            ReglamentoRepository reglamentos, AvisosTorneos avisos, EntityRelations relations,
+            AccesoTorneos acceso) {
         this.partidos = partidos;
         this.repository = repository;
         this.canchas = canchas;
         this.reglamentos = reglamentos;
         this.avisos = avisos;
         this.relations = relations;
+        this.acceso = acceso;
     }
 
     /** Tarea S3-18: el historial del partido, de la primera reprogramación a la última. */
@@ -108,6 +112,8 @@ public class ReprogramacionService {
         }
         partidos.saveAndFlush(partido);
 
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/partidos/" + partido.getId() + "/reprogramaciones");
         Reprogramacion entity = new Reprogramacion();
         entity.setPartido(partido);
         entity.setFechaInicioAnterior(inicioAnterior);
@@ -115,7 +121,7 @@ public class ReprogramacionService {
         entity.setFechaInicioNueva(partido.getFechaInicio());
         entity.setCanchaNueva(nueva);
         entity.setMotivo(request.motivo().trim());
-        entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        entity.setUsuario(relations.find(Usuario.class, actor));
         entity.setFecha(LocalDateTime.now());
         Reprogramacion guardada = repository.saveAndFlush(entity);
 

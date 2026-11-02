@@ -83,6 +83,8 @@ public class EventoPartidoService {
         Partido partido = requirePartido(partidoId);
         requireAbierto(partido);
         requirePlanillaConfirmada(partido);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/partidos/" + partidoId + "/eventos");
 
         List<ParticipacionPartido> planilla = participaciones.findByPartidoIdOrderByIdAsc(partidoId);
         List<EventoPartido> anteriores = repository.findByPartidoIdOrderByMinutoAscIdAsc(partidoId);
@@ -107,7 +109,7 @@ public class EventoPartidoService {
             case AMARILLA, ROJA -> validarTarjeta(evento, request, anteriores);
             case CAMBIO -> validarCambio(evento, request, partido, tramos, anteriores);
         }
-        evento.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        evento.setUsuario(relations.find(Usuario.class, actor));
         evento.setFechaRegistro(LocalDateTime.now());
         EventoPartido guardado = repository.saveAndFlush(evento);
 

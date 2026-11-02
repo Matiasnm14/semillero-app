@@ -120,6 +120,8 @@ public class CierrePartidoService {
     public ResultadoPartidoResponseDto cerrar(Long partidoId, CierrePartidoRequestDto request) {
         Partido partido = requirePartido(partidoId);
         acceso.requirePartidoAsignado(partidoId, relations.id(partido.getMesaControl()));
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/partidos/" + partidoId + "/cerrar");
         if (partido.getEstado() == EstadoPartido.FINALIZADO) {
             throw new ConflictException("El partido " + partidoId + " ya está cerrado");
         }
@@ -137,10 +139,10 @@ public class CierrePartidoService {
         }
         partido.setEstado(EstadoPartido.FINALIZADO);
         partido.setFechaCierre(LocalDateTime.now());
-        partido.setCerradoPor(relations.find(Usuario.class, request.usuarioId()));
+        partido.setCerradoPor(relations.find(Usuario.class, actor));
         Partido cerrado = partidos.saveAndFlush(partido);
-        registrar("CERRAR", cerrado, anterior, null, request.usuarioId());
-        sanciones.alCerrar(cerrado, request.usuarioId());
+        registrar("CERRAR", cerrado, anterior, null, actor);
+        sanciones.alCerrar(cerrado, actor);
         avisos.avisarALosEquipos(cerrado, "Resultado publicado", resultado(cerrado));
         publicador.publishEvent(new PartidoFinalizado(cerrado.getId(), cerrado.getFechaCierre()));
         return toResponse(cerrado);
@@ -169,6 +171,8 @@ public class CierrePartidoService {
     @Transactional
     public ResultadoPartidoResponseDto reabrir(Long partidoId, ReaperturaPartidoRequestDto request) {
         Partido partido = requirePartido(partidoId);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/partidos/" + partidoId + "/reabrir");
         if (partido.getEstado() != EstadoPartido.FINALIZADO) {
             throw new ConflictException("El partido " + partidoId + " está en " + partido.getEstado()
                     + ": solo se reabre un partido cerrado");
@@ -194,9 +198,9 @@ public class CierrePartidoService {
         }
         participaciones.flush();
         Partido reabierto = partidos.saveAndFlush(partido);
-        registrar("REABRIR", reabierto, anterior, request.motivo().trim(), request.usuarioId());
+        registrar("REABRIR", reabierto, anterior, request.motivo().trim(), actor);
         // Tarea S4-03: las fechas de suspensión que había descontado este partido vuelven.
-        sanciones.alReabrir(reabierto, request.usuarioId());
+        sanciones.alReabrir(reabierto, actor);
         return toResponse(reabierto);
     }
 

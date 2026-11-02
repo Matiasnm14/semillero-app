@@ -18,6 +18,7 @@ import edu.upb.semillero.repository.repos.torneos.InscripcionEquipoRepository;
 import edu.upb.semillero.repository.repos.torneos.PartidoTorneoRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoCategoriaRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
@@ -50,15 +51,17 @@ public class InscripcionEquipoService {
     private final AuditoriaRepository auditoria;
     private final PartidoTorneoRepository partidos;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public InscripcionEquipoService(InscripcionEquipoRepository repository,
             TorneoCategoriaRepository categorias, AuditoriaRepository auditoria,
-            PartidoTorneoRepository partidos, EntityRelations relations) {
+            PartidoTorneoRepository partidos, EntityRelations relations, AccesoTorneos acceso) {
         this.repository = repository;
         this.categorias = categorias;
         this.auditoria = auditoria;
         this.partidos = partidos;
         this.relations = relations;
+        this.acceso = acceso;
     }
 
     /**
@@ -128,7 +131,8 @@ public class InscripcionEquipoService {
         entity.setEstado(nuevo);
         entity.setMotivo(exigeMotivo(nuevo) ? request.motivo() : null);
         InscripcionEquipo guardada = repository.saveAndFlush(entity);
-        registrar(guardada, valorAnterior, snapshot(guardada), request.motivo(), request.usuarioId());
+        registrar(guardada, valorAnterior, snapshot(guardada), request.motivo(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/inscripciones/" + id + "/estado"));
         return toResponse(guardada);
     }
 
@@ -176,7 +180,8 @@ public class InscripcionEquipoService {
     private void apply(InscripcionEquipo entity, InscripcionEquipoRequestDto request) {
         entity.setTorneoCategoria(requireCategoria(request.torneoCategoriaId()));
         entity.setClub(relations.find(Club.class, request.clubId()));
-        entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        entity.setUsuario(relations.find(Usuario.class,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/inscripciones")));
         entity.setGrupo(relations.find(Grupo.class, request.grupoId()));
         entity.setCabezaSerie(request.cabezaSerie());
     }

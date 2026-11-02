@@ -29,6 +29,7 @@ import edu.upb.semillero.repository.repos.torneos.ReglamentoRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoCategoriaRepository;
 import edu.upb.semillero.repository.repos.torneos.TorneoRepository;
 import edu.upb.semillero.service.EntityRelations;
+import edu.upb.semillero.service.seguridad.AccesoTorneos;
 import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
@@ -93,11 +94,12 @@ public class FixtureService {
     private final CanchaRepository canchas;
     private final AuditoriaRepository auditoria;
     private final EntityRelations relations;
+    private final AccesoTorneos acceso;
 
     public FixtureService(PartidoFixtureRepository partidos, TorneoRepository torneos,
             TorneoCategoriaRepository categorias, InscripcionEquipoRepository inscripciones,
             ReglamentoRepository reglamentos, CanchaRepository canchas,
-            AuditoriaRepository auditoria, EntityRelations relations) {
+            AuditoriaRepository auditoria, EntityRelations relations, AccesoTorneos acceso) {
         this.partidos = partidos;
         this.torneos = torneos;
         this.categorias = categorias;
@@ -106,6 +108,7 @@ public class FixtureService {
         this.canchas = canchas;
         this.auditoria = auditoria;
         this.relations = relations;
+        this.acceso = acceso;
     }
 
     /** HU 15: un partido de torneo por su ID, con la cancha y su superficie. */
@@ -166,7 +169,8 @@ public class FixtureService {
             generados.addAll(rotacion(categoria, null, equipos, FaseTorneo.LIGA, idaVuelta));
         }
         agendarYGuardar(generados, agenda, request);
-        registrar("GENERAR_FIXTURE", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("GENERAR_FIXTURE", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/liga"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -201,7 +205,8 @@ public class FixtureService {
         }
         Agenda agenda = agenda(categoria, request);
         agendarYGuardar(generados, agenda, request);
-        registrar("GENERAR_LLAVES", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("GENERAR_LLAVES", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/eliminacion"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -244,7 +249,8 @@ public class FixtureService {
         Agenda agenda = agenda(categoria, request);
         agendarYGuardar(generados, agenda, request);
         enlazarConLaRondaAnterior(ronda, generados);
-        registrar("AVANZAR_RONDA", categoria.getId(), generados.size(), request.usuarioId());
+        registrar("AVANZAR_RONDA", categoria.getId(), generados.size(),
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/avanzar"));
         return generados.stream().map(this::toResponse).toList();
     }
 
@@ -262,7 +268,9 @@ public class FixtureService {
         }
         actuales.forEach(partidos::delete);
         partidos.flush();
-        registrar("BORRAR_FIXTURE", categoria.getId(), actuales.size(), usuarioId);
+        registrar("BORRAR_FIXTURE", categoria.getId(), actuales.size(),
+                acceso.exigirActor(usuarioId, "/api/v1/torneos/" + torneoId + "/categorias/"
+                        + categoriaId + "/fixture"));
     }
 
     /**
@@ -293,7 +301,8 @@ public class FixtureService {
         validarSinChoques(partido, ocupadosEseDia(partido.getFechaInicio().toLocalDate()),
                 descansoMinimo(categoria));
         Partido guardado = partidos.saveAndFlush(partido);
-        registrar("CARGAR_PARTIDO", categoria.getId(), 1, request.usuarioId());
+        registrar("CARGAR_PARTIDO", categoria.getId(), 1,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/fixture/manual"));
         return toResponse(guardado);
     }
 
@@ -325,7 +334,8 @@ public class FixtureService {
         validarSinChoques(partido, ocupadosEseDia(partido.getFechaInicio().toLocalDate()),
                 descansoMinimo(partido.getTorneoCategoria()));
         Partido guardado = partidos.saveAndFlush(partido);
-        registrar("AJUSTAR_PARTIDO", partido.getTorneoCategoria().getId(), 1, request.usuarioId());
+        registrar("AJUSTAR_PARTIDO", partido.getTorneoCategoria().getId(), 1,
+                acceso.exigirActor(request.usuarioId(), "/api/v1/torneos/partidos/" + partidoId));
         return toResponse(guardado);
     }
 
@@ -355,7 +365,8 @@ public class FixtureService {
         }
         torneo.setEstado(EstadoTorneo.EN_CURSO);
         torneos.saveAndFlush(torneo);
-        registrar("PUBLICAR_FIXTURE", torneoId, (int) total, usuarioId);
+        registrar("PUBLICAR_FIXTURE", torneoId, (int) total,
+                acceso.exigirActor(usuarioId, "/api/v1/torneos/" + torneoId + "/fixture/publicar"));
         return new FixturePublicadoResponseDto(torneoId, torneo.getEstado(), total,
                 delTorneo.size());
     }

@@ -146,6 +146,8 @@ public class SancionService {
     @Transactional
     public SancionResponseDto crearManual(Long torneoId, SancionManualRequestDto request) {
         Torneo torneo = requireTorneo(torneoId);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/torneos/" + torneoId + "/sanciones");
         ListaBuenaFe lista = listas.findByTorneoIdAndJugadorId(torneoId, request.jugadorId())
                 .orElseThrow(() -> new BusinessException("El jugador " + request.jugadorId()
                         + " no está en ninguna lista de buena fe del torneo " + torneo.getNombre()));
@@ -168,10 +170,10 @@ public class SancionService {
         sancion.setFechasCumplidas((short) 0);
         sancion.setMotivo(request.motivo().trim());
         sancion.setEstado(EstadoSancion.VIGENTE);
-        sancion.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        sancion.setUsuario(relations.find(Usuario.class, actor));
         sancion.setFechaRegistro(LocalDateTime.now());
         Sancion guardada = repository.saveAndFlush(sancion);
-        registrar("SANCION_MANUAL", guardada, null, guardada.getMotivo(), request.usuarioId());
+        registrar("SANCION_MANUAL", guardada, null, guardada.getMotivo(), actor);
         avisos.avisarAlJugador(lista.getJugador(), "Suspensión",
                 "Tenés " + guardada.getFechasSuspension() + " fecha(s) de suspensión en el torneo "
                         + torneo.getNombre() + ". " + guardada.getMotivo());
@@ -194,6 +196,8 @@ public class SancionService {
         Sancion sancion = require(sancionId);
         acceso.requireClubPropio(sancion.getListaBuenaFe().getInscripcionEquipo().getClub().getId(),
                 "/api/v1/torneos/sanciones/" + sancionId + "/apelaciones");
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/sanciones/" + sancionId + "/apelaciones");
         if (sancion.getEstado() != EstadoSancion.VIGENTE) {
             throw new BusinessException("La sanción " + sancionId + " está " + sancion.getEstado()
                     + ": solo se apela una sanción VIGENTE");
@@ -206,10 +210,10 @@ public class SancionService {
         apelacion.setSancion(sancion);
         apelacion.setMotivo(request.motivo().trim());
         apelacion.setEstado(EstadoApelacion.PENDIENTE);
-        apelacion.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        apelacion.setUsuario(relations.find(Usuario.class, actor));
         apelacion.setFechaPresentacion(LocalDateTime.now());
         Apelacion guardada = apelaciones.saveAndFlush(apelacion);
-        registrar("APELAR", sancion, null, guardada.getMotivo(), request.usuarioId());
+        registrar("APELAR", sancion, null, guardada.getMotivo(), actor);
         return toResponse(guardada);
     }
 
@@ -218,6 +222,8 @@ public class SancionService {
     public ApelacionResponseDto resolver(Long apelacionId, ResolucionApelacionRequestDto request) {
         Apelacion apelacion = apelaciones.findById(apelacionId)
                 .orElseThrow(() -> new NotFoundException("Apelación con id " + apelacionId + " no existe"));
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/apelaciones/" + apelacionId);
         if (apelacion.getEstado() != EstadoApelacion.PENDIENTE) {
             throw new ConflictException("La apelación " + apelacionId + " ya está resuelta: "
                     + apelacion.getEstado());
@@ -242,11 +248,11 @@ public class SancionService {
         apelacion.setResolucion(request.resolucion().trim());
         apelacion.setFechasResueltas(request.estado() == EstadoApelacion.REDUCIDA
                 ? request.fechasResueltas() : null);
-        apelacion.setResueltoPor(relations.find(Usuario.class, request.usuarioId()));
+        apelacion.setResueltoPor(relations.find(Usuario.class, actor));
         apelacion.setFechaResolucion(LocalDateTime.now());
         Apelacion resuelta = apelaciones.saveAndFlush(apelacion);
         registrar("RESOLVER_APELACION", sancion, anterior,
-                request.estado() + ": " + resuelta.getResolucion(), request.usuarioId());
+                request.estado() + ": " + resuelta.getResolucion(), actor);
         return toResponse(resuelta);
     }
 

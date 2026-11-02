@@ -118,9 +118,11 @@ public class PlanillaService {
     public PlanillaResponseDto guardar(Long partidoId, PlanillaRequestDto request) {
         Partido partido = requirePartido(partidoId);
         requireEditable(partido);
+        Long actor = acceso.exigirActor(request.usuarioId(),
+                "/api/v1/torneos/partidos/" + partidoId + "/planilla");
         Planilla planilla = repository.findByPartidoId(partidoId).orElseGet(() -> nueva(partido));
         planilla.setObservacionesArbitro(request.observacionesArbitro());
-        planilla.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        planilla.setUsuario(relations.find(Usuario.class, actor));
         Planilla guardada = repository.saveAndFlush(planilla);
 
         sincronizarJugadores(partido, request.jugadores());
