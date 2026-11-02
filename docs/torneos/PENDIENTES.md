@@ -33,7 +33,7 @@ Al cerrar un punto, poner la fecha y quién lo decidió, y commitear el cambio d
 | 4 | `PartidoService` rechaza también fechas iguales, para alinearse con `chk_partido_fechas` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 5 | Los DTO del CRUD compartido **no** exponen las columnas nuevas; torneos las escribe por sus endpoints | Decidido | 26/10/2026 | Miguel (torneos) |
 | 6 | `roles` y `usuarios_roles`: las creó **torneos** en la V008, con el JWT (S2-01 a S2-04) | Hecho | 28/10/2026 | Miguel (torneos) |
-| 7 | `documentos_jugador`: la implementó **torneos** (V011 + `FichaTecnicaServiceImpl`); ficha técnica puede tomarla | Hecho | 02/11/2026 | Miguel (torneos) |
+| 7 | `documentos_jugador`: la implementó **torneos** (V013 + `FichaTecnicaServiceImpl`); ficha técnica puede tomarla | Hecho | 02/11/2026 | Miguel (torneos) |
 | 8 | `auditoria` la crea **torneos**, compartida, con columna `modulo` | Hecho | 26/10/2026 | Miguel (torneos) |
 | 9 | `notificaciones` la crea **torneos**, mismo criterio | Hecho | 26/10/2026 | Miguel (torneos) |
 | 10 | `FichaTecnicaService`: interfaz y stub escritos; la implementación real es de ficha técnica | Hecho | 26/10/2026 | Miguel (torneos) |
@@ -96,7 +96,7 @@ Los puntos 1 a 5, 8, 9, 10 y 12 a 21 los decidió torneos y ya puede ejecutarlos
 - **Columnas nuevas (puntos 1, 2 y 3): confirmadas por todos los grupos.** Las columnas que torneos
   agregó a `partidos`, `participaciones_partido` y `jugadores` quedaron acordadas; ya no están a la
   espera del visto bueno de los dueños.
-- **`documentos_jugador` (punto 7): implementada por torneos.** Migración `V011`, entidad
+- **`documentos_jugador` (punto 7): implementada por torneos.** Migración `V013`, entidad
   `DocumentoJugador`, repos, enums, CRUD en `/api/v1/documentos-jugador`, e implementación real
   `service.fichatecnica.FichaTecnicaServiceImpl`, que valida documentos y apto médico vigentes en la
   HU 5 (antes el stub respondía siempre `true`). El stub `MocksExternosConfiguration` quedó inactivo;

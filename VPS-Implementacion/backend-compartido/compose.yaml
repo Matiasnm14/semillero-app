@@ -1,0 +1,52 @@
+services:
+  backend:
+    image: "${APP_IMAGE:?Define una imagen versionada construida en tu computadora}"
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    environment:
+      SPRING_PROFILES_ACTIVE: vps
+      SERVER_ADDRESS: "127.0.0.1"
+      PORT: "18083"
+      DB_URL: "${DB_URL:?Define la URL JDBC accesible desde el contenedor}"
+      DB_USER: "${DB_USER:?Define el usuario de la base compartida}"
+      DB_PASSWORD: "${DB_PASSWORD:?Define la contraseña de la base compartida}"
+      JWT_SECRET: "${JWT_SECRET:?Define un secreto de firma exclusivo del VPS}"
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
+      ANALYSIS_ENABLED: "false"
+      ANALYSIS_WORKER_ENABLED: "false"
+      VIDEO_YOUTUBE_ENABLED: "false"
+      VIDEO_STORAGE_DIR: /var/lib/semillero/videos
+      ANALYSIS_ARTIFACTS_DIR: /var/lib/semillero/analysis
+      SPRING_SERVLET_MULTIPART_LOCATION: /var/lib/semillero/tmp/multipart
+      JAVA_IO_TMPDIR: /var/lib/semillero/tmp/runtime
+      TMPDIR: /var/lib/semillero/tmp/runtime
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError
+    volumes:
+      - backend_data:/var/lib/semillero
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: "${BACKEND_MEMORY_LIMIT:-1g}"
+    cpus: "${BACKEND_CPUS:-1.0}"
+    stop_grace_period: 40s
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "5", "--output", "/dev/null", "http://127.0.0.1:18083/api/v1/paises?size=1"]
+      interval: 30s
+      timeout: 6s
+      start_period: 90s
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  backend_data:

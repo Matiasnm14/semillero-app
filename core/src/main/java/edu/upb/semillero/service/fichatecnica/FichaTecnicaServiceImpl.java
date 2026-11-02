@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  * S1-04). Lee de la BD los hechos que torneos necesita para la lista de buena
  * fe (HU 5): la edad sale de {@code jugadores.fecha_nacimiento}, el estado de
  * {@code jugadores.estado}, el fichaje de {@code fichado} y, desde la migración
- * V011, los documentos de {@code documentos_jugador}.
+ * V013, los documentos de {@code documentos_jugador}.
  *
  * <p>Al ser un {@code @Service}, reemplaza automáticamente al stub
  * {@code MocksExternosConfiguration} (que estaba anotado

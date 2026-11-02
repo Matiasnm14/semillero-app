@@ -2,6 +2,7 @@ package edu.upb.semillero.service.analysis;
 
 public class AnalysisGatewayException extends RuntimeException {
     public enum Reason {
+        PROCESSING("ERROR_PROCESAMIENTO", "El servicio de análisis no pudo procesar el video"),
         TRANSPORT("ANALIZADOR_NO_DISPONIBLE", "No se pudo completar la comunicación con el servicio de análisis"),
         INVALID_RESPONSE("RESPUESTA_ANALIZADOR_INVALIDA", "El servicio de análisis devolvió una respuesta incompatible"),
         REJECTED("SOLICITUD_ANALIZADOR_RECHAZADA", "El servicio de análisis no pudo aceptar la evaluación"),

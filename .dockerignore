@@ -1,0 +1,8 @@
+# Construcción del runtime: JAR compilado y script de arranque, sin datos ni secretos.
+**
+!semillero-api/
+!semillero-api/target/
+!semillero-api/target/semillero-api-0.0.1-SNAPSHOT.jar
+!VPS-Implementacion/
+!VPS-Implementacion/backend-compartido/
+!VPS-Implementacion/backend-compartido/entrypoint.sh

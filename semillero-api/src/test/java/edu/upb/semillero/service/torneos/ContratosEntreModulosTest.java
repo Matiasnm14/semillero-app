@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * existen, se pueden inyectar y responden lo que su documentación dice.
  *
  * <p>{@code FichaTecnicaService} lee de {@code jugadores}, {@code fichado} y,
- * desde la migración V011, {@code documentos_jugador}: la implementación real
+ * desde la migración V013, {@code documentos_jugador}: la implementación real
  * es {@code service.fichatecnica.FichaTecnicaServiceImpl} y el stub
  * {@code MocksExternosConfiguration} ya no se activa.
  */

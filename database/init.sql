@@ -26,7 +26,9 @@ $$;
 \ir migrations/V008__roles_y_usuarios_roles.sql
 \ir migrations/V009__highlights_and_text_profile_images.sql
 \ir migrations/V010__club_profile.sql
+\ir migrations/V011__spark_analysis_contract.sql
+\ir migrations/V012__persistent_video_uploads.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-010).'
+\echo 'Semillero: esquema completo inicializado (000-012).'

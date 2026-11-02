@@ -8,7 +8,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static edu.upb.semillero.service.analysis.AnalysisGatewayException.Reason.INVALID_RESPONSE;
 
-/** Transport validation only. Dorsales, units and metric fields await the team's JSON contract. */
+/** Syntax/size validation, also compatible with stored historical JSON. Spark envelopes are checked by the gateway. */
 @Component
 public class AnalysisResultValidator {
     private final ObjectMapper json;

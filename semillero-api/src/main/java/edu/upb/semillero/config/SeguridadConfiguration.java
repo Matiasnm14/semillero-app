@@ -3,6 +3,7 @@ package edu.upb.semillero.config;
 import edu.upb.semillero.service.comun.Roles;
 import edu.upb.semillero.service.seguridad.RegistroAccesoService;
 import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
+import edu.upb.semillero.service.seguridad.AccesoVideos;
 import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
 import edu.upb.semillero.repository.repos.UsuarioClubRepository;
@@ -74,13 +75,15 @@ public class SeguridadConfiguration {
     private final JugadorRepository jugadores;
     private final FichadoRepository fichados;
     private final UsuarioClubRepository usuariosClub;
+    private final AccesoVideos accesoVideos;
 
     public SeguridadConfiguration(RegistroAccesoService registro, JugadorRepository jugadores,
-            FichadoRepository fichados, UsuarioClubRepository usuariosClub) {
+            FichadoRepository fichados, UsuarioClubRepository usuariosClub, AccesoVideos accesoVideos) {
         this.registro = registro;
         this.jugadores = jugadores;
         this.fichados = fichados;
         this.usuariosClub = usuariosClub;
+        this.accesoVideos = accesoVideos;
     }
 
     @Bean
@@ -122,6 +125,22 @@ public class SeguridadConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/jugadores/{id}")
                         .access(this::jugadorPropioOClubOAdministrador)
                         .requestMatchers(HttpMethod.GET, TORNEOS).authenticated()
+                        .requestMatchers("/api/v1/partidos/{partidoId}/videos", "/api/v1/partidos/{partidoId}/videos/**")
+                        .access((auth, context) -> new AuthorizationDecision(accesoVideos.permitsMatch(auth.get(),
+                                context.getVariables().get("partidoId"), !"GET".equals(context.getRequest().getMethod())
+                                        && !"HEAD".equals(context.getRequest().getMethod()))))
+                        .requestMatchers("/api/v1/analisis/{id}", "/api/v1/analisis/{id}/**")
+                        .access((auth, context) -> new AuthorizationDecision(accesoVideos.permitsAnalysis(auth.get(),
+                                context.getVariables().get("id"), !"GET".equals(context.getRequest().getMethod())
+                                        && !"HEAD".equals(context.getRequest().getMethod()))))
+                        // These relationships determine video ownership: public writes would let
+                        // another user reassign a match or enroll themselves to bypass the checks.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/partidos", "/api/v1/participaciones-partido", "/api/v1/fichados")
+                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/partidos/{id}", "/api/v1/participaciones-partido/{id}", "/api/v1/fichados/{id}")
+                        .hasAnyRole(SISTEMA, ADMINISTRA)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/partidos/{id}", "/api/v1/participaciones-partido/{id}", "/api/v1/fichados/{id}")
+                        .hasAnyRole(SISTEMA, ADMINISTRA)
                         .requestMatchers(LISTA_BUENA_FE)
                         .hasAnyRole(CLUB, SISTEMA, ADMINISTRA)
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")

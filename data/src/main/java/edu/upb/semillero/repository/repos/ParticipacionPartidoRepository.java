@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ParticipacionPartidoRepository extends JpaRepository<ParticipacionPartido, Long> {
+    boolean existsByPartidoIdAndJugadorUsuarioId(Long partidoId, Long usuarioId);
+
     Optional<ParticipacionPartido> findByPartidoIdAndJugadorId(Long partidoId, Long jugadorId);
 
     boolean existsByPartidoIdAndClubIdNotIn(Long partidoId, Collection<Long> clubesId);

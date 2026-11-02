@@ -36,31 +36,52 @@ class AnalysisPostgresIntegrationTest {
     @TempDir Path root;
 
     @Test
-    void storesFutureResultAndRecoversPendingJobsWithoutResubmittingInterruptedEvaluations() throws Exception {
+    void storesSparkResultsAndRecoversRemoteJobsWithoutUploadingAgain() throws Exception {
         AtomicInteger submissions = new AtomicInteger();
         java.util.concurrent.atomic.AtomicReference<String> reply = new java.util.concurrent.atomic.AtomicReference<>();
         AtomicBoolean hold = new AtomicBoolean();
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
-        String payload = "[{\"dorsal\":9,\"distancia\":123.4567890123}]";
+        String payload = "{\"analysisId\":\"%s\",\"status\":\"COMPLETED\",\"summary\":{},\"players\":[{\"jerseyNumber\":9,\"movement\":{\"distanceMeters\":null}}]}";
         reply.set(payload);
         ExecutorService remoteThreads = Executors.newVirtualThreadPerTaskExecutor();
         HttpServer remote = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         remote.setExecutor(remoteThreads);
-        remote.createContext("/internal/v1/evaluaciones", exchange -> {
+        java.util.Set<String> accepted = ConcurrentHashMap.newKeySet();
+        remote.createContext("/analyses", exchange -> {
             try {
-                assertThat(exchange.getRequestMethod()).isEqualTo("POST");
-                assertThat(exchange.getRequestHeaders().getFirst("X-Analysis-Id")).isNotBlank();
-                assertThat(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.ISO_8859_1))
-                        .contains("filename=\"video.mp4\"", "ftyp").doesNotContain("partidoId", "torneoId");
-                submissions.incrementAndGet();
-                if (hold.get()) { entered.countDown(); release.await(10, TimeUnit.SECONDS); }
-                byte[] body = reply.get().getBytes(StandardCharsets.UTF_8);
+                String path = exchange.getRequestURI().getPath();
+                String remoteId = path.substring("/analyses".length()).replaceFirst("^/", "").split("/")[0];
+                int status = 200;
+                String response;
+                if (exchange.getRequestMethod().equals("POST")) {
+                    String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.ISO_8859_1);
+                    assertThat(request).contains("name=\"video\"; filename=\"video.mp4\"", "ftyp").doesNotContain("partidoId", "torneoId");
+                    var matcher = java.util.regex.Pattern.compile("name=\"analysisId\"\r\n\r\n([^\r]+)").matcher(request);
+                    assertThat(matcher.find()).isTrue();
+                    remoteId = matcher.group(1);
+                    accepted.add(remoteId);
+                    submissions.incrementAndGet();
+                    status = 202;
+                    response = "{\"analysisId\":\"" + remoteId + "\",\"status\":\"QUEUED\"}";
+                } else if (exchange.getRequestMethod().equals("DELETE")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                } else if (path.endsWith("/heatmap")) {
+                    status = 422;
+                    response = "{\"error\":{\"code\":\"HEATMAP_UNAVAILABLE\"}}";
+                } else if (path.endsWith("/results")) {
+                    response = reply.get().formatted(remoteId);
+                } else {
+                    assertThat(accepted).contains(remoteId);
+                    if (hold.get()) entered.countDown();
+                    response = "{\"analysisId\":\"" + remoteId + "\",\"status\":\"" + (hold.get() ? "PROCESSING" : "COMPLETED") + "\",\"progress\":null}";
+                }
+                byte[] body = response.getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, body.length);
+                exchange.sendResponseHeaders(status, body.length);
                 exchange.getResponseBody().write(body);
-            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-            catch (java.io.IOException e) { /* The client may cancel a pending evaluation during shutdown. */ }
+            } catch (java.io.IOException e) { /* A local Future may cancel its exchange during shutdown. */ }
             finally { exchange.close(); }
         });
         remote.start();
@@ -75,19 +96,26 @@ class AnalysisPostgresIntegrationTest {
                 assertThat(service.findById(501L).resultadosDisponibles()).isTrue();
                 assertThat(service.findById(501L).respuestaRecibida()).isFalse();
                 completedId = context.getBean(JdbcTemplate.class).queryForObject("select id from analysis_jobs where video_partido_id=?", Long.class, video);
-                assertThat(submissions.get()).isEqualTo(1);
+                assertThat(submissions.get()).isZero();
+                assertThat(service.findById(completedId).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
                 assertThatThrownBy(() -> service.create(match, video))
                         .isInstanceOf(edu.upb.semillero.service.exception.AnalysisConflictException.class);
+            }
+            // The accepted upload survives a full application restart before its first dispatch.
+            try (var context = start(remote.getAddress().getPort())) {
+                var service = context.getBean(AnalysisJobService.class);
+                assertThat(service.findById(completedId).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
                 var jdbc = context.getBean(JdbcTemplate.class);
-                assertThat(context.getBean(AnalysisWorker.class).processNext()).isFalse();
+                assertThat(context.getBean(AnalysisWorker.class).processNext()).isTrue();
                 await(() -> service.findById(completedId).estado().isTerminal());
+                assertThat(submissions.get()).isEqualTo(1);
                 var response = service.findById(completedId);
                 assertThat(response.estado()).isEqualTo(EstadoAnalisis.COMPLETADO);
                 assertThat(response.respuestaRecibida()).isTrue();
                 assertThat(response.resultadosDisponibles()).isFalse();
                 assertThat(response.porcentaje()).isNull();
                 assertThat(context.getBean(AnalysisJobRepository.class).findById(completedId).orElseThrow().getRespuestaJson())
-                        .isEqualTo(payload);
+                        .isEqualTo(payload.formatted(context.getBean(AnalysisJobRepository.class).findById(completedId).orElseThrow().getRemoteAnalysisId()));
                 assertThatThrownBy(() -> jdbc.update("update analysis_jobs set respuesta_json='42' where id=?", completedId))
                         .isInstanceOf(DataIntegrityViolationException.class);
                 pendingId = service.create(match, legacyVideo(context, match)).id();
@@ -105,13 +133,16 @@ class AnalysisPostgresIntegrationTest {
                 context.getBean(AnalysisWorker.class).processNext();
                 assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
                 assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.PROCESANDO);
-                // Closing the context cannot resume the same network Future in a later process.
+                // Closing releases the lease but preserves Spark identity for a GET-only recovery.
             }
             release.countDown();
             try (var context = start(remote.getAddress().getPort())) {
                 var service = context.getBean(AnalysisJobService.class);
-                assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.ERROR);
-                assertThat(service.findById(pendingId).codigoError()).isEqualTo("EVALUACION_INTERRUMPIDA");
+                assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.PROCESANDO);
+                hold.set(false);
+                assertThat(context.getBean(AnalysisWorker.class).processNext()).isTrue();
+                await(() -> service.findById(pendingId).estado().isTerminal());
+                assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.COMPLETADO);
                 assertThat(service.findById(completedId).respuestaRecibida()).isTrue();
                 assertThat(context.getBean(AnalysisWorker.class).processNext()).isFalse();
                 assertThat(submissions.get()).isEqualTo(2);
@@ -124,6 +155,7 @@ class AnalysisPostgresIntegrationTest {
             }
             try (var context = start(remote.getAddress().getPort())) {
                 context.getBean(AnalysisWorker.class).processNext();
+                var service = context.getBean(AnalysisJobService.class);
                 assertThat(context.getBean(AnalysisJobService.class).findById(crashedId).codigoError())
                         .isEqualTo("EVALUACION_INTERRUMPIDA");
                 assertThat(submissions.get()).isEqualTo(2);
@@ -134,11 +166,14 @@ class AnalysisPostgresIntegrationTest {
                 long filesBefore = fileCount();
                 hold.set(false);
                 reply.set("null");
-                assertThatThrownBy(() -> upload(context, match))
-                        .isInstanceOf(edu.upb.semillero.service.exception.AnalysisUploadException.class);
-                assertThat(jdbc.queryForObject("select count(*) from videos_partido", Long.class)).isEqualTo(videosBefore);
-                assertThat(jdbc.queryForObject("select count(*) from analysis_jobs", Long.class)).isEqualTo(analysesBefore);
-                assertThat(fileCount()).isEqualTo(filesBefore);
+                long invalidVideo = upload(context, match);
+                long invalidJob = jdbc.queryForObject("select id from analysis_jobs where video_partido_id=?", Long.class, invalidVideo);
+                context.getBean(AnalysisWorker.class).processNext();
+                await(() -> service.findById(invalidJob).estado().isTerminal());
+                assertThat(service.findById(invalidJob).estado()).isEqualTo(EstadoAnalisis.ERROR);
+                assertThat(jdbc.queryForObject("select count(*) from videos_partido", Long.class)).isEqualTo(++videosBefore);
+                assertThat(jdbc.queryForObject("select count(*) from analysis_jobs", Long.class)).isEqualTo(++analysesBefore);
+                assertThat(fileCount()).isEqualTo(++filesBefore);
                 reply.set(payload);
                 // PostgreSQL really rejects the transaction during commit, after both saveAndFlush calls.
                 jdbc.execute("""
@@ -163,13 +198,16 @@ class AnalysisPostgresIntegrationTest {
                 assertThat(jdbc.queryForObject("select count(*) from videos_partido", Long.class)).isEqualTo(videosBefore);
                 assertThat(jdbc.queryForObject("select count(*) from analysis_jobs", Long.class)).isEqualTo(analysesBefore);
                 assertThat(fileCount()).isEqualTo(filesBefore);
-                assertThat(submissions.get()).isEqualTo(4);
+                assertThat(submissions.get()).isEqualTo(3);
 
             }
         } finally {
             release.countDown(); remote.stop(0); remoteThreads.shutdownNow();
         }
     }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearAuthentication() { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
 
     private void prepareLegacySchema() throws Exception {
         // Prepare the pre-Flyway fixture before bootstrapping JPA or ApplicationRunner seeders.
@@ -202,6 +240,9 @@ class AnalysisPostgresIntegrationTest {
     }
 
     private ConfigurableApplicationContext start(int remotePort) {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
+                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
         return new SpringApplicationBuilder(SemilleroApplication.class).profiles("test").run(
                 "--spring.datasource.url=" + System.getenv("ANALYSIS_PG_TEST_URL"),
                 "--spring.datasource.username=analysis_test", "--spring.datasource.password=",
@@ -209,7 +250,8 @@ class AnalysisPostgresIntegrationTest {
                 "--server.port=0", "--spring.main.banner-mode=off", "--logging.level.root=WARN",
                 "--analysis.enabled=true", "--analysis.base-url=http://127.0.0.1:" + remotePort,
                 "--analysis.connect-timeout=1s", "--analysis.request-timeout=5s",
-                "--analysis.worker-enabled=false", "--video.youtube.enabled=false", "--video.youtube.worker-enabled=false",
+                "--analysis.worker-enabled=false", "--analysis.poll-interval=50ms",
+                "--analysis.artifacts-dir=" + root.resolve("artifacts"), "--video.youtube.enabled=false", "--video.youtube.worker-enabled=false",
                 "--video.storage-dir=" + root.toAbsolutePath());
     }
 

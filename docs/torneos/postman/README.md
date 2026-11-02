@@ -108,7 +108,7 @@ no va a ningún entorno de verdad.
 Los roles están unificados con el resto de los módulos (las cuatro categorías del login común):
 `ADMINISTRADOR_GENERAL` (tabla `administrador`), `JUGADOR` (tabla `jugadores`), `USUARIO_CLUB`
 (tabla `usuarios_club`) y `USUARIO_SISTEMA` (una fila en `usuarios_roles`). Solo este último se
-guarda en la tabla `roles`, que siembra `RolesSeeder` y la migración `V012`. Para dar de alta a una
+guarda en la tabla `roles`, que siembra `RolesSeeder` y la migración `V014`. Para dar de alta a una
 cuenta operativa del torneo:
 
 ```bash

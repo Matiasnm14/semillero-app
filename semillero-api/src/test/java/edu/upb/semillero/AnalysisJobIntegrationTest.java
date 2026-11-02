@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.security.test.context.support.WithMockUser(roles = "ADMINISTRADOR_GENERAL")
 class AnalysisJobIntegrationTest {
     @TempDir static Path root;
     @DynamicPropertySource
@@ -157,7 +158,12 @@ class AnalysisJobIntegrationTest {
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Callable<Object> request = () -> {
                 if (!start.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("timeout");
-                try { return service.create(partidoId, video.getId()); }
+                try {
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
+                            java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
+                    return createDirect(partidoId, video.getId());
+                }
                 catch (AnalysisConflictException e) { return e; }
             };
             var first = executor.submit(request);
@@ -168,7 +174,7 @@ class AnalysisJobIntegrationTest {
         }
         assertThat(jobs.count()).isEqualTo(1);
         var other = video(video.getPartido());
-        assertThat(service.create(partidoId, other.getId()).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
+        assertThat(createDirect(partidoId, other.getId()).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
         assertThat(jobs.count()).isEqualTo(2);
     }
 
@@ -193,7 +199,7 @@ class AnalysisJobIntegrationTest {
                 .andExpect(jsonPath("$.respuestaJson").doesNotExist()).andExpect(jsonPath("$.porcentaje").isEmpty());
         assertThat(contextMetricsCount()).isZero();
         assertThat(worker.processNext()).isFalse();
-        verify(gateway, times(1)).evaluate(argThat(value -> value.correlationId().equals(Long.toString(id))
+        verify(gateway, times(1)).evaluate(argThat(value -> value.correlationId().equals(job(id).getRemoteAnalysisId())
                 && value.original().equals(storage.original(video.getStorageId()))));
     }
 
@@ -201,7 +207,7 @@ class AnalysisJobIntegrationTest {
     void limitsConcurrentFuturesAndStartsQueuedWorkWhenCapacityReturns() throws Exception {
         properties.setMaxConcurrentJobs(1);
         long first = create().get("id").asLong();
-        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        long second = createDirect(partidoId, video(video.getPartido()).getId()).id();
         CompletableFuture<String> pending = new CompletableFuture<>();
         when(gateway.evaluate(any())).thenReturn(pending).thenReturn(CompletableFuture.completedFuture("{}"));
         assertThat(worker.processNext()).isTrue();
@@ -234,10 +240,10 @@ class AnalysisJobIntegrationTest {
     @Test
     void futuresCompletingOutOfOrderKeepTheirOriginalAnalysisContext() throws Exception {
         long first = create().get("id").asLong();
-        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        long second = createDirect(partidoId, video(video.getPartido()).getId()).id();
         CompletableFuture<String> a = new CompletableFuture<>(), b = new CompletableFuture<>();
         when(gateway.evaluate(any())).thenAnswer(call ->
-                ((AnalysisGateway.Submission) call.getArgument(0)).correlationId().equals(Long.toString(first)) ? a : b);
+                ((AnalysisGateway.Submission) call.getArgument(0)).correlationId().equals(job(first).getRemoteAnalysisId()) ? a : b);
         assertThat(worker.processNext()).isTrue();
         assertThat(worker.processNext()).isTrue();
         b.complete("[{\"dorsal\":9,\"distancia\":22}]");
@@ -298,7 +304,7 @@ class AnalysisJobIntegrationTest {
         worker.processNext();
         await(() -> job(id).getEstado().isTerminal());
         assertThat(job(id).getCodigoError()).isEqualTo("ESPERA_EVALUACION_AGOTADA");
-        long second = service.create(partidoId, video(video.getPartido()).getId()).id();
+        long second = createDirect(partidoId, video(video.getPartido()).getId()).id();
         when(gateway.evaluate(any())).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("secret credentials")));
         worker.processNext();
         await(() -> job(second).getEstado().isTerminal());
@@ -342,7 +348,7 @@ class AnalysisJobIntegrationTest {
         Files.delete(storage.original(video.getStorageId()));
         worker.processNext();
         assertThat(job(id).getCodigoError()).isEqualTo("ORIGINAL_NO_DISPONIBLE");
-        long other = service.create(partidoId, video(video.getPartido()).getId()).id();
+        long other = createDirect(partidoId, video(video.getPartido()).getId()).id();
         when(clock.instant()).thenReturn(now.plus(Duration.ofHours(7)));
         worker.processNext();
         assertThat(job(other).getCodigoError()).isEqualTo("TIEMPO_ANALISIS_AGOTADO");
@@ -360,6 +366,71 @@ class AnalysisJobIntegrationTest {
         await(() -> job(id).getEstado().isTerminal());
         assertThat(future.isCompletedExceptionally()).isTrue();
         assertThat(job(id).getCodigoError()).isEqualTo("TIEMPO_ANALISIS_AGOTADO");
+    }
+
+    @Test
+    void sparkProgressIsPersistedWithoutInventingFrameCounts() throws Exception {
+        long id = create().get("id").asLong();
+        var pending = new CompletableFuture<String>();
+        var submission = new java.util.concurrent.atomic.AtomicReference<AnalysisGateway.Submission>();
+        when(gateway.evaluate(any())).thenAnswer(call -> { submission.set(call.getArgument(0)); return pending; });
+        worker.processNext();
+        submission.get().progress().accept(new AnalysisGateway.Progress(420.0, 1851.0, 22.69));
+        mvc.perform(get("/api/v1/analisis/" + id)).andExpect(jsonPath("$.porcentaje").value(22.69))
+                .andExpect(jsonPath("$.segundosProcesados").value(420.0))
+                .andExpect(jsonPath("$.segundosTotales").value(1851.0))
+                .andExpect(jsonPath("$.fotogramasProcesados").isEmpty());
+        pending.complete("{}");
+        await(() -> job(id).getEstado().isTerminal());
+    }
+
+    @Test
+    void expiredSparkReservationResumesRemoteIdentityEvenWithoutLocalVideo() throws Exception {
+        long id = create().get("id").asLong();
+        var saved = job(id);
+        String remoteId = UUID.randomUUID().toString();
+        saved.setRemoteAnalysisId(remoteId);
+        saved.setEstado(EstadoAnalisis.PROCESANDO); saved.setFechaInicio(now.minusSeconds(5));
+        saved.setEnviado(true); saved.setClaimToken("old-process"); saved.setLeaseUntil(now.minusSeconds(1));
+        jobs.saveAndFlush(saved);
+        Files.delete(storage.original(video.getStorageId()));
+        when(gateway.evaluate(any())).thenAnswer(call -> {
+            AnalysisGateway.Submission submission = call.getArgument(0);
+            assertThat(submission.resume()).isTrue();
+            assertThat(submission.correlationId()).isEqualTo(remoteId);
+            return CompletableFuture.completedFuture("{}");
+        });
+        assertThat(worker.processNext()).isTrue();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        assertThat(job(id).getRemoteAnalysisId()).isEqualTo(remoteId);
+    }
+
+    @Test
+    void remoteCleanupRetriesAfterFailureAndOnlyAfterJsonWasCommitted() throws Exception {
+        long id = create().get("id").asLong();
+        when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture("{}"));
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).isRemoteCleanupPending()).isTrue();
+        when(gateway.cleanup(any())).thenAnswer(call -> {
+            assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+            assertThat(job(id).getRespuestaJson()).isEqualTo("{}");
+            return CompletableFuture.failedFuture(new IllegalStateException("network down"));
+        });
+        worker.processNext();
+        assertThat(job(id).isRemoteCleanupPending()).isTrue();
+        when(gateway.cleanup(any())).thenReturn(CompletableFuture.completedFuture(null));
+        await(() -> { worker.processNext(); return !job(id).isRemoteCleanupPending(); });
+        assertThat(job(id).getRespuestaJson()).isEqualTo("{}");
+        verify(gateway, atLeast(2)).cleanup(job(id).getRemoteAnalysisId());
+    }
+
+    private AnalysisJobResponseDto createDirect(Long match, Long videoId) {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null,
+                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMINISTRADOR_GENERAL"))));
+        return service.create(match, videoId);
     }
 
     private long contextMetricsCount() {

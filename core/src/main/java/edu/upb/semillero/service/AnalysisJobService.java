@@ -12,6 +12,9 @@ import edu.upb.semillero.service.exception.AnalysisConflictException;
 import edu.upb.semillero.service.exception.NotFoundException;
 import edu.upb.semillero.service.exception.StorageUnavailableException;
 import edu.upb.semillero.service.video.LocalVideoStorage;
+import edu.upb.semillero.service.analysis.AnalysisArtifactStorage;
+import edu.upb.semillero.service.exception.ConflictException;
+import java.nio.file.Path;
 import java.time.Clock;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -28,21 +31,26 @@ public class AnalysisJobService {
     private final LocalVideoStorage storage;
     private final AnalysisProperties properties;
     private final Clock clock;
+    private final AnalysisArtifactStorage artifacts;
+    private final edu.upb.semillero.service.seguridad.AccesoVideos acceso;
 
     public AnalysisJobService(AnalysisJobRepository jobs, VideoPartidoRepository videos,
             PartidoRepository partidos, LocalVideoStorage storage, AnalysisProperties properties,
-            @Qualifier("analysisClock") Clock clock) {
+            @Qualifier("analysisClock") Clock clock, AnalysisArtifactStorage artifacts,
+            edu.upb.semillero.service.seguridad.AccesoVideos acceso) {
         this.jobs = jobs;
         this.videos = videos;
         this.partidos = partidos;
         this.storage = storage;
         this.properties = properties;
         this.clock = clock;
+        this.artifacts = artifacts;
+        this.acceso = acceso;
     }
 
     @Transactional
     public AnalysisJobResponseDto create(Long partidoId, Long videoId) {
-        requirePartido(partidoId);
+        acceso.requireWrite(requirePartido(partidoId));
         // Serialize even the first request, when there is no job row to lock yet.
         VideoPartido video = videos.findLockedById(videoId)
                 .filter(v -> v.getPartido().getId().equals(partidoId)).orElseThrow(this::videoNotFound);
@@ -66,18 +74,43 @@ public class AnalysisJobService {
     }
 
     public AnalysisJobResponseDto findById(Long id) {
-        return toResponse(jobs.findById(id)
-                .orElseThrow(() -> new NotFoundException("Análisis con id " + id + " no existe")));
+        return toResponse(require(id));
+    }
+
+    /** Preserves track segments, uncertain jerseys and null physical measurements exactly as received. */
+    public String results(Long id) {
+        var job = require(id);
+        if (job.getEstado() != EstadoAnalisis.COMPLETADO || job.getRespuestaJson() == null) {
+            throw new ConflictException("Los resultados del análisis todavía no están disponibles");
+        }
+        return job.getRespuestaJson();
+    }
+
+    public Path heatmap(Long id) {
+        var job = require(id);
+        if (job.getEstado() != EstadoAnalisis.COMPLETADO) {
+            throw new ConflictException("El análisis todavía no está completado");
+        }
+        if (!artifacts.exists(job.getRemoteAnalysisId())) {
+            throw new NotFoundException("Mapa de calor no disponible para este análisis; puede faltar calibración de cancha");
+        }
+        return artifacts.heatmap(job.getRemoteAnalysisId());
+    }
+
+    private AnalysisJob require(Long id) {
+        var job = jobs.findById(id).orElseThrow(() -> new NotFoundException("Análisis con id " + id + " no existe"));
+        acceso.requireRead(job.getVideo().getPartido());
+        return job;
     }
 
     public Page<AnalysisJobResponseDto> findAll(Long partidoId, Long videoId, Pageable pageable) {
-        requirePartido(partidoId);
+        acceso.requireRead(requirePartido(partidoId));
         videos.findByIdAndPartidoId(videoId, partidoId).orElseThrow(this::videoNotFound);
         return jobs.findByVideoId(videoId, pageable).map(this::toResponse);
     }
 
-    private void requirePartido(Long id) {
-        if (!partidos.existsById(id)) throw new NotFoundException("Partido con id " + id + " no existe");
+    private edu.upb.semillero.repository.entity.Partido requirePartido(Long id) {
+        return partidos.findById(id).orElseThrow(() -> new NotFoundException("Partido con id " + id + " no existe"));
     }
 
     private NotFoundException videoNotFound() {
@@ -88,6 +121,8 @@ public class AnalysisJobService {
         return new AnalysisJobResponseDto(job.getId(), job.getVideo().getPartido().getId(), job.getVideo().getId(),
                 job.getEstado(), job.getPorcentaje(), job.getFotogramasProcesados(), job.getFotogramasTotales(),
                 job.getFechaSolicitud(), job.getFechaInicio(), job.getFechaFin(), job.getFechaActualizacion(),
-                job.isResultadosDisponibles(), job.getRespuestaJson() != null, job.getCodigoError(), job.getMensajeError());
+                job.isResultadosDisponibles(), job.getRespuestaJson() != null, job.getCodigoError(), job.getMensajeError(),
+                job.getSegundosProcesados(), job.getSegundosTotales(),
+                job.getEstado() == EstadoAnalisis.COMPLETADO && artifacts.exists(job.getRemoteAnalysisId()));
     }
 }

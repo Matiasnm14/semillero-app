@@ -66,7 +66,18 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-Las migraciones [V000–V010](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+Las migraciones [V000–V012](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 la identidad remota, progreso y limpieza de análisis Spark, y V012 la procedencia de las cargas y la espera de YouTube. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+
+## Preparación del VPS
+
+La [entrega del backend compartido](VPS-Implementacion/backend-compartido/README.md) incluye una
+imagen Java 21 y Compose, construidos en la computadora para transferir al VPS. El perfil `vps`
+requiere credenciales y un secreto JWT explícitos, desactiva Flyway en el runtime (el migrador
+central administra el esquema) y mantiene el análisis de video,
+sus workers y YouTube deshabilitados para esta entrega. `CORS_ALLOWED_ORIGINS` configura los
+orígenes públicos permitidos; vacío corresponde al uso desde el mismo origen. La configuración
+usa `network_mode: host`, escucha en `127.0.0.1:18083` y conserva Hibernate `validate`.
+La conexión estable a PostgreSQL es `jdbc:postgresql://127.0.0.1:5432/semillero`.
 
 ## Rutas CRUD
 
@@ -207,3 +218,11 @@ participaciones admite filtros por jugador, partido y club y devuelve `minutosJu
 ```
 
 Las pruebas arrancan la aplicación completa con H2 en modo PostgreSQL y ejercitan los 17 CRUD a través de MockMvc, los errores de validación, las FK y restricciones, las reglas de partidos/participaciones y el hash de contraseñas. No requieren una base externa y no usan las credenciales de desarrollo. La base H2 de pruebas no reemplaza la validación con PostgreSQL al preparar el despliegue.
+
+## Contrato de análisis Spark
+
+El backend incorpora el [contrato Spark](docs/spark-implementation.md): recepción `202`, consultas de estado, resultados JSON, descarga del mapa de calor PNG y limpieza remota después de guardar el resultado. Ver [flujo, configuración y endpoints de Spring](docs/HU02_HU03_ANALISIS.md). La integración permanece deshabilitada hasta que la Spark publique esos endpoints; los dorsales candidatos no se vinculan automáticamente a jugadores.
+
+## Permisos y cargas persistentes
+
+La carga de partidos requiere JWT y permiso sobre el partido. Devuelve `202` con el video validado y su análisis `PENDIENTE` guardados, más `analysisId` y `Location` para consultar progreso; Spark y YouTube se ejecutan después. Los CRUD compartidos de partidos, participaciones y fichajes requieren ADMIN u ORGANIZADOR para escribir. Ver [contrato, roles y adaptación del frontend](docs/CARGAS_PERSISTENTES_Y_PERMISOS.md). Se mantiene multipart de hasta 2 GiB; los bloques reanudables de 12 GiB corresponden a la siguiente etapa.

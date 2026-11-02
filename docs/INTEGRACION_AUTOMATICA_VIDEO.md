@@ -1,5 +1,7 @@
 # Carga atómica de video condicionada al JSON del analizador
 
+> Documento histórico del flujo anterior. La carga vigente responde **202** con video y análisis pendiente persistidos, sin esperar inferencia. Consultar [CARGAS_PERSISTENTES_Y_PERMISOS.md](CARGAS_PERSISTENTES_Y_PERMISOS.md) y el [contrato Spark](HU02_HU03_ANALISIS.md). Las referencias a 201, carga pública y espera del Future en este documento describen la implementación anterior.
+
 Fecha: 2026-10-23. Plan e implementación de la integración automática.
 
 **Estado: implementado en el backend.** Se conserva la secuencia y los criterios del plan como referencia de diseño. La comprobación contra el servicio Python real queda pendiente de su endpoint y contrato. Esta revisión sustituye el diseño anterior de dos envíos independientes al cargar: si el analizador falla o no devuelve su JSON final, se cancela la carga del video y no se publica en YouTube.

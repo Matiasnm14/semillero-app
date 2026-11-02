@@ -1,6 +1,9 @@
 package edu.upb.semillero.service.analysis;
 
 import edu.upb.semillero.config.AnalysisProperties;
+import edu.upb.semillero.config.VideoProperties;
+import edu.upb.semillero.repository.enums.EstadoYoutube;
+import edu.upb.semillero.repository.repos.VideoPartidoRepository;
 import edu.upb.semillero.repository.entity.AnalysisJob;
 import edu.upb.semillero.repository.enums.EstadoAnalisis;
 import edu.upb.semillero.repository.repos.AnalysisJobRepository;
@@ -39,7 +42,10 @@ public class AnalysisWorker {
     private final Clock clock;
     private final TransactionTemplate transaction;
     private final ExecutorService completionExecutor;
+    private final VideoPartidoRepository videos;
+    private final VideoProperties videoProperties;
     private final ConcurrentHashMap<Long, Waiting> running = new ConcurrentHashMap<>();
+    private final java.util.Set<Long> cleaning = ConcurrentHashMap.newKeySet();
     private volatile boolean closing;
 
     private record Work(Long id, String token, Instant deadline, AnalysisGateway.Submission submission) {}
@@ -48,7 +54,8 @@ public class AnalysisWorker {
     public AnalysisWorker(AnalysisJobRepository jobs, LocalVideoStorage storage, AnalysisGateway gateway,
             AnalysisResultValidator validator, AnalysisProperties properties, AnalysisConcurrencyLimiter concurrency,
             @Qualifier("analysisClock") Clock clock, PlatformTransactionManager manager,
-            @Qualifier("analysisCompletionExecutor") ExecutorService completionExecutor) {
+            @Qualifier("analysisCompletionExecutor") ExecutorService completionExecutor,
+            VideoPartidoRepository videos, VideoProperties videoProperties) {
         this.jobs = jobs;
         this.storage = storage;
         this.gateway = gateway;
@@ -58,6 +65,8 @@ public class AnalysisWorker {
         this.clock = clock;
         this.transaction = new TransactionTemplate(manager);
         this.completionExecutor = completionExecutor;
+        this.videos = videos;
+        this.videoProperties = videoProperties;
     }
 
     @Scheduled(scheduler = "analysisScheduler", fixedDelayString = "${analysis.poll-interval:5s}",
@@ -73,6 +82,7 @@ public class AnalysisWorker {
     /** Starts at most one evaluation. Also renews local leases and retries persisting completed Futures. */
     public synchronized boolean processNext() {
         if (closing) return false;
+        cleanupCompleted();
         maintainWaiting();
         if (!properties.isEnabled() || running.size() >= properties.getMaxConcurrentJobs()) return false;
         var permit = concurrency.tryAcquire();
@@ -112,25 +122,70 @@ public class AnalysisWorker {
         if (job == null || job.getEstado().isTerminal() || job.getProximaEjecucion() == null
                 || job.getProximaEjecucion().isAfter(now)
                 || job.getLeaseUntil() != null && job.getLeaseUntil().isAfter(now)) return null;
-        // There is no remote job/status API to reconnect a lost Future. Do not resend uncertain work.
-        if (job.isEnviado() || job.getEstado() == EstadoAnalisis.PROCESANDO || job.getClaimToken() != null) {
+        boolean resume = job.getRemoteAnalysisId() != null && job.isEnviado();
+        // Historical evaluations had no recoverable remote identity. Never resubmit those implicitly.
+        if (!resume && (job.isEnviado() || job.getEstado() == EstadoAnalisis.PROCESANDO || job.getClaimToken() != null)) {
             finishError(job, INTERRUPTED);
             return null;
         }
         Instant deadline = job.getFechaSolicitud().plus(properties.getMaxDuration());
         if (!now.isBefore(deadline)) { finishError(job, DEADLINE); return null; }
         var video = job.getVideo();
-        if (!storage.exists(video.getStorageId())) { finishError(job, MISSING_ORIGINAL); return null; }
+        if (!resume && !storage.exists(video.getStorageId())) { finishError(job, MISSING_ORIGINAL); return null; }
         String token = UUID.randomUUID().toString();
         job.setClaimToken(token);
         job.setLeaseUntil(now.plus(properties.getLeaseDuration()));
         job.setEstado(EstadoAnalisis.PROCESANDO);
-        job.setFechaInicio(now.truncatedTo(ChronoUnit.MICROS));
+        if (job.getFechaInicio() == null) job.setFechaInicio(now.truncatedTo(ChronoUnit.MICROS));
+        if (job.getRemoteAnalysisId() == null) job.setRemoteAnalysisId(UUID.randomUUID().toString());
         job.setFechaActualizacion(now);
         job.setEnviado(true); // Dispatch intent is durable before any network side effect.
         job.setProximaEjecucion(now.plus(properties.getPollInterval()));
         jobs.saveAndFlush(job);
-        return new Work(id, token, deadline, new AnalysisGateway.Submission(id, storage.original(video.getStorageId())));
+        return new Work(id, token, deadline, new AnalysisGateway.Submission(job.getRemoteAnalysisId(),
+                storage.original(video.getStorageId()), resume, progress -> recordProgress(id, token, progress)));
+    }
+
+    private void recordProgress(Long id, String token, AnalysisGateway.Progress progress) {
+        try { transaction.executeWithoutResult(status -> {
+            var job = jobs.findLockedById(id).orElse(null);
+            if (job == null || job.getEstado().isTerminal() || !token.equals(job.getClaimToken())
+                    || job.getLeaseUntil() == null || !job.getLeaseUntil().isAfter(clock.instant())) return;
+            job.setSegundosProcesados(progress.processedSeconds());
+            job.setSegundosTotales(progress.totalSeconds());
+            job.setPorcentaje(progress.percentage());
+            job.setFechaActualizacion(clock.instant());
+            jobs.saveAndFlush(job);
+        }); } catch (RuntimeException e) {
+            // A transient failure saving optional progress must not discard the final result.
+            log.warn("No se pudo guardar el avance del análisis {}; se actualizará en la próxima consulta", id);
+        }
+    }
+
+    /** Remote deletion only sees committed rows. Failure keeps the flag for a later cycle/restart. */
+    private void cleanupCompleted() {
+        if (!properties.isEnabled()) return;
+        for (var job : jobs.findByRemoteCleanupPendingTrueOrderById(PageRequest.of(0, 20))) {
+            if (!cleaning.add(job.getId())) continue;
+            try {
+                var future = gateway.cleanup(job.getRemoteAnalysisId());
+                if (future == null) { cleaning.remove(job.getId()); continue; }
+                future.whenCompleteAsync((value, error) -> {
+                    try {
+                        if (error != null) return;
+                        transaction.executeWithoutResult(status -> {
+                            var saved = jobs.findLockedById(job.getId()).orElse(null);
+                            if (saved != null && saved.getEstado() == EstadoAnalisis.COMPLETADO && saved.getRespuestaJson() != null) {
+                                saved.setRemoteCleanupPending(false);
+                                jobs.saveAndFlush(saved);
+                            }
+                        });
+                    } catch (RuntimeException e) {
+                        log.warn("No se pudo confirmar la limpieza del análisis {}; se reintentará", job.getId());
+                    } finally { cleaning.remove(job.getId()); }
+                }, completionExecutor);
+            } catch (RuntimeException e) { cleaning.remove(job.getId()); }
+        }
     }
 
     private void maintainWaiting() {
@@ -154,7 +209,7 @@ public class AnalysisWorker {
     }
 
     private void settle(Waiting waiting) {
-        if (!waiting.future().isDone()) return;
+        if (closing || !waiting.future().isDone()) return;
         try {
             transaction.executeWithoutResult(status -> {
                 var job = jobs.findLockedById(waiting.work().id()).orElse(null);
@@ -170,6 +225,7 @@ public class AnalysisWorker {
                     return;
                 }
                 job.setRespuestaJson(payload);
+                job.setRemoteCleanupPending(job.getRemoteAnalysisId() != null);
                 job.setEstado(EstadoAnalisis.COMPLETADO);
                 job.setFechaFin(now.truncatedTo(ChronoUnit.MICROS));
                 job.setFechaActualizacion(now);
@@ -182,6 +238,12 @@ public class AnalysisWorker {
                 job.setProximaEjecucion(null);
                 release(job);
                 jobs.saveAndFlush(job);
+                var video = videos.findLockedById(job.getVideo().getId()).orElseThrow();
+                if (videoProperties.getYoutube().isEnabled() && video.getEstadoYoutube() == EstadoYoutube.ESPERANDO_ANALISIS) {
+                    video.setEstadoYoutube(EstadoYoutube.PENDIENTE);
+                    video.setProximoIntento(now);
+                    videos.saveAndFlush(video);
+                }
             });
             running.remove(waiting.work().id(), waiting);
         } catch (RuntimeException e) {
@@ -218,8 +280,18 @@ public class AnalysisWorker {
     public synchronized void close() {
         closing = true;
         for (Waiting waiting : running.values()) {
-            waiting.future().completeExceptionally(new AnalysisGatewayException(INTERRUPTED));
-            settle(waiting);
+            waiting.future().cancel(true);
+            // Release the local lease; the next process reconnects with GET, never another POST.
+            try {
+                transaction.executeWithoutResult(status -> {
+                    var job = jobs.findLockedById(waiting.work().id()).orElse(null);
+                    if (owned(job, waiting.work())) {
+                        release(job);
+                        job.setProximaEjecucion(clock.instant());
+                        jobs.saveAndFlush(job);
+                    }
+                });
+            } catch (RuntimeException e) { log.warn("El análisis {} se recuperará al vencer su reserva", waiting.work().id()); }
         }
     }
 }

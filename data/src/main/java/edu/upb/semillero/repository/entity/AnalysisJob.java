@@ -42,12 +42,20 @@ public class AnalysisJob extends BaseEntity {
     private String resultadoRef;
     @Column(name = "respuesta_json", columnDefinition = "text")
     private String respuestaJson;
+    @Column(name = "remote_analysis_id", length = 64, unique = true)
+    private String remoteAnalysisId;
+    @Column(name = "segundos_procesados")
+    private Double segundosProcesados;
+    @Column(name = "segundos_totales")
+    private Double segundosTotales;
+    @Column(name = "remote_cleanup_pending", nullable = false)
+    private boolean remoteCleanupPending;
     @Column(name = "codigo_error", length = 40)
     private String codigoError;
     @Column(name = "mensaje_error", length = 255)
     private String mensajeError;
 
-    // Persist dispatch intent before the HTTP call. An interrupted wait is not silently resubmitted.
+    // Persist dispatch identity before HTTP; Spark jobs can be recovered by GET after a restart.
     @Column(nullable = false)
     private boolean enviado;
     // Kept for historical jobs from the former remote-status protocol; unused by Future evaluations.

@@ -42,6 +42,47 @@ class DatabaseMigrationsPostgresTest {
     }
 
     @Test
+    void upgrades011WithUploaderAndDeferredYoutubeWithoutChangingHistoricalVideos() {
+        Flyway.configure().dataSource(source).target("11").load().migrate();
+        legacyJob(true);
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            assertThat(jdbc.queryForObject("select usuario_carga_id from videos_partido where id=50", Long.class)).isNull();
+            assertThat(jdbc.queryForObject("select estado_youtube from videos_partido where id=50", String.class)).isEqualTo("DESHABILITADO");
+            jdbc.update("update videos_partido set estado_youtube='ESPERANDO_ANALISIS' where id=50");
+            assertThatThrownBy(() -> jdbc.update("update videos_partido set usuario_carga_id=999999 where id=50"))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+        try (var ignored = start(true, "validate")) {
+            assertThat(jdbc.queryForObject("select estado_youtube from videos_partido where id=50", String.class)).isEqualTo("ESPERANDO_ANALISIS");
+        }
+    }
+
+    @Test
+    void upgrades010WithSparkIdentityAndKeepsHistoricalJson() {
+        Flyway.configure().dataSource(source).target("10").load().migrate();
+        legacyJob(true);
+        String previous = jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class);
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isEqualTo(previous);
+            assertThat(jdbc.queryForObject("select remote_analysis_id from analysis_jobs where id=50", String.class)).isNull();
+            assertThat(jdbc.queryForObject("select remote_cleanup_pending from analysis_jobs where id=50", Boolean.class)).isFalse();
+            assertThatThrownBy(() -> jdbc.update("update analysis_jobs set segundos_procesados=-1 where id=50"))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> jdbc.update("update analysis_jobs set segundos_totales='NaN'::float8 where id=50"))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> jdbc.update("update analysis_jobs set remote_cleanup_pending=true where id=50"))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            jdbc.update("update analysis_jobs set remote_analysis_id='spark-history', remote_cleanup_pending=true where id=50");
+        }
+        try (var ignored = start(true, "validate")) {
+            assertThat(jdbc.queryForObject("select remote_cleanup_pending from analysis_jobs where id=50", Boolean.class)).isTrue();
+            assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isEqualTo(previous);
+        }
+    }
+
+    @Test
     void createsEmptyDatabaseBeforeJpaValidationAndDoesNotRepeatOnRestart() {
         try (var context = start(true, "validate")) {
             assertThat(context.getBean(ClubRepository.class).count()).isZero();
@@ -161,7 +202,7 @@ class DatabaseMigrationsPostgresTest {
     }
 
     @Test
-    void adoptsFullyMigratedDockerDatabaseWithoutDuplicatingConstraintsOrChangingJson() throws Exception {
+    void adoptsLegacyDockerDatabaseAddingOnlySparkConstraintsWithoutChangingJson() throws Exception {
         legacy(4);
         legacyJob(true);
         int constraints = jdbc.queryForObject("select count(*) from pg_constraint where conrelid='analysis_jobs'::regclass", Integer.class);
@@ -171,7 +212,9 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class))
                     .isEqualTo("[{\"dorsal\":9,\"distancia\":12.123456789}]");
             assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conrelid='analysis_jobs'::regclass", Integer.class))
-                    .isEqualTo(constraints);
+                    .isEqualTo(constraints + 2);
+            assertThat(jdbc.queryForList("select conname from pg_constraint where conrelid='analysis_jobs'::regclass", String.class))
+                    .contains("chk_analysis_seconds", "chk_analysis_cleanup");
         }
     }
 
@@ -266,7 +309,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 12 : 11);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 14 : 13);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -283,9 +326,9 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(41);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(11);
+                .isEqualTo(13);
     }
 
     private void assertBaseline() {

@@ -15,6 +15,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> {
+    List<AnalysisJob> findByRemoteCleanupPendingTrueOrderById(Pageable pageable);
+
     Optional<AnalysisJob> findFirstByVideoIdOrderByIdDesc(Long videoId);
 
     @EntityGraph(attributePaths = {"video", "video.partido"})
