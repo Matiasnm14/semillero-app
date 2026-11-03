@@ -44,8 +44,9 @@ import org.springframework.core.annotation.Order;
  *
  * <p>Las cuentas solo las modifica su titular o un administrador. Las
  * asignaciones de administradores y vínculos con clubes requieren ADMIN porque
- * determinan los roles y la propiedad que usa torneos. El registro de usuarios
- * y el resto de las rutas compartidas conservan su acceso público.
+ * determinan los roles y la propiedad que usa torneos. El acceso público está
+ * limitado a autenticación, documentación, datos de referencia y rutas que el
+ * flujo de registro actual todavía necesita antes del login.
  *
  * <p>Sin sesión de servidor y sin CSRF porque la API es stateless y se usa con
  * token (tarea S2-01). Cada rechazo queda en {@code auditoria} (tarea S2-04).
@@ -85,6 +86,14 @@ public class SeguridadConfiguration {
                         sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Rutas usadas por el registro inicial del cliente actual. Se mantienen
+                        // explícitas mientras ese flujo no disponga de un alta transaccional.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios", "/api/v1/jugadores",
+                                "/api/v1/posiciones", "/api/v1/posiciones-jugador",
+                                "/api/v1/clubes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ciudades/**", "/api/v1/clubes/**",
+                                "/api/v1/paises/**", "/api/v1/posiciones/**", "/api/v1/highlights/**")
+                        .permitAll()
                         .requestMatchers("/api/v1/scouting/config/oidc-identities/**").hasRole(ADMINISTRA)
                         .requestMatchers("/api/v1/scouting/**").hasAnyRole(
                                 "SCOUT", "COORDINADOR_SCOUTING", "RECLUTADOR", "EVALUADOR",
@@ -117,6 +126,11 @@ public class SeguridadConfiguration {
                         // actualmente por su propio club.
                         .requestMatchers(HttpMethod.PUT, "/api/v1/jugadores/{id}")
                         .access(this::jugadorPropioOClubOAdministrador)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/jugadores/{id}")
+                        .access(this::jugadorPropioOAdministrador)
+                        .requestMatchers("/api/v1/solicitudes-contacto/**", "/api/v1/notificaciones/**",
+                                "/api/v1/pruebas/**")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, TORNEOS).authenticated()
                         .requestMatchers("/api/v1/partidos/{partidoId}/videos", "/api/v1/partidos/{partidoId}/videos/**")
                         .access((auth, context) -> new AuthorizationDecision(accesoVideos.permitsMatch(auth.get(),
@@ -139,7 +153,7 @@ public class SeguridadConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")
                         .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
                         .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
-                        .anyRequest().permitAll())
+                        .anyRequest().authenticated())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(this::sinSesion)
                         .accessDeniedHandler(sinPermiso()))
@@ -216,6 +230,25 @@ public class SeguridadConfiguration {
                 && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
                         jugadorId, usuario.clubId());
         return new AuthorizationDecision(esPropio || esJugadorDelClub);
+    }
+
+    private AuthorizationDecision jugadorPropioOAdministrador(
+            Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
+        Authentication actual = autenticacion.get();
+        if (actual == null || !actual.isAuthenticated()
+                || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+            return new AuthorizationDecision(false);
+        }
+        if (esAdministrador(actual)) return new AuthorizationDecision(true);
+        try {
+            Long jugadorId = Long.valueOf(contexto.getVariables().get("id"));
+            return new AuthorizationDecision(jugadores.findById(jugadorId)
+                    .map(jugador -> jugador.getUsuario() != null
+                            && usuario.usuarioId().equals(jugador.getUsuario().getId()))
+                    .orElse(false));
+        } catch (NumberFormatException | NullPointerException ex) {
+            return new AuthorizationDecision(false);
+        }
     }
 
     private boolean esAdministrador(Authentication autenticacion) {

@@ -62,7 +62,7 @@ Montar `VIDEO_STORAGE_DIR` y `ANALYSIS_ARTIFACTS_DIR` en disco persistente y res
 
 ## Migración
 
-Flyway aplica [V012__persistent_video_uploads.sql](../database/migrations/V012__persistent_video_uploads.sql) al iniciar: agrega el usuario de carga y permite `ESPERANDO_ANALISIS`, conservando los datos existentes. `database/init.sql` incluye 000–012 para bases vacías. No editar las migraciones anteriores ni ejecutar el inicializador sobre una base con datos.
+Flyway aplica las migraciones pendientes al iniciar: agrega el usuario de carga y permite `ESPERANDO_ANALISIS`, conservando los datos existentes. `database/init.sql` incluye V000–V015 para bases vacías. No editar las migraciones anteriores ni ejecutar el inicializador sobre una base con datos.
 
 ## Alcance de esta entrega
 

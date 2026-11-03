@@ -3,6 +3,8 @@ package edu.upb.semillero.repository.entity;
 import edu.upb.semillero.repository.enums.EstadoJugador;
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,6 +38,9 @@ public class Jugador extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "users_id")
     private Usuario usuario;
+
+    @OneToMany(mappedBy = "jugador")
+    private List<PosicionJugador> posicionesJugador = new ArrayList<>();
 
     /**
      * Columna que agrega el módulo de Torneos (tarea S1-06), pero la mantiene

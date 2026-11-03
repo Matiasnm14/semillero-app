@@ -31,7 +31,7 @@ Conservar `.env` y el volumen `db_data`. Después de actualizar el código, arra
 
 1. Comprueba las 17 tablas base conocidas y columnas características. Acepta también las tablas opcionales de videos, análisis, métricas, torneos (V007) y roles compartidos (V008). Un esquema incompleto, ajeno o con tablas adicionales sin historial se detiene para revisión.
 2. Registra una base histórica `-1`, que no omite ninguna migración del proyecto.
-3. Ejecuta V000–V012. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta; V007 incorpora torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 el contrato HTTP Spark y V012 la procedencia de cargas y espera de YouTube.
+3. Ejecuta V000–V015. El SQL conserva tablas y datos existentes y agrega las restricciones e índices ausentes. La 004 añade `respuesta_json` si falta; V007 incorpora torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes, V011 el contrato HTTP Spark, V012 la procedencia de cargas y espera de YouTube, V013–V014 el módulo de scouting, y V015 las pruebas, postulaciones, contacto y notificaciones.
 4. Valida las entidades y permite arrancar la API.
 
 Esto cubre bases creadas con los SQL anteriores, incluidas instalaciones que ya aplicaron 004, y bases creadas mediante `ddl-auto=update`. Los datos incompatibles con una restricción detienen la migración; no se borran ni se corrigen silenciosamente. La migración fallida se revierte y puede ejecutarse de nuevo tras corregir la causa. Las anteriores que ya terminaron permanecen registradas.

@@ -67,6 +67,8 @@ class CrudIntegrationTest {
         usuarioId = create("usuarios", usuario("ana@example.com"));
         otroUsuarioId = create("usuarios", usuario("luis@example.com"));
         usuarioClubId = create("usuarios-club", Map.of("usuarioId", usuarioId));
+        create("usuarios-trabaja", Map.of("usuarioClubId", usuarioClubId,
+                "clubId", localId, "tipoUsuarioClub", "DT"));
         jugadorId = create("jugadores", Map.of("usuarioId", usuarioId, "piernaHabil", "D"));
         posicionId = create("posiciones", Map.of("posicion", "Delantero", "codigoPosicion", "DEL"));
         otraPosicionId = create("posiciones", Map.of("posicion", "Arquero", "codigoPosicion", "ARQ"));
@@ -254,7 +256,9 @@ class CrudIntegrationTest {
             case "posiciones" -> new Resource(Map.of("posicion", "Delantero", "codigoPosicion", "DEL"), "posicion", "Defensor");
             case "posiciones-jugador" -> new Resource(Map.of("jugadorId", jugadorId, "posicionId", posicionId), "posicionId", (int) otraPosicionId);
             case "fichados" -> new Resource(Map.of("jugadorId", jugadorId, "clubId", localId, "fechaFichaje", "2026-10-20T10:00:00"), "fechaFinalFichaje", "2027-10-20T10:00:00");
-            case "pruebas" -> new Resource(Map.of("clubId", localId, "usuarioClubId", usuarioClubId, "fechaPrueba", "2026-10-20", "horaPrueba", "10:00:00"), "fechaPrueba", "2026-10-21");
+            case "pruebas" -> new Resource(Map.of("clubId", localId, "usuarioClubId", usuarioClubId,
+                    "titulo", "Captación Sub-17", "fechaPrueba", "2027-01-20", "horaPrueba", "10:00:00",
+                    "cupos", 24), "fechaPrueba", "2027-01-21");
             case "clinicas-pago" -> new Resource(Map.of("clubId", localId, "usuarioClubId", usuarioClubId, "fechaInicioClinica", "2026-10-20T10:00:00"), "fechaFinClinica", "2026-10-21T10:00:00");
             case "videos" -> new Resource(Map.of("jugadorId", jugadorId, "tituloVideo", "Jugadas", "linkVideo", "https://example.com/video"), "tituloVideo", "Goles");
             case "conversaciones" -> new Resource(Map.of("usuarioEnviaId", usuarioId, "usuarioRecibeId", otroUsuarioId, "mensaje", "Hola"), "mensaje", "Nos vemos");

@@ -30,6 +30,7 @@ $$;
 \ir migrations/V012__persistent_video_uploads.sql
 \ir migrations/V013__scouting_module.sql
 \ir migrations/V014__scouting_assignment_and_export_controls.sql
+\ir migrations/V015__club_recruitment_and_notifications.sql
 
 COMMIT;
 

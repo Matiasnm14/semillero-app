@@ -40,4 +40,13 @@ public class Notificacion extends BaseEntity {
     @Column(name = "fecha", nullable = false)
     @ColumnDefault("now()")
     private LocalDateTime fecha;
+
+    @Column(name = "tipo", length = 40)
+    private String tipo;
+
+    @Column(name = "referencia_id")
+    private Long referenciaId;
+
+    @Column(name = "referencia_tipo", length = 40)
+    private String referenciaTipo;
 }

@@ -3,9 +3,12 @@ package edu.upb.semillero.controller;
 import edu.upb.semillero.controller.dto.PageResponse;
 import edu.upb.semillero.repository.dto.request.JugadorRequestDto;
 import edu.upb.semillero.repository.dto.response.JugadorResponseDto;
+import edu.upb.semillero.repository.dto.response.JugadorDirectorioResponseDto;
 import edu.upb.semillero.service.JugadorService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,8 +33,14 @@ public class JugadorController {
     }
 
     @GetMapping
-    public PageResponse<JugadorResponseDto> findAll(@PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        return PageResponse.from(service.findAll(pageable));
+    public PageResponse<JugadorDirectorioResponseDto> findAll(
+            @RequestParam(required = false) String posicion,
+            @RequestParam(required = false) String piernaHabil,
+            @RequestParam(required = false) @Min(0) @Max(120) Integer edadMin,
+            @RequestParam(required = false) @Min(0) @Max(120) Integer edadMax,
+            @RequestParam(required = false) String nombre,
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return PageResponse.from(service.findAll(pageable, posicion, piernaHabil, edadMin, edadMax, nombre));
     }
 
     @GetMapping("/{id}")

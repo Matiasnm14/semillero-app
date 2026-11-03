@@ -8,6 +8,8 @@ import java.util.Optional;
 public interface UsuarioTrabajaRepository extends JpaRepository<UsuarioTrabaja, Long> {
     Optional<UsuarioTrabaja> findFirstByUsuarioClubId(Long usuarioClubId);
 
+    boolean existsByUsuarioClubIdAndClubId(Long usuarioClubId, Long clubId);
+
     /** Los clubes donde trabaja un usuario; la HU 16 lo usa para los permisos. */
     List<UsuarioTrabaja> findByUsuarioClubUsuarioId(Long usuarioId);
 }

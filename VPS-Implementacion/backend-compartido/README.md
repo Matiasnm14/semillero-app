@@ -8,7 +8,7 @@ Compose utiliza `network_mode: host`, sin publicación `ports`. Spring escucha e
 
 Las credenciales existentes están en `/home/backend/proyecto/.env.db`. El archivo no se copia a Git, a la imagen ni al paquete compartible. Compose lee ese archivo con `--env-file /home/backend/proyecto/.env.db` y después un `.env` privado del despliegue, con permisos `0600`, que conserva `JWT_SECRET`, versión y CORS sin duplicar las credenciales SQL. No ejecutar el contenido de los archivos de configuración como código shell.
 
-El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. El backend de esta entrega necesita el esquema compatible con V000–V012. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
+El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. Esta versión del backend necesita el esquema compatible con V000–V015, incluida la migración de convocatorias, postulaciones, contacto y notificaciones. El responsable del migrador central debe aplicar V013–V015 antes de desplegar este backend. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
 
 ## Imagen y almacenamiento
 
