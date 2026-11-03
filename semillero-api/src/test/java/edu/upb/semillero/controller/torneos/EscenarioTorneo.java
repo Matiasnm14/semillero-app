@@ -52,6 +52,7 @@ final class EscenarioTorneo {
         long paisId = create("/api/v1/paises", Map.of("nombrePais", "Bolivia"));
         ciudadId = create("/api/v1/ciudades", Map.of("nombreCiudad", "Santa Cruz", "paisId", paisId));
         usuarioId = usuario("org");
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioId, "ORGANIZADOR");
         long sedeId = create(TORNEOS + "/sedes", Map.of("nombre", "Sede " + System.nanoTime(),
                 "direccion", "Av. Banzer 100", "ciudadId", ciudadId));
         canchaA = cancha(sedeId, "Cancha A");
@@ -295,8 +296,9 @@ final class EscenarioTorneo {
     private void documentosVigentes(long jugadorId) throws Exception {
         String vence = LocalDate.now().plusYears(1).toString();
         for (String tipo : List.of("CI", "CERTIFICADO_NACIMIENTO", "APTO_MEDICO")) {
-            create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
-                    "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence));
+            edu.upb.semillero.SesionesDePrueba.como(usuarioId, "ADMIN", () ->
+                    create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
+                            "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence)));
         }
     }
 

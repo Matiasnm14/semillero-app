@@ -39,6 +39,7 @@ class TorneoApiTest {
                 "nombres", "Miguel", "apellidos", "López",
                 "email", "organizador" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));
+        edu.upb.semillero.SesionesDePrueba.autenticar(organizadorId, "ORGANIZADOR");
     }
 
     @Test
@@ -121,7 +122,8 @@ class TorneoApiTest {
 
         Map<String, Object> organizadorInexistente = torneo();
         organizadorInexistente.put("usuarioId", Long.MAX_VALUE);
-        postTorneo(organizadorInexistente).andExpect(status().isNotFound());
+        // No se permite atribuir la operación a un actor distinto del autenticado.
+        postTorneo(organizadorInexistente).andExpect(status().isForbidden());
 
         mvc.perform(get(TORNEOS + "/-1")).andExpect(status().isBadRequest());
         mvc.perform(get(TORNEOS + "/" + Long.MAX_VALUE)).andExpect(status().isNotFound());

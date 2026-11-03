@@ -29,7 +29,8 @@ $$;
 \ir migrations/V011__spark_analysis_contract.sql
 \ir migrations/V012__persistent_video_uploads.sql
 \ir migrations/V013__documentos_jugador.sql
+\ir migrations/V015__spark_result_checkpoints.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-013).'
+\echo 'Semillero: esquema completo inicializado (000-013, 015).'

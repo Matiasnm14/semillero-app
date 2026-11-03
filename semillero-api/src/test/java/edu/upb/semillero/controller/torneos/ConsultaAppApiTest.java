@@ -22,9 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tareas S4-07 (endpoints), S4-14 (próximos partidos), S4-15 (aviso de
  * suspensión) y S4-16 (notificaciones).
  *
- * <p>Con {@code @WithMockUser} no hay token, así que "mi cuenta" y las
- * notificaciones van con {@code usuarioId}; con token, el dueño sale del token
- * ({@code SeguridadSprint4ApiTest}).
+ * <p>Las consultas privadas usan explícitamente la identidad del propietario;
+ * las pruebas con JWT reales están en {@code SeguridadSprint4ApiTest}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -82,6 +81,8 @@ class ConsultaAppApiTest {
         String miCuenta = EscenarioTorneo.TORNEOS + "/mi-cuenta";
         String notificaciones = EscenarioTorneo.TORNEOS + "/notificaciones";
 
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioJugador, "CONSULTA");
+
         mvc.perform(get(miCuenta).param("usuarioId", String.valueOf(usuarioJugador)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jugadorIds[0]").value(jugador))
@@ -90,11 +91,13 @@ class ConsultaAppApiTest {
                 .andExpect(jsonPath("$.proximosPartidos.length()").value(1))
                 .andExpect(jsonPath("$.notificacionesSinLeer").value(0));
 
+        edu.upb.semillero.SesionesDePrueba.autenticar(torneo.usuarioId, "ORGANIZADOR");
         torneo.postJson(EscenarioTorneo.TORNEOS + "/" + torneo.torneoId + "/sanciones", Map.of(
                         "jugadorId", jugador, "fechasSuspension", 2, "motivo", "Agresión a un rival",
                         "usuarioId", torneo.usuarioId))
                 .andExpect(status().isCreated());
 
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioJugador, "CONSULTA");
         mvc.perform(get(miCuenta).param("usuarioId", String.valueOf(usuarioJugador)))
                 .andExpect(jsonPath("$.suspendido").value(true))
                 .andExpect(jsonPath("$.suspensionesVigentes[0].fechasPendientes").value(2))
@@ -108,7 +111,7 @@ class ConsultaAppApiTest {
 
         mvc.perform(put(notificaciones + "/" + avisoId + "/leida")
                         .param("usuarioId", String.valueOf(torneo.usuarioId)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
         mvc.perform(put(notificaciones + "/" + avisoId + "/leida")
                         .param("usuarioId", String.valueOf(usuarioJugador)))
                 .andExpect(status().isOk())
@@ -118,6 +121,7 @@ class ConsultaAppApiTest {
                 .andExpect(jsonPath("$.length()").value(0));
 
         // El resultado publicado le llega a los equipos al cerrar.
+        edu.upb.semillero.SesionesDePrueba.autenticar(torneo.usuarioId, "ORGANIZADOR");
         torneo.cerrar(partido.get("id").asLong(),
                         Map.of("ganadorWalkoverId", partido.get("clubLocalId").asLong()))
                 .andExpect(status().isOk());
@@ -125,6 +129,7 @@ class ConsultaAppApiTest {
                         .param("soloNoLeidas", "true"))
                 .andExpect(jsonPath("$[0].titulo").value("Resultado publicado"))
                 .andExpect(jsonPath("$[0].mensaje").value(containsString("3 - 0")));
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioJugador, "CONSULTA");
         mvc.perform(get(notificaciones).param("usuarioId", String.valueOf(usuarioJugador))
                         .param("soloNoLeidas", "true"))
                 .andExpect(jsonPath("$[0].titulo").value("Resultado publicado"));
@@ -132,8 +137,10 @@ class ConsultaAppApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.marcadas").value(1));
 
-        // Sin token y sin usuarioId no se sabe de quién son.
-        mvc.perform(get(notificaciones)).andExpect(status().isBadRequest());
+        // La identidad permite omitir usuarioId; sin sesión se rechaza la consulta.
+        mvc.perform(get(notificaciones)).andExpect(status().isOk());
+        org.springframework.security.test.context.TestSecurityContextHolder.clearContext();
+        mvc.perform(get(notificaciones)).andExpect(status().isUnauthorized());
     }
 
     /** HU 15: un partido por su ID y los cerrados por fecha de cierre, para el microservicio de video. */

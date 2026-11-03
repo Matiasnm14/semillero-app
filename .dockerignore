@@ -6,3 +6,6 @@
 !VPS-Implementacion/
 !VPS-Implementacion/backend-compartido/
 !VPS-Implementacion/backend-compartido/entrypoint.sh
+!scripts/
+!scripts/youtube_upload.py
+!scripts/youtube-requirements.lock

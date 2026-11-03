@@ -2,7 +2,6 @@ package edu.upb.semillero.service.seguridad;
 
 import edu.upb.semillero.service.comun.ComunService;
 import edu.upb.semillero.service.comun.Roles;
-import edu.upb.semillero.service.exception.BusinessException;
 import edu.upb.semillero.service.exception.ForbiddenException;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
@@ -35,11 +34,14 @@ public class AccesoTorneos {
         this.registro = registro;
     }
 
-    /** Vacío cuando no hay nadie autenticado, por ejemplo en una prueba o un job. */
+    /** Una identidad válida exige autenticación y un ID de usuario positivo. */
     public Optional<UsuarioAutenticado> actual() {
         Authentication autenticacion = SecurityContextHolder.getContext().getAuthentication();
         if (autenticacion != null
-                && autenticacion.getPrincipal() instanceof UsuarioAutenticado usuario) {
+                && autenticacion.isAuthenticated()
+                && !(autenticacion instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+                && autenticacion.getPrincipal() instanceof UsuarioAutenticado usuario
+                && usuario.usuarioId() != null && usuario.usuarioId() > 0) {
             return Optional.of(usuario);
         }
         return Optional.empty();
@@ -50,11 +52,10 @@ public class AccesoTorneos {
      * el organizador, no se mete.
      */
     public void requireClubPropio(Long clubId, String queIntento) {
-        Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty() || mandaEnTodo(actual.get()) || !actual.get().tieneRol(Roles.ENTRENADOR)) {
+        UsuarioAutenticado usuario = exigirUsuario(queIntento);
+        if (mandaEnTodo(usuario) || !usuario.tieneRol(Roles.ENTRENADOR)) {
             return;
         }
-        UsuarioAutenticado usuario = actual.get();
         if (!comun.clubesDondeTrabaja(usuario.usuarioId()).contains(clubId)) {
             registro.rechazado("", queIntento, usuario.usuarioId(),
                     "El entrenador no trabaja en el club " + clubId);
@@ -68,12 +69,10 @@ public class AccesoTorneos {
      * planilla de la HU 9 (tarea S3-02), que es del sprint siguiente.
      */
     public void requirePartidoAsignado(Long partidoId, Long mesaControlId) {
-        Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty() || mandaEnTodo(actual.get())
-                || !actual.get().tieneRol(Roles.MESA_CONTROL)) {
+        UsuarioAutenticado usuario = exigirUsuario("/api/v1/torneos/partidos/" + partidoId);
+        if (mandaEnTodo(usuario) || !usuario.tieneRol(Roles.MESA_CONTROL)) {
             return;
         }
-        UsuarioAutenticado usuario = actual.get();
         if (mesaControlId == null || !mesaControlId.equals(usuario.usuarioId())) {
             registro.rechazado("", "/api/v1/torneos/partidos/" + partidoId, usuario.usuarioId(),
                     "La mesa de control no tiene asignado el partido " + partidoId);
@@ -85,18 +84,10 @@ public class AccesoTorneos {
     /**
      * Tarea S4-10: de quién son los datos que se piden (notificaciones, "mi
      * cuenta"). Con token, del dueño del token: pedir los de otro da 403, salvo
-     * al administrador. Sin token, que solo pasa en las pruebas con usuario de
-     * mentira, del {@code usuarioId} que se manda.
+     * al administrador. Sin una identidad válida se rechaza la consulta.
      */
     public Long usuarioDeLaConsulta(Long pedido, String queIntento) {
-        Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty()) {
-            if (pedido == null) {
-                throw new BusinessException("Falta usuarioId: sin token no se sabe de quién son los datos");
-            }
-            return pedido;
-        }
-        UsuarioAutenticado usuario = actual.get();
+        UsuarioAutenticado usuario = exigirUsuario(queIntento);
         if (pedido == null || pedido.equals(usuario.usuarioId()) || usuario.tieneRol(Roles.ADMIN)) {
             return pedido == null ? usuario.usuarioId() : pedido;
         }
@@ -110,19 +101,11 @@ public class AccesoTorneos {
      * partido, una sanción, una apelación, una reprogramación, la planilla. Con
      * token, siempre el dueño del token: si el cuerpo trae otro {@code usuarioId}
      * se rechaza con 403, nunca se usa para sustituir al actor real (ni siquiera
-     * un administrador puede figurar como otro). Sin token —solo en las pruebas
-     * con usuario de mentira— se usa el {@code usuarioId} del cuerpo.
+     * un administrador puede figurar como otro). Sin una identidad válida se
+     * rechaza la operación, sin utilizar el ID del cuerpo como sustituto.
      */
     public Long exigirActor(Long pedido, String queIntento) {
-        Optional<UsuarioAutenticado> actual = actual();
-        if (actual.isEmpty()) {
-            if (pedido == null) {
-                throw new BusinessException(
-                        "Falta usuarioId: sin token no se sabe quién ejecuta la acción");
-            }
-            return pedido;
-        }
-        UsuarioAutenticado usuario = actual.get();
+        UsuarioAutenticado usuario = exigirUsuario(queIntento);
         if (pedido == null || pedido.equals(usuario.usuarioId())) {
             return usuario.usuarioId();
         }
@@ -134,5 +117,12 @@ public class AccesoTorneos {
 
     private boolean mandaEnTodo(UsuarioAutenticado usuario) {
         return usuario.tieneRol(Roles.ORGANIZADOR) || usuario.tieneRol(Roles.ADMIN);
+    }
+
+    private UsuarioAutenticado exigirUsuario(String ruta) {
+        return actual().orElseThrow(() -> {
+            registro.rechazado("", ruta, null, "Falta una identidad autenticada");
+            return new ForbiddenException("Debes iniciar sesión para realizar esta operación");
+        });
     }
 }

@@ -67,14 +67,20 @@ public class JwtService {
         if (token == null || token.isBlank()) {
             return Optional.empty();
         }
-        String[] partes = token.split("\\.");
-        if (partes.length != 3) {
+        String[] partes = token.split("\\.", -1);
+        if (partes.length != 3 || partes[0].isEmpty() || partes[1].isEmpty() || partes[2].isEmpty()) {
             return Optional.empty();
         }
         String sinFirma = partes[0] + "." + partes[1];
         try {
             if (!MessageDigest.isEqual(Base64.getUrlDecoder().decode(partes[2]),
                     firmar(sinFirma))) {
+                return Optional.empty();
+            }
+            JsonNode cabecera = json.readTree(Base64.getUrlDecoder().decode(partes[0]));
+            if (cabecera == null || !cabecera.isObject()
+                    || !cabecera.path("alg").isTextual()
+                    || !"HS256".equals(cabecera.path("alg").asString())) {
                 return Optional.empty();
             }
             JsonNode cuerpo = json.readTree(Base64.getUrlDecoder().decode(partes[1]));

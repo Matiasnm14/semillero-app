@@ -143,6 +143,29 @@ class DatabaseMigrationsPostgresTest {
     }
 
     @Test
+    void upgrades013PreservingJsonAndRolesWhileAddingDeliveryCheckpoints() {
+        Flyway.configure().dataSource(source).target("13").load().migrate();
+        legacyJob(true);
+        String previous = jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class);
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isEqualTo(previous);
+            assertThat(jdbc.queryForObject("select estado_heatmap from analysis_jobs where id=50", String.class)).isEqualTo("DESCONOCIDO");
+            assertThat(jdbc.queryForObject("select count(*) from roles", Integer.class)).isEqualTo(5);
+            assertThatThrownBy(() -> jdbc.update("update analysis_jobs set estado_heatmap='BORRADO' where id=50"))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            jdbc.update("update analysis_jobs set estado_heatmap='NO_DISPONIBLE' where id=50");
+        }
+        // Same adoption used after init.sql: reconciliation must not reset an existing checkpoint.
+        jdbc.execute("drop table flyway_schema_history");
+        try (var ignored = start(true, "validate")) {
+            assertCurrent();
+            assertThat(jdbc.queryForObject("select estado_heatmap from analysis_jobs where id=50", String.class)).isEqualTo("NO_DISPONIBLE");
+            assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class)).isEqualTo(previous);
+        }
+    }
+
+    @Test
     void adoptsLegacyBaseAndCreatesRemainingTablesWithoutLosingData() throws Exception {
         legacy(0);
         jdbc.update("insert into clubes(nombre_club) values ('Existente')");
@@ -231,9 +254,9 @@ class DatabaseMigrationsPostgresTest {
             assertThat(jdbc.queryForObject("select respuesta_json from analysis_jobs where id=50", String.class))
                     .isEqualTo("[{\"dorsal\":9,\"distancia\":12.123456789}]");
             assertThat(jdbc.queryForObject("select count(*) from pg_constraint where conrelid='analysis_jobs'::regclass", Integer.class))
-                    .isEqualTo(constraints + 2);
+                    .isEqualTo(constraints + 3);
             assertThat(jdbc.queryForList("select conname from pg_constraint where conrelid='analysis_jobs'::regclass", String.class))
-                    .contains("chk_analysis_seconds", "chk_analysis_cleanup");
+                    .contains("chk_analysis_seconds", "chk_analysis_cleanup", "chk_analysis_heatmap");
         }
     }
 
@@ -328,7 +351,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 15 : 14);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 16 : 15);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -345,9 +368,9 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(42);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(14);
+                .isEqualTo(15);
     }
 
     private void assertBaseline() {

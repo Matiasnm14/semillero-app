@@ -1,6 +1,7 @@
 package edu.upb.semillero.service.analysis;
 
 import edu.upb.semillero.config.AnalysisProperties;
+import edu.upb.semillero.repository.enums.EstadoHeatmap;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,7 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static edu.upb.semillero.service.analysis.AnalysisGatewayException.Reason.*;
 
-/** HTTP contract documented in docs/spark-implementation.md. Never follows remote artifact URLs. */
+/** Contract in docs/INFORME_INTEGRACION_SPARK.md. Never follows remote artifact URLs. */
 @Component
 public class HttpAnalysisGateway implements AnalysisGateway {
     private final AnalysisProperties properties;
@@ -46,13 +47,26 @@ public class HttpAnalysisGateway implements AnalysisGateway {
 
     private String evaluateBlocking(Submission submission) throws Exception {
         requireConfigured();
-        if (submission.correlationId() == null || !submission.correlationId().matches("[A-Za-z0-9_-]{1,64}")) throw failure(REJECTED);
+        requireUuid(submission.correlationId());
         long deadline = System.nanoTime() + properties.getMaxDuration().toNanos();
         String path = "/" + submission.correlationId();
-        if (!submission.resume()) submit(submission, deadline);
+        // Spark may already have deleted the job: local checkpoints take precedence over status GET.
+        if (submission.savedResults() != null) {
+            validateResult(submission.savedResults(), submission.correlationId());
+            receiveHeatmap(path, submission, deadline);
+            return submission.savedResults();
+        }
+        boolean uploadUncertain = !submission.resume() && !submit(submission, deadline);
         while (true) {
             checkDeadline(deadline);
-            var status = readJson(send(request(path).GET().build(), properties.getMaxResponseBytes()), 200);
+            var statusResponse = send(request(path).GET().build(), properties.getMaxResponseBytes());
+            // The remote row is created only after the original POST finishes receiving/validating.
+            if (uploadUncertain && isError(statusResponse, 404, "ANALYSIS_NOT_FOUND")) {
+                pause(deadline);
+                continue;
+            }
+            var status = readJson(statusResponse, 200);
+            uploadUncertain = false;
             validateIdentity(status, submission.correlationId());
             String state = status.path("status").asString("");
             switch (state) {
@@ -64,12 +78,10 @@ public class HttpAnalysisGateway implements AnalysisGateway {
                     var response = send(request(path + "/results").GET().build(), properties.getMaxResponseBytes());
                     if (isError(response, 409, "ANALYSIS_NOT_READY")) { pause(deadline); continue; }
                     String payload = decodeJson(response, 200);
-                    JsonNode result = json.readTree(payload);
-                    validateIdentity(result, submission.correlationId());
-                    if (!"COMPLETED".equals(result.path("status").asString(""))
-                            || !result.path("summary").isObject() || !result.path("players").isArray()
-                            || result.has("heatmap") || result.has("artifacts")) throw failure(INVALID_RESPONSE);
-                    receiveHeatmap(path, submission.correlationId());
+                    validateResult(payload, submission.correlationId());
+                    // The second delivery can delete everything on Spark. SQL must commit first.
+                    checkpoint(() -> submission.saveResults().accept(payload), deadline);
+                    receiveHeatmap(path, submission, deadline);
                     return payload;
                 }
                 case "QUEUED", "PROCESSING" -> {
@@ -81,7 +93,7 @@ public class HttpAnalysisGateway implements AnalysisGateway {
         }
     }
 
-    private void submit(Submission submission, long deadline) throws Exception {
+    private boolean submit(Submission submission, long deadline) throws Exception {
         while (true) {
             checkDeadline(deadline);
             String boundary = "Semillero" + UUID.randomUUID().toString().replace("-", "");
@@ -97,32 +109,77 @@ public class HttpAnalysisGateway implements AnalysisGateway {
                         HttpRequest.BodyPublishers.ofFile(submission.original()),
                         HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
             } catch (IOException e) { throw failure(MISSING_ORIGINAL); }
-            var response = send(request("").header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                    .POST(body).build(), properties.getMaxResponseBytes());
+            HttpResponse<byte[]> response;
+            try {
+                response = send(request("").header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        .POST(body).build(), properties.getMaxResponseBytes());
+            } catch (Exception e) {
+                if (reason(e) == TRANSPORT || reason(e) == TIMEOUT) return false;
+                throw e;
+            }
             // Only an explicit busy rejection permits uploading the file again. A lost POST is never repeated.
             if (isError(response, 409, "GPU_BUSY")) { pause(deadline); continue; }
-            if (isError(response, 409, "ANALYSIS_ID_EXISTS")) return;
+            if (isError(response, 409, "ANALYSIS_ID_EXISTS")) return true;
             var ack = readJson(response, 202);
             validateIdentity(ack, submission.correlationId());
             if (!"QUEUED".equals(ack.path("status").asString(""))) throw failure(INVALID_RESPONSE);
-            return;
+            return true;
         }
     }
 
-    private void receiveHeatmap(String path, String id) throws Exception {
+    private void validateResult(String payload, String id) {
+        JsonNode result = json.readTree(validator.validate(payload));
+        validateIdentity(result, id);
+        if (!"COMPLETED".equals(result.path("status").asString(""))
+                || !result.path("summary").isObject() || !result.path("players").isArray()
+                || result.has("heatmap") || result.has("artifacts")) throw failure(INVALID_RESPONSE);
+    }
+
+    private void receiveHeatmap(String path, Submission submission, long deadline) throws Exception {
+        String id = submission.correlationId();
+        if (artifacts.exists(id)) {
+            checkpoint(() -> submission.saveHeatmap().accept(EstadoHeatmap.DISPONIBLE), deadline);
+            return;
+        }
+        if (submission.savedHeatmap() == EstadoHeatmap.NO_DISPONIBLE) return;
+        if (submission.savedHeatmap() == EstadoHeatmap.DISPONIBLE
+                || submission.savedHeatmap() == EstadoHeatmap.ERROR_DESCARGA) throw failure(HEATMAP_LOST);
+        checkDeadline(deadline);
         var response = send(request(path + "/heatmap").setHeader("Accept", "image/png, application/json")
                 .GET().build(), properties.getMaxHeatmapBytes());
-        if (isError(response, 422, "HEATMAP_UNAVAILABLE")) return;
+        if (isError(response, 422, "HEATMAP_UNAVAILABLE")) {
+            checkpoint(() -> submission.saveHeatmap().accept(EstadoHeatmap.NO_DISPONIBLE), deadline);
+            return;
+        }
+        if (isError(response, 404, "ANALYSIS_NOT_FOUND")) throw failure(HEATMAP_LOST);
         requireStatus(response, 200);
         if (!mediaType(response).equalsIgnoreCase("image/png")) throw failure(INVALID_RESPONSE);
         artifacts.store(id, response.body());
+        checkpoint(() -> submission.saveHeatmap().accept(EstadoHeatmap.DISPONIBLE), deadline);
+    }
+
+    private void checkpoint(Runnable save, long deadline) throws InterruptedException {
+        while (true) {
+            checkDeadline(deadline);
+            try { save.run(); return; }
+            catch (AnalysisGatewayException e) {
+                if (e.reason() != CHECKPOINT) throw e;
+                pause(deadline); // Retry SQL, never repeat a remote delivery that may have deleted the job.
+            }
+        }
+    }
+
+    private void requireUuid(String id) {
+        try {
+            if (id == null || !UUID.fromString(id).toString().equals(id)) throw failure(REJECTED);
+        } catch (IllegalArgumentException e) { throw failure(REJECTED); }
     }
 
     @Override
     public CompletableFuture<Void> cleanup(String analysisId) {
         return execute(() -> {
             requireConfigured();
-            if (analysisId == null || !analysisId.matches("[A-Za-z0-9_-]{1,64}")) throw failure(REJECTED);
+            requireUuid(analysisId);
             var response = send(request("/" + analysisId).DELETE().build(), properties.getMaxResponseBytes());
             if (response.statusCode() != 204 && !isError(response, 404, "ANALYSIS_NOT_FOUND")) {
                 requireStatus(response, 204);

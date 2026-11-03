@@ -2,6 +2,8 @@ package edu.upb.semillero.service.analysis;
 
 public class AnalysisGatewayException extends RuntimeException {
     public enum Reason {
+        CHECKPOINT("GUARDADO_ANALISIS_PENDIENTE", "No se pudo confirmar el guardado del resultado del análisis"),
+        HEATMAP_LOST("MAPA_CALOR_NO_RECUPERABLE", "El resultado JSON está guardado pero Spark ya no conserva el mapa de calor"),
         PROCESSING("ERROR_PROCESAMIENTO", "El servicio de análisis no pudo procesar el video"),
         TRANSPORT("ANALIZADOR_NO_DISPONIBLE", "No se pudo completar la comunicación con el servicio de análisis"),
         INVALID_RESPONSE("RESPUESTA_ANALIZADOR_INVALIDA", "El servicio de análisis devolvió una respuesta incompatible"),

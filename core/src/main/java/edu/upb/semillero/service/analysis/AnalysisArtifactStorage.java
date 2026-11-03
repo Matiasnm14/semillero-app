@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import javax.imageio.ImageIO;
 import org.springframework.stereotype.Component;
@@ -52,8 +54,15 @@ public class AnalysisArtifactStorage {
         try {
             Files.createDirectories(directory(id));
             temp = Files.createTempFile(directory(id), "heatmap-", ".part");
-            Files.write(temp, bytes);
+            try (var output = FileChannel.open(temp, StandardOpenOption.WRITE)) {
+                var buffer = java.nio.ByteBuffer.wrap(bytes);
+                while (buffer.hasRemaining()) output.write(buffer);
+                output.force(true);
+            }
             Files.move(temp, heatmap(id), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            try (var directory = FileChannel.open(directory(id), StandardOpenOption.READ)) {
+                directory.force(true);
+            }
         } catch (IOException e) {
             throw new StorageUnavailableException("No se pudo guardar el mapa de calor del análisis");
         } finally {

@@ -55,6 +55,7 @@ class ListaBuenaFeApiTest {
                 "nombres", "Miguel", "apellidos", "Lopez",
                 "email", "buenafe" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioId, "ORGANIZADOR");
         clubId = club("Club Lista");
         torneoId = torneo();
         categoriaId = categoria();
@@ -151,10 +152,12 @@ class ListaBuenaFeApiTest {
     void rechazaAlJugadorSinAptoMedico() throws Exception {
         long sinApto = jugadorFichadoSinDocumentos(clubId, "2013-06-01");
         String vence = LocalDate.now().plusYears(1).toString();
-        create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
-                "tipo", "CI", "estado", "VIGENTE", "fechaVencimiento", vence));
-        create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
-                "tipo", "CERTIFICADO_NACIMIENTO", "estado", "VIGENTE", "fechaVencimiento", vence));
+        edu.upb.semillero.SesionesDePrueba.como(usuarioId, "ADMIN", () -> {
+            create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
+                    "tipo", "CI", "estado", "VIGENTE", "fechaVencimiento", vence));
+            return create("/api/v1/documentos-jugador", Map.of("jugadorId", sinApto,
+                    "tipo", "CERTIFICADO_NACIMIENTO", "estado", "VIGENTE", "fechaVencimiento", vence));
+        });
 
         postJson(lista(), jugador(sinApto, 12))
                 .andExpect(status().isBadRequest())
@@ -277,8 +280,9 @@ class ListaBuenaFeApiTest {
     private void documentosVigentes(long jugadorId) throws Exception {
         String vence = LocalDate.now().plusYears(1).toString();
         for (String tipo : java.util.List.of("CI", "CERTIFICADO_NACIMIENTO", "APTO_MEDICO")) {
-            create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
-                    "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence));
+            edu.upb.semillero.SesionesDePrueba.como(usuarioId, "ADMIN", () ->
+                    create("/api/v1/documentos-jugador", Map.of("jugadorId", jugadorId,
+                            "tipo", tipo, "estado", "VIGENTE", "fechaVencimiento", vence)));
         }
     }
 
