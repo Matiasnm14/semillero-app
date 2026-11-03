@@ -60,8 +60,10 @@ public class AnalysisArtifactStorage {
                 output.force(true);
             }
             Files.move(temp, heatmap(id), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            try (var directory = FileChannel.open(directory(id), StandardOpenOption.READ)) {
-                directory.force(true);
+            if (!System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {
+                try (var directory = FileChannel.open(directory(id), StandardOpenOption.READ)) {
+                    directory.force(true);
+                }
             }
         } catch (IOException e) {
             throw new StorageUnavailableException("No se pudo guardar el mapa de calor del análisis");
