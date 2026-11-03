@@ -254,7 +254,7 @@ class ReglamentoApiTest {
     }
 
     private ResultActions postJson(String url, Map<String, Object> body) throws Exception {
-        return mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(edu.upb.semillero.SharedFixtureRequests.post(url).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
     }
 }

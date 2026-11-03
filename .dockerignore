@@ -9,3 +9,6 @@
 !scripts/
 !scripts/youtube_upload.py
 !scripts/youtube-requirements.lock
+
+# Documentación y claves locales del equipo
+/guias-ignorar/

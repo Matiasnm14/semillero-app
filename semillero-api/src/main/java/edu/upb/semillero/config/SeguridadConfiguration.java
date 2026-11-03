@@ -6,7 +6,6 @@ import edu.upb.semillero.service.seguridad.UsuarioAutenticado;
 import edu.upb.semillero.service.seguridad.AccesoVideos;
 import edu.upb.semillero.repository.repos.FichadoRepository;
 import edu.upb.semillero.repository.repos.JugadorRepository;
-import edu.upb.semillero.repository.repos.UsuarioClubRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -48,10 +47,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *       ORGANIZADOR o ADMIN.</li>
  * </ul>
  *
- * <p>Las cuentas solo las modifica su titular o un administrador. Las
- * asignaciones de administradores y vínculos con clubes requieren ADMIN porque
- * determinan los roles y la propiedad que usa torneos. El registro de usuarios
- * y el resto de las rutas compartidas conservan su acceso público.
+ * <p>Las cuentas privadas solo las consulta/modifica su titular o ADMIN.
+ * Las afiliaciones requieren ADMIN. Los catálogos y las lecturas deportivas
+ * expresamente enumeradas son públicos; las demás rutas compartidas exigen ADMIN.
+ * Scouting ofrece el directorio consentido para descubrir jugadores.
  *
  * <p>Sin sesión de servidor y sin CSRF porque la API es stateless y se usa con
  * token (tarea S2-01). Cada rechazo queda en {@code auditoria} (tarea S2-04).
@@ -75,16 +74,17 @@ public class SeguridadConfiguration {
     private final RegistroAccesoService registro;
     private final JugadorRepository jugadores;
     private final FichadoRepository fichados;
-    private final UsuarioClubRepository usuariosClub;
     private final AccesoVideos accesoVideos;
+    private final edu.upb.semillero.service.comun.ComunService comun;
 
     public SeguridadConfiguration(RegistroAccesoService registro, JugadorRepository jugadores,
-            FichadoRepository fichados, UsuarioClubRepository usuariosClub, AccesoVideos accesoVideos) {
+            FichadoRepository fichados, AccesoVideos accesoVideos,
+            edu.upb.semillero.service.comun.ComunService comun) {
         this.registro = registro;
         this.jugadores = jugadores;
         this.fichados = fichados;
-        this.usuariosClub = usuariosClub;
         this.accesoVideos = accesoVideos;
+        this.comun = comun;
     }
 
     @Bean
@@ -105,19 +105,21 @@ public class SeguridadConfiguration {
                         .hasRole(ADMINISTRA)
                         .requestMatchers("/api/v1/administradores", "/api/v1/administradores/**")
                         .hasRole(ADMINISTRA)
-                        // Una cuenta de club puede registrarse sin sesión. Solo
-                        // el alta inicial es pública; cambios y bajas siguen
-                        // requiriendo ADMIN.
-                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios-club",
-                                "/api/v1/usuarios-trabaja")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios-club/**",
-                                "/api/v1/usuarios-trabaja/**").permitAll()
+                        // Las afiliaciones conceden acceso a datos privados: solo ADMIN las aprueba.
                         .requestMatchers("/api/v1/usuarios-club", "/api/v1/usuarios-club/**",
                                 "/api/v1/usuarios-trabaja", "/api/v1/usuarios-trabaja/**")
                         .hasRole(ADMINISTRA)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/{id}")
+                        .access(this::usuarioPropioOAdministrador)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole(ADMINISTRA)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/jugadores/{id}")
+                        .access(this::jugadorPropioOClubOAdministrador)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/jugadores").hasRole(ADMINISTRA)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/clubes/{id}")
+                        .access(this::clubPropioOAdministrador)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/{id}")
-                        .access(this::usuarioPropioOClubOAdministrador)
+                        .access(this::usuarioPropioOAdministrador)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/{id}")
                         .access(this::usuarioPropioOAdministrador)
                         // Un jugador puede modificar su ficha. El personal de club
@@ -162,7 +164,16 @@ public class SeguridadConfiguration {
                         // el servicio controla, por jugador, quién puede verlos y aprobarlos.
                         .requestMatchers("/api/v1/documentos-jugador", "/api/v1/documentos-jugador/**")
                         .authenticated()
-                        .anyRequest().permitAll())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/paises", "/api/v1/paises/**",
+                                "/api/v1/ciudades", "/api/v1/ciudades/**", "/api/v1/posiciones",
+                                "/api/v1/posiciones/**", "/api/v1/clubes", "/api/v1/clubes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/partidos", "/api/v1/partidos/**",
+                                "/api/v1/participaciones-partido", "/api/v1/participaciones-partido/**",
+                                "/api/v1/posiciones-jugador", "/api/v1/posiciones-jugador/**",
+                                "/api/v1/metricas", "/api/v1/metricas/**").permitAll()
+                        // Highlights aplica su autorización de contenido en el servicio existente.
+                        .requestMatchers("/api/v1/highlights", "/api/v1/highlights/**").permitAll()
+                        .anyRequest().hasRole(ADMINISTRA))
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(this::sinSesion)
                         .accessDeniedHandler(sinPermiso()))
@@ -182,39 +193,16 @@ public class SeguridadConfiguration {
         return new AuthorizationDecision(permitido);
     }
 
-    /**
-     * Permite actualizar una cuenta propia o, si la cuenta corresponde a un
-     * jugador, al personal del club que lo tiene fichado actualmente.
-     */
-    private AuthorizationDecision usuarioPropioOClubOAdministrador(
+    private AuthorizationDecision clubPropioOAdministrador(
             Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
         Authentication actual = autenticacion.get();
-        if (actual == null || !actual.isAuthenticated()) {
-            return new AuthorizationDecision(false);
-        }
-        if (esAdministrador(actual)) {
-            return new AuthorizationDecision(true);
-        }
-        if (!(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
-            return new AuthorizationDecision(false);
-        }
-        Long usuarioObjetivo;
+        if (actual == null || !actual.isAuthenticated()) return new AuthorizationDecision(false);
+        if (esAdministrador(actual)) return new AuthorizationDecision(true);
+        if (!(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) return new AuthorizationDecision(false);
         try {
-            usuarioObjetivo = Long.valueOf(contexto.getVariables().get("id"));
-        } catch (NumberFormatException | NullPointerException ex) {
-            return new AuthorizationDecision(false);
-        }
-        if (usuarioObjetivo.equals(usuario.usuarioId())) {
-            return new AuthorizationDecision(true);
-        }
-        boolean esJugadorDelClub = usuario.clubId() != null
-                && usuariosClub.findFirstByUsuarioId(usuario.usuarioId()).isPresent()
-                && jugadores.findFirstByUsuarioId(usuarioObjetivo)
-                        .map(jugador -> fichados
-                                .existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
-                                        jugador.getId(), usuario.clubId()))
-                        .orElse(false);
-        return new AuthorizationDecision(esJugadorDelClub);
+            return new AuthorizationDecision(comun.clubesDondeTrabaja(usuario.usuarioId())
+                    .contains(Long.valueOf(contexto.getVariables().get("id"))));
+        } catch (NumberFormatException ex) { return new AuthorizationDecision(false); }
     }
 
     private AuthorizationDecision jugadorPropioOClubOAdministrador(
@@ -238,10 +226,9 @@ public class SeguridadConfiguration {
         boolean esPropio = jugadores.findFirstByUsuarioId(usuario.usuarioId())
                 .map(jugador -> jugadorId.equals(jugador.getId()))
                 .orElse(false);
-        boolean esJugadorDelClub = usuario.clubId() != null
-                && usuariosClub.findFirstByUsuarioId(usuario.usuarioId()).isPresent()
-                && fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
-                        jugadorId, usuario.clubId());
+        boolean esJugadorDelClub = comun.clubesDondeTrabaja(usuario.usuarioId()).stream()
+                .anyMatch(clubId -> fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(
+                        jugadorId, clubId));
         return new AuthorizationDecision(esPropio || esJugadorDelClub);
     }
 

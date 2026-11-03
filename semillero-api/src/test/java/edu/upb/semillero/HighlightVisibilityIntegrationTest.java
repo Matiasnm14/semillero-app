@@ -126,7 +126,7 @@ class HighlightVisibilityIntegrationTest {
     }
 
     private long create(String route, Map<String, Object> body) throws Exception {
-        String response = mvc.perform(post(API + route)
+        String response = mvc.perform(SharedFixtureRequests.post(API + route)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(body)))
                 .andExpect(status().isCreated())

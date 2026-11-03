@@ -351,7 +351,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 16 : 15);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 19 : 18);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -366,11 +366,11 @@ class DatabaseMigrationsPostgresTest {
     }
 
     private void assertCurrent() {
-        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(42);
+        assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(55);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(15);
+                .isEqualTo(18);
     }
 
     private void assertBaseline() {
