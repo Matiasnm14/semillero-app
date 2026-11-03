@@ -68,9 +68,9 @@ Flyway aplica [V012__persistent_video_uploads.sql](../database/migrations/V012__
 
 Se mantiene multipart de archivo completo y el límite predeterminado de **2 GiB**. La petición espera la recepción y validación del MP4; la inferencia y YouTube ocurren después. No se implementan todavía bloques de 64 MiB, carga reanudable de 12 GiB, cuotas, cancelación o limpieza de sesiones abandonadas.
 
-Spark puede eliminar su copia temporal cuando Spring confirme los resultados. La eliminación automática del original del VPS tras resultados + confirmación de YouTube corresponde a la siguiente etapa; esta entrega conserva ese archivo. Al eliminar todos los originales, un reproceso requerirá una nueva carga u otra fuente acordada.
+Spark elimina automáticamente su copia temporal después de entregar JSON y PNG, o el 422 de mapa no disponible; Spring confirma el JSON antes de pedir la segunda salida. La eliminación automática del original del VPS tras resultados + confirmación de YouTube corresponde a la siguiente etapa; esta entrega conserva ese archivo. Al eliminar todos los originales, un reproceso requerirá una nueva carga u otra fuente acordada.
 
-La imagen VPS de esta entrega incorpora FFmpeg/FFprobe y guarda temporales multipart/Java, originales y PNG en el volumen de disco. Análisis y YouTube siguen deshabilitados; el uploader se incorporará cuando se habilite esa publicación. Ver [imagen y almacenamiento](../VPS-Implementacion/backend-compartido/README.md). No se ha desplegado esta entrega en el VPS.
+La imagen VPS de esta entrega incorpora FFmpeg/FFprobe y guarda temporales multipart/Java, originales y PNG en el volumen de disco. La imagen incluye Python y el uploader. Análisis y YouTube están deshabilitados por defecto y pueden activarse tras instalar los secretos y confirmar las migraciones centrales; ver [entrega automática](ENTREGA_SPARK_YOUTUBE_VPS.md). Ver [imagen y almacenamiento](../VPS-Implementacion/backend-compartido/README.md). No se ha desplegado esta entrega en el VPS.
 
 ## Verificación local
 

@@ -145,6 +145,22 @@ class YouTubeUploadTest(unittest.TestCase):
         upload.save_json(self.record, {"refresh_token": "fake-test-token"})
         self.assertEqual(stat.S_IMODE(self.record.stat().st_mode), 0o600)
 
+    def test_channel_and_tokens_use_configured_volume_instead_of_read_only_application(self):
+        tokens = self.folder / "volume" / "tokens.json"
+        immutable_app = self.folder / "read-only-app"
+        credentials = Mock()
+        credentials.to_json.return_value = '{}'
+        channel = {"id": "expected", "handle": "@Semillero-Video-Analysis", "title": "Semillero"}
+        with patch.object(upload, "LOCAL", immutable_app), \
+                patch.object(upload, "authorize", return_value=credentials), \
+                patch.object(upload, "AuthorizedSession", return_value=contextlib.nullcontext(self.session)), \
+                patch.object(upload, "verify_channel", return_value=channel), \
+                patch("sys.argv", ["youtube_upload.py", "authorize", "--non-interactive", "--tokens", str(tokens)]):
+            self.assertEqual(upload.main(), 0)
+        self.assertEqual(upload.load_json(tokens.parent / "channel.json"), channel)
+        self.assertTrue(tokens.is_file())
+        self.assertFalse(immutable_app.exists())
+
     def test_visibility_mismatch_is_reported_and_keeps_remote_id(self):
         state = self.saved_session()
         state["videoId"] = "videoABC123"

@@ -7,7 +7,7 @@ El [plan de implementación de HU01 y HU12–HU16](PLAN_VIDEO_DATA_ANALYSIS.md) 
 
 El [plan de HU02 y HU03](docs/PLAN_HU02_HU03_ANALISIS.md) analiza la base actual y define la solicitud de análisis en segundo plano, la prevención de duplicados y la consulta de estado, avance y finalización, con trazabilidad a sus seis subtareas del tablero.
 
-La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP para conectar el servicio Python, todavía en desarrollo; la integración viene deshabilitada por defecto.
+La [implementación backend de HU02 y HU03](docs/HU02_HU03_ANALISIS.md) incorpora trabajos persistentes, inicio con respuesta `202`, protección contra duplicados y consulta de estado/avance. Incluye el contrato HTTP de la Spark, probado con videos reales; la integración viene deshabilitada por defecto.
 
 Para HU12, [SB-050 y SB-052](docs/HU12_MODELO_INTEGRIDAD.md) incorporan `PlayerMatchMetrics`, su repositorio y validaciones de análisis, jugador y participación en el partido. La publicación y selección de la versión vigente se implementarán en las siguientes subtareas.
 
@@ -73,11 +73,12 @@ Las migraciones [V000–V013 y V015](database/migrations) se incluyen en el JAR 
 La [entrega del backend compartido](VPS-Implementacion/backend-compartido/README.md) incluye una
 imagen Java 21 y Compose, construidos en la computadora para transferir al VPS. El perfil `vps`
 requiere credenciales y un secreto JWT explícitos, desactiva Flyway en el runtime (el migrador
-central administra el esquema) y mantiene el análisis de video,
-sus workers y YouTube deshabilitados para esta entrega. `CORS_ALLOWED_ORIGINS` configura los
-orígenes públicos permitidos; vacío corresponde al uso desde el mismo origen. La configuración
+central administra el esquema) y permite activar Spark y YouTube por configuración. La imagen
+incluye Python y el uploader; OAuth se instala en el volumen privado. Las integraciones están
+deshabilitadas por defecto. `PUBLIC_WEB_ORIGIN` permite el origen público y `CORS_ALLOWED_ORIGINS`
+agrega otros orígenes. La configuración
 usa `network_mode: host`, escucha en `127.0.0.1:18083` y conserva Hibernate `validate`.
-La conexión estable a PostgreSQL es `jdbc:postgresql://127.0.0.1:5432/semillero`.
+La conexión estable a PostgreSQL es `jdbc:postgresql://127.0.0.1:5432/semillero`. Ver [entrega, prueba automática y activación](docs/ENTREGA_SPARK_YOUTUBE_VPS.md).
 
 ## Rutas CRUD
 

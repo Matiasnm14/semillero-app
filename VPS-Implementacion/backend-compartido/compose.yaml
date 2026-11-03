@@ -27,7 +27,13 @@ services:
       ANALYSIS_MAX_DURATION: "${ANALYSIS_MAX_DURATION:-6h}"
       ANALYSIS_MAX_CONCURRENT_JOBS: "1"
       ANALYSIS_MAX_RESPONSE_BYTES: "${ANALYSIS_MAX_RESPONSE_BYTES:-16777216}"
-      VIDEO_YOUTUBE_ENABLED: "false"
+      VIDEO_YOUTUBE_ENABLED: "${VIDEO_YOUTUBE_ENABLED:-false}"
+      VIDEO_YOUTUBE_WORKER_ENABLED: "${VIDEO_YOUTUBE_WORKER_ENABLED:-false}"
+      VIDEO_YOUTUBE_PYTHON: /opt/youtube/bin/python
+      VIDEO_YOUTUBE_SCRIPT: /app/scripts/youtube_upload.py
+      VIDEO_YOUTUBE_CLIENT: /var/lib/semillero/youtube/client_secret.json
+      VIDEO_YOUTUBE_TOKENS: /var/lib/semillero/youtube/tokens.json
+      VIDEO_YOUTUBE_CHANNEL: "${VIDEO_YOUTUBE_CHANNEL:-Semillero-Video-Analysis}"
       VIDEO_STORAGE_DIR: /var/lib/semillero/videos
       ANALYSIS_ARTIFACTS_DIR: /var/lib/semillero/analysis
       SPRING_SERVLET_MULTIPART_LOCATION: /var/lib/semillero/tmp/multipart

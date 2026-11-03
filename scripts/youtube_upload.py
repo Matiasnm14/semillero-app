@@ -299,7 +299,8 @@ def main():
                                 interactive=not args.non_interactive)
         with AuthorizedSession(credentials) as session:
             channel = verify_channel(session, args.channel)
-            save_json(LOCAL / "channel.json", channel)
+            # The runtime image is read-only; OAuth state belongs beside the writable token file.
+            save_json(Path(args.tokens).parent / "channel.json", channel)
             if args.command == "authorize":
                 print("Autorización guardada. Ya puedes ejecutar upload.", flush=True)
             elif args.command == "upload":

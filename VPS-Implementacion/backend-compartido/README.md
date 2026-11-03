@@ -12,18 +12,19 @@ El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Fl
 
 ## Imagen y almacenamiento
 
-Java 21, curl, FFmpeg/FFprobe; UID/GID 10001, raíz de solo lectura, límite inicial de 1 GiB/una CPU. El script de arranque crea las carpetas faltantes sin elevar privilegios. El volumen `backend_data` se monta en `/var/lib/semillero`:
+Java 21, curl, FFmpeg/FFprobe y Python con uploader y dependencias fijadas; UID/GID 10001, raíz de solo lectura, límite inicial de 1 GiB/una CPU. El script de arranque crea las carpetas faltantes sin elevar privilegios. El volumen `backend_data` se monta en `/var/lib/semillero`:
 
 | Ruta interna | Uso |
 | --- | --- |
 | `videos` | Originales MP4 |
 | `analysis` | Mapas de calor PNG |
+| `youtube` | Cliente OAuth, tokens renovables y metadatos del canal, privados |
 | `tmp/multipart` | Temporales de recepción |
 | `tmp/runtime` | Temporales de Java y procesos auxiliares |
 
 Los videos no se escriben en el pequeño tmpfs `/tmp`. Reservar disco para originales y temporales concurrentes. Recrear el contenedor conserva el volumen; no usar `down -v` para actualizar ni cambiar permisos recursivamente sobre datos existentes.
 
-La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark y su worker están deshabilitados por defecto y pueden activarse mediante las variables de la plantilla después de aplicar V015 y configurar el token; ver [integración Spark](../../docs/INTEGRACION_SPARK_BACKEND.md). YouTube permanece deshabilitado; no se incluye Python/uploader/OAuth. Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
+La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark y su worker están deshabilitados por defecto y pueden activarse mediante las variables de la plantilla después de aplicar V015 y configurar el token; ver [integración Spark](../../docs/INTEGRACION_SPARK_BACKEND.md). YouTube también puede habilitarse por configuración; el runtime incluye Python y el uploader, mientras OAuth se instala por separado en el volumen privado. Ver [preparación y validación de la entrega](../../docs/ENTREGA_SPARK_YOUTUBE_VPS.md). Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
 
 ## Construcción y publicación
 

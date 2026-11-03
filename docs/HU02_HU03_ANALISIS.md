@@ -1,6 +1,6 @@
 # HU02 y HU03 — Integración HTTP con la Spark
 
-Contrato vigente: [INFORME_INTEGRACION_SPARK.md](INFORME_INTEGRACION_SPARK.md), actualizado el 2026-11-02. El servicio está publicado; las pruebas automatizadas usan un servidor HTTP controlado. Ver [adaptación del backend y validación real pendiente](INTEGRACION_SPARK_BACKEND.md). Sustituye la limpieza manual descrita en el contrato anterior.
+Contrato vigente: [INFORME_INTEGRACION_SPARK.md](INFORME_INTEGRACION_SPARK.md), actualizado el 2026-11-02. El servicio está publicado; la suite habitual usa un servidor HTTP controlado y la prueba optativa `SparkLiveIT` permite ejecutar el flujo real. Ver [adaptación del backend y validación real](INTEGRACION_SPARK_BACKEND.md). Sustituye la limpieza manual descrita en el contrato anterior.
 
 ## Flujo entre Spring y la Spark
 
@@ -97,6 +97,6 @@ Para un `.env` existente, reemplazar `/internal/v1/evaluaciones` por `/analyses`
 
 Las pruebas cubren multipart real, `202`, cola/progreso, GPU ocupada, identidad existente, recuperación sin reenvío, errores, límites, PNG, conservación de `null`, JWT en las nuevas descargas y limpieza automática tras ambas entregas. Las pruebas opcionales de PostgreSQL verifican migraciones y recuperación entre reinicios sobre bases locales desechables; consultar [BASE_DATOS_DOCKER.md](BASE_DATOS_DOCKER.md).
 
-La conectividad pública a `/health` se comprobó el 2026-11-02 (`status=ok`, `gpuBusy=false`); el procesamiento autenticado real requiere configurar el token y aportar un video de fútbol autorizado. Tampoco se implementa aquí la asociación definitiva de segmentos a jugadores ni la publicación de HU12–HU16.
+La conectividad y el procesamiento autenticado se comprobaron el 2026-11-02 con una animación y con `IMG_0107_1min_4k_sdr.mp4` completo (60 s, 4K, 401 MB). El segundo produjo JSON, 6 segmentos y un PNG de 1280 × 800; Spring conservó el resultado después del borrado automático en Spark. Ver [evidencia con fútbol](INTEGRACION_SPARK_BACKEND.md#prueba-completa-con-fútbol-img_0107). Esto valida la integración, no la exactitud del modelo; sigue pendiente la asociación definitiva de segmentos a jugadores y la publicación de HU12–HU16.
 
 Verificación de la adaptación al contrato de limpieza automática del 2026-11-02: `clean verify` completó **519 pruebas, sin fallos, errores ni omisiones**, con las tres suites opcionales habilitadas sobre PostgreSQL 17 desechable. Incluye 18 casos de migraciones, recuperación entre el commit del JSON y la entrega del mapa, un fallo de COMMIT provocado y persistencia de métricas. `database/init.sql` se ejecutó correctamente sobre otra base vacía con 000–013 y 015. Las pruebas funcionales usan una Spark simulada; `/health` real se comprobó por separado, y no acredita procesamiento autenticado.

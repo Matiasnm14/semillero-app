@@ -6,6 +6,10 @@ Objetivo de la primera prueba: subir `cronoshift.mp4` al canal `@Semillero-Video
 
 **Prueba completada el 2026-10-21:** se verificó el canal autorizado, se subieron los 60.013.506 bytes y YouTube confirmó título, visibilidad `unlisted` y procesamiento terminado (`AVAILABLE`). El ID y enlace del video están en el recibo local `.local/youtube/cronoshift-upload-state.json`. La autorización también quedó guardada localmente para las siguientes pruebas.
 
+**Nueva prueba completada el 2026-11-02:** se subió un fragmento de fútbol de 8 segundos de `IMG_0107`, reducido a 1920 × 1080 y 3.947.758 bytes. Tras renovar OAuth con intervención del propietario, se verificó el canal `@Semillero-Video-Analysis`, título `2026-11-02`, categoría deportiva `17`, privacidad `unlisted`, `uploadStatus=processed` y `processingStatus=succeeded`; estado final `AVAILABLE`. No se notificó a suscriptores. El recibo privado con ID y enlace está en `.local/youtube/futbol-8s-20261102-upload-state.json`; no compartir su `sessionUri`.
+
+El mismo archivo se probó por separado a través de Spring contra la Spark real: 40 fotogramas, 5,93 s de procesamiento reportados, JSON y PNG recibidos y guardados, limpieza automática confirmada. Ambos recibos corresponden al SHA-256 `1e526e8a9826e0f9bf2dbc21e3a9782afde017c98ef2c4bbbe3fe9a53a394265`. Resumen privado sin credenciales: `.local/analysis/prueba-youtube-spark-20261102/resumen.json`. Esta prueba valida el uploader real y la integración Spark; no ejecuta el worker de YouTube de Spring ni despliega al VPS.
+
 ## 1. Crear el canal
 
 1. Iniciar sesión en YouTube con la nueva cuenta del proyecto.
@@ -94,3 +98,10 @@ Si Google muestra `403: access_denied` indicando que la aplicación está en pru
 5. Si ya terminó la espera de cinco minutos, ejecutar otra vez `authorize` y usar el enlace nuevo.
 
 Se puede mantener el estado **Prueba** para esta prueba controlada. [Gestión de audiencia](https://support.google.com/cloud/answer/15549945?hl=es). Si falla la renovación del token, repetir `authorize --reauthorize`.
+
+
+## Verificación del worker automático
+
+El 2026-11-02 se aprobó una nueva carga del clip de fútbol de 8 segundos con `SparkLiveIT --with-youtube`: Spring esperó los resultados de Spark, habilitó la publicación y su worker invocó el uploader real hasta dejar el video en `DISPONIBLE`. Se comprobaron fecha del partido, canal y privacidad `unlisted` sin ejecutar manualmente `processNext` ni el script de subida. El recibo completo se conserva junto al original en `.local/analysis/flujo-automatico-20261102/videos/`, fuera de Git.
+
+Después se probó la misma publicación desde la imagen Docker con raíz de solo lectura y OAuth en el volumen: el worker recuperó el ID existente sin duplicar la subida y mantuvo el estado tras reiniciar. El uploader escribe `channel.json` al lado de los tokens configurados, no dentro de `/app`. Ver [preparación del runtime](ENTREGA_SPARK_YOUTUBE_VPS.md).
