@@ -3,6 +3,7 @@ package edu.upb.semillero;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import edu.upb.semillero.config.AnalysisProperties;
+import edu.upb.semillero.repository.enums.EstadoHeatmap;
 import edu.upb.semillero.service.analysis.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -32,19 +33,22 @@ class HttpAnalysisGatewayTest {
     private ExecutorService executor;
     private Path original;
     private final AtomicInteger uploads = new AtomicInteger(), polls = new AtomicInteger(), deletes = new AtomicInteger();
+    private final AtomicInteger resultGets = new AtomicInteger(), heatmapGets = new AtomicInteger();
     private final List<String> authorizations = new CopyOnWriteArrayList<>();
     private final AtomicReference<String> multipart = new AtomicReference<>();
     private final List<AnalysisGateway.Progress> progress = new CopyOnWriteArrayList<>();
     private final CountDownLatch received = new CountDownLatch(1);
     private volatile String state = "COMPLETED";
-    private volatile String id = "101";
+    private volatile String id = "a8a0535c-30ed-4ac7-a862-0a486c234d10";
     private volatile int postStatus = 202, heatmapStatus = 200;
     private volatile String postBody;
     private volatile String statusBody;
-    private volatile String results = "{\"analysisId\":\"101\",\"status\":\"COMPLETED\",\"summary\":{},\"players\":[{\"jerseyNumber\":7,\"jerseyStatus\":\"consensus_unverified\",\"movement\":{\"distanceMeters\":null}}]}";
+    private volatile String results = "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"status\":\"COMPLETED\",\"summary\":{},\"players\":[{\"jerseyNumber\":7,\"jerseyStatus\":\"consensus_unverified\",\"movement\":{\"distanceMeters\":null}}]}";
     private volatile byte[] png;
     private volatile CountDownLatch holdBody;
     private volatile boolean busyOnce;
+    private volatile int heatmapDelayMillis;
+    private volatile boolean statusMissingOnce;
 
     @BeforeEach
     void setup() throws Exception {
@@ -86,14 +90,18 @@ class HttpAnalysisGatewayTest {
                 deletes.incrementAndGet();
                 exchange.sendResponseHeaders(204, -1);
             } else if (path.endsWith("/results")) {
+                resultGets.incrementAndGet();
                 respond(exchange, 200, results);
             } else if (path.endsWith("/heatmap")) {
+                heatmapGets.incrementAndGet();
+                if (heatmapDelayMillis > 0) Thread.sleep(heatmapDelayMillis);
                 if (heatmapStatus == 422) { respond(exchange, 422, error("HEATMAP_UNAVAILABLE")); return; }
                 exchange.getResponseHeaders().set("Content-Type", "image/png");
                 exchange.sendResponseHeaders(heatmapStatus, png.length);
                 exchange.getResponseBody().write(png);
             } else {
-                polls.incrementAndGet();
+                int attempt = polls.incrementAndGet();
+                if (statusMissingOnce && attempt == 1) { respond(exchange, 404, error("ANALYSIS_NOT_FOUND")); return; }
                 respond(exchange, 200, statusBody != null ? statusBody : "{\"analysisId\":\"" + id + "\",\"status\":\"" + state
                         + "\",\"progress\":{\"processedSeconds\":420.0,\"totalSeconds\":1851.0,\"percentage\":22.69},\"error\":null}");
             }
@@ -108,7 +116,7 @@ class HttpAnalysisGatewayTest {
         exchange.getResponseBody().write(bytes);
     }
 
-    private String error(String code) { return "{\"analysisId\":\"101\",\"error\":{\"code\":\"" + code + "\",\"message\":\"secret remote details\"}}"; }
+    private String error(String code) { return "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"error\":{\"code\":\"" + code + "\",\"message\":\"secret remote details\"}}"; }
 
     @AfterEach
     void cleanup() {
@@ -122,14 +130,14 @@ class HttpAnalysisGatewayTest {
     void uploadsContractMultipartThenReceivesJsonAndPngWithoutDeletingRemoteFiles() throws Exception {
         assertThat(evaluate().get(5, TimeUnit.SECONDS)).isEqualTo(results);
         assertThat(multipart.get()).contains("name=\"video\"; filename=\"video.mp4\"", "video-test-bytes",
-                "name=\"analysisId\"\r\n\r\n101", "name=\"readJerseys\"\r\n\r\ntrue")
+                "name=\"analysisId\"\r\n\r\na8a0535c-30ed-4ac7-a862-0a486c234d10", "name=\"readJerseys\"\r\n\r\ntrue")
                 .doesNotContain("partidoId", "storageId", "torneo", root.toString(), "name=\"file\"");
         assertThat(authorizations).hasSize(4).containsOnly("Bearer test-internal-token");
-        assertThat(Files.readAllBytes(artifacts.heatmap("101"))).isEqualTo(png);
+        assertThat(Files.readAllBytes(artifacts.heatmap("a8a0535c-30ed-4ac7-a862-0a486c234d10"))).isEqualTo(png);
         assertThat(deletes.get()).isZero();
-        gateway.cleanup("101").get(5, TimeUnit.SECONDS);
+        gateway.cleanup("a8a0535c-30ed-4ac7-a862-0a486c234d10").get(5, TimeUnit.SECONDS);
         assertThat(deletes.get()).isEqualTo(1);
-        assertThat(artifacts.exists("101")).isTrue();
+        assertThat(artifacts.exists("a8a0535c-30ed-4ac7-a862-0a486c234d10")).isTrue();
     }
 
     @Test
@@ -149,11 +157,11 @@ class HttpAnalysisGatewayTest {
 
     @Test
     void usesCompletedProgressOnlyWhenSparkActuallyReportsIt() throws Exception {
-        statusBody = "{\"analysisId\":\"101\",\"status\":\"COMPLETED\",\"progress\":{\"processedSeconds\":1851.0,\"totalSeconds\":1851.0,\"percentage\":100}}";
+        statusBody = "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"status\":\"COMPLETED\",\"progress\":{\"processedSeconds\":1851.0,\"totalSeconds\":1851.0,\"percentage\":100}}";
         evaluate().get(5, TimeUnit.SECONDS);
         assertThat(progress).containsExactly(new AnalysisGateway.Progress(1851.0, 1851.0, 100.0));
         progress.clear();
-        statusBody = "{\"analysisId\":\"101\",\"status\":\"COMPLETED\",\"progress\":null}";
+        statusBody = "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"status\":\"COMPLETED\",\"progress\":null}";
         evaluate().get(5, TimeUnit.SECONDS);
         assertThat(progress).isEmpty();
     }
@@ -175,7 +183,7 @@ class HttpAnalysisGatewayTest {
     @Test
     void resumeSkipsUploadAndDoesNotNeedTheOriginal() throws Exception {
         Files.delete(original);
-        assertThat(gateway.evaluate(new AnalysisGateway.Submission("101", original, true, progress::add))
+        assertThat(gateway.evaluate(new AnalysisGateway.Submission("a8a0535c-30ed-4ac7-a862-0a486c234d10", original, true, progress::add))
                 .get(5, TimeUnit.SECONDS)).isEqualTo(results);
         assertThat(uploads.get()).isZero();
     }
@@ -184,7 +192,7 @@ class HttpAnalysisGatewayTest {
     void unavailableCalibrationStillPreservesMetricsAndNullMeasurements() throws Exception {
         heatmapStatus = 422;
         assertThat(evaluate().get(5, TimeUnit.SECONDS)).contains("\"distanceMeters\":null", "consensus_unverified");
-        assertThat(artifacts.exists("101")).isFalse();
+        assertThat(artifacts.exists("a8a0535c-30ed-4ac7-a862-0a486c234d10")).isFalse();
         assertThat(deletes.get()).isZero();
     }
 
@@ -214,15 +222,15 @@ class HttpAnalysisGatewayTest {
 
     @Test
     void rejectsResultsFromAnotherAnalysisAndNumericHeatmaps() {
-        results = results.replace("\"101\"", "\"other\""); assertReason(INVALID_RESPONSE);
-        results = "{\"analysisId\":\"101\",\"status\":\"COMPLETED\",\"summary\":{},\"players\":[],\"heatmap\":{}}";
+        results = results.replace("\"a8a0535c-30ed-4ac7-a862-0a486c234d10\"", "\"other\""); assertReason(INVALID_RESPONSE);
+        results = "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"status\":\"COMPLETED\",\"summary\":{},\"players\":[],\"heatmap\":{}}";
         assertReason(INVALID_RESPONSE);
     }
 
     @Test
     void rejectsInvalidProgressAndOversizedResults() {
         state = "PROCESSING";
-        statusBody = "{\"analysisId\":\"101\",\"status\":\"PROCESSING\",\"progress\":{\"percentage\":101}}";
+        statusBody = "{\"analysisId\":\"a8a0535c-30ed-4ac7-a862-0a486c234d10\",\"status\":\"PROCESSING\",\"progress\":{\"percentage\":a8a0535c-30ed-4ac7-a862-0a486c234d10}}";
         assertReason(INVALID_RESPONSE);
         statusBody = null; state = "COMPLETED";
         results = "x".repeat(properties.getMaxResponseBytes() + 1);
@@ -237,12 +245,14 @@ class HttpAnalysisGatewayTest {
     }
 
     @Test
-    void timeoutBoundsAnIncompleteAcknowledgementBody() throws Exception {
+    void aLostUploadAcknowledgementRecoversByGetAndDoesNotTreatAnEarly404AsPermissionToResubmit() throws Exception {
         holdBody = new CountDownLatch(1);
+        statusMissingOnce = true;
         properties.setConnectTimeout(Duration.ofMillis(100));
         properties.setRequestTimeout(Duration.ofMillis(200));
-        assertReason(TIMEOUT);
+        assertThat(evaluate().get(5, TimeUnit.SECONDS)).isEqualTo(results);
         assertThat(uploads.get()).isEqualTo(1);
+        assertThat(polls.get()).isGreaterThanOrEqualTo(2);
     }
 
     @Test
@@ -262,8 +272,88 @@ class HttpAnalysisGatewayTest {
         assertThat(uploads.get()).isZero();
     }
 
+    @Test
+    void waitsForDurableJsonBeforeHeatmapAndRetriesOnlyTheCheckpoint() throws Exception {
+        var attempts = new AtomicInteger();
+        var outcome = new AtomicReference<EstadoHeatmap>();
+        var submission = new AnalysisGateway.Submission(id, original, false, progress::add,
+                null, EstadoHeatmap.PENDIENTE, payload -> {
+                    assertThat(heatmapGets.get()).isZero();
+                    assertThat(payload).isEqualTo(results);
+                    if (attempts.incrementAndGet() == 1) throw new AnalysisGatewayException(CHECKPOINT);
+                }, outcome::set);
+        assertThat(gateway.evaluate(submission).get(5, TimeUnit.SECONDS)).isEqualTo(results);
+        assertThat(attempts.get()).isEqualTo(2);
+        assertThat(resultGets.get()).isEqualTo(1);
+        assertThat(heatmapGets.get()).isEqualTo(1);
+        assertThat(outcome.get()).isEqualTo(EstadoHeatmap.DISPONIBLE);
+        assertThat(deletes.get()).isZero();
+    }
+
+    @Test
+    void aLostClaimNeverTriggersTheSecondRemoteDelivery() throws Exception {
+        var submission = new AnalysisGateway.Submission(id, original, false, progress::add,
+                null, EstadoHeatmap.PENDIENTE, payload -> { throw new AnalysisGatewayException(INTERRUPTED); }, value -> {});
+        assertThatThrownBy(() -> gateway.evaluate(submission).get(5, TimeUnit.SECONDS))
+                .hasCauseInstanceOf(AnalysisGatewayException.class);
+        assertThat(heatmapGets.get()).isZero();
+        assertThat(deletes.get()).isZero();
+    }
+
+    @Test
+    void resumesTheMapFromSavedJsonWithoutStatusOrResultsRequests() throws Exception {
+        var outcome = new AtomicReference<EstadoHeatmap>();
+        var submission = new AnalysisGateway.Submission(id, original, true, progress::add,
+                results, EstadoHeatmap.PENDIENTE, payload -> fail("No repetir JSON"), outcome::set);
+        assertThat(gateway.evaluate(submission).get(5, TimeUnit.SECONDS)).isEqualTo(results);
+        assertThat(uploads.get()).isZero();
+        assertThat(polls.get()).isZero();
+        assertThat(resultGets.get()).isZero();
+        assertThat(heatmapGets.get()).isEqualTo(1);
+        assertThat(outcome.get()).isEqualTo(EstadoHeatmap.DISPONIBLE);
+    }
+
+    @Test
+    void resumesSavedPngAndUnavailableMapWithoutCallingADeletedRemoteJob() throws Exception {
+        artifacts.store(id, png);
+        var outcome = new AtomicReference<EstadoHeatmap>();
+        var saved = new AnalysisGateway.Submission(id, original, true, progress::add,
+                results, EstadoHeatmap.PENDIENTE, value -> {}, outcome::set);
+        assertThat(gateway.evaluate(saved).get(5, TimeUnit.SECONDS)).isEqualTo(results);
+        assertThat(outcome.get()).isEqualTo(EstadoHeatmap.DISPONIBLE);
+        artifacts.discard(id);
+        saved = new AnalysisGateway.Submission(id, original, true, progress::add,
+                results, EstadoHeatmap.NO_DISPONIBLE, value -> {}, value -> fail("Ya confirmado"));
+        assertThat(gateway.evaluate(saved).get(5, TimeUnit.SECONDS)).isEqualTo(results);
+        assertThat(authorizations).isEmpty();
+    }
+
+    @Test
+    void unavailableMapHasADurableOutcomeAndAnUncertainDownloadIsNotRepeated() throws Exception {
+        heatmapStatus = 422;
+        var outcome = new AtomicReference<EstadoHeatmap>();
+        var submission = new AnalysisGateway.Submission(id, original, false, progress::add,
+                null, EstadoHeatmap.PENDIENTE, value -> {}, outcome::set);
+        gateway.evaluate(submission).get(5, TimeUnit.SECONDS);
+        assertThat(outcome.get()).isEqualTo(EstadoHeatmap.NO_DISPONIBLE);
+        heatmapStatus = 200;
+        heatmapDelayMillis = 500;
+        properties.setRequestTimeout(Duration.ofMillis(100));
+        assertReason(TIMEOUT);
+        assertThat(heatmapGets.get()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsNonCanonicalUuidBeforeUploading() {
+        for (String invalid : List.of("101", "1-1-1-1-1", id.toUpperCase(), "../job")) {
+            assertThatThrownBy(() -> gateway.evaluate(new AnalysisGateway.Submission(invalid, original)).get(5, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(AnalysisGatewayException.class);
+        }
+        assertThat(authorizations).isEmpty();
+    }
+
     private CompletableFuture<String> evaluate() {
-        return gateway.evaluate(new AnalysisGateway.Submission("101", original, false, progress::add));
+        return gateway.evaluate(new AnalysisGateway.Submission("a8a0535c-30ed-4ac7-a862-0a486c234d10", original, false, progress::add));
     }
 
     private void assertReason(AnalysisGatewayException.Reason reason) {

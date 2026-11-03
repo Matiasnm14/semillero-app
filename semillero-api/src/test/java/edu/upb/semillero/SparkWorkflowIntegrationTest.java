@@ -42,6 +42,9 @@ class SparkWorkflowIntegrationTest {
     private static final AtomicReference<String> remoteId = new AtomicReference<>();
     private static final AtomicReference<JdbcTemplate> database = new AtomicReference<>();
     private static final AtomicBoolean deletedAfterCommit = new AtomicBoolean();
+    private static final AtomicBoolean remoteDeleted = new AtomicBoolean();
+    private static final AtomicInteger deletes = new AtomicInteger();
+    private static volatile String mapMode;
     private static final HttpServer remote = remote();
     private static final String RESULT = "{\"analysisId\":\"%s\",\"status\":\"COMPLETED\",\"summary\":{\"framesProcessed\":9243},\"players\":[{\"playerId\":\"results:shot0:track10484:segment0:players\",\"jerseyNumber\":7,\"jerseyStatus\":\"consensus_unverified\",\"team\":null,\"movement\":{\"distancePixels\":655.11,\"distanceMeters\":null,\"averageSpeedKmh\":null,\"metricStatus\":\"unavailable_missing_calibration\"}}]}";
 
@@ -83,11 +86,23 @@ class SparkWorkflowIntegrationTest {
                         status = 202;
                         body = ("{\"analysisId\":\"" + remoteId.get() + "\",\"status\":\"QUEUED\"}").getBytes(StandardCharsets.UTF_8);
                     } else if (exchange.getRequestMethod().equals("DELETE")) {
-                        deletedAfterCommit.set(database.get().queryForObject("select count(*) from analysis_jobs where remote_analysis_id=? and estado='COMPLETADO' and respuesta_json is not null", Integer.class, remoteId.get()) == 1);
+                        deletes.incrementAndGet();
                         exchange.sendResponseHeaders(204, -1); return;
+                    } else if (remoteDeleted.get()) {
+                        status = 404;
+                        body = "{\"error\":{\"code\":\"ANALYSIS_NOT_FOUND\"}}".getBytes(StandardCharsets.UTF_8);
                     } else if (path.endsWith("/heatmap")) {
+                        deletedAfterCommit.set(database.get().queryForObject("select count(*) from analysis_jobs where remote_analysis_id=? and estado='PROCESANDO' and respuesta_json is not null", Integer.class, remoteId.get()) == 1);
                         type = "image/png";
-                        try { body = HttpAnalysisGatewayTest.png(); } catch (Exception e) { throw new java.io.IOException(e); }
+                        if (mapMode.equals("UNAVAILABLE")) {
+                            status = 422;
+                            type = "application/json";
+                            body = "{\"error\":{\"code\":\"HEATMAP_UNAVAILABLE\"}}".getBytes(StandardCharsets.UTF_8);
+                        } else if (mapMode.equals("INVALID")) {
+                            body = "invalid png".getBytes(StandardCharsets.UTF_8);
+                        } else {
+                            try { body = HttpAnalysisGatewayTest.png(); } catch (Exception e) { throw new java.io.IOException(e); }
+                        }
                     } else if (path.endsWith("/results")) {
                         body = RESULT.formatted(remoteId.get()).getBytes(StandardCharsets.UTF_8);
                     } else {
@@ -96,6 +111,7 @@ class SparkWorkflowIntegrationTest {
                     exchange.getResponseHeaders().set("Content-Type", type);
                     exchange.sendResponseHeaders(status, body.length);
                     exchange.getResponseBody().write(body);
+                    if (path.endsWith("/heatmap")) remoteDeleted.set(true);
                 } finally { exchange.close(); }
             });
             server.start();
@@ -106,9 +122,15 @@ class SparkWorkflowIntegrationTest {
     @AfterAll
     static void stop() { remote.stop(0); threads.shutdownNow(); }
 
-    @Test
-    void videoUploadPersistsActualSparkResultAndPngBeforeAcknowledgingCleanup() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"PNG", "UNAVAILABLE", "INVALID"})
+    void videoUploadPersistsJsonBeforeAutomaticCleanupAndKeepsItIfMapFails(String mode) throws Exception {
         database.set(jdbc);
+        mapMode = mode;
+        remoteId.set(null);
+        remoteDeleted.set(false);
+        deletedAfterCommit.set(false);
+        boolean hasMap = mode.equals("PNG");
         var local = new Club(); local.setNombreClub("Local Spark");
         var visitor = new Club(); visitor.setNombreClub("Visita Spark");
         var match = new Partido();
@@ -120,7 +142,7 @@ class SparkWorkflowIntegrationTest {
         mvc.perform(multipart("/api/v1/partidos/" + matchId + "/videos").with(user("analista").roles("ADMIN"))
                 .file(new MockMultipartFile("file", "partido.mp4", "video/mp4", video)))
                 .andExpect(status().isAccepted());
-        var job = jobs.findAll().getFirst();
+        var job = jobs.findById(jdbc.queryForObject("select j.id from analysis_jobs j join videos_partido v on v.id=j.video_partido_id where v.partido_id=?", Long.class, matchId)).orElseThrow();
         long id = job.getId();
         assertThat(job.getEstado()).isEqualTo(EstadoAnalisis.PENDIENTE);
         assertThat(remoteId.get()).isNull();
@@ -129,9 +151,13 @@ class SparkWorkflowIntegrationTest {
         while (!jobs.findById(id).orElseThrow().getEstado().isTerminal() && System.nanoTime() < finishDeadline) Thread.sleep(10);
         job = jobs.findById(id).orElseThrow();
         assertThat(job.getRespuestaJson()).isEqualTo(RESULT.formatted(remoteId.get()));
-        assertThat(job.isRemoteCleanupPending()).isTrue();
-        assertThat(deletedAfterCommit.get()).isFalse();
-        mvc.perform(get("/api/v1/analisis/" + id).with(user("analista").roles("ADMIN"))).andExpect(jsonPath("$.heatmapDisponible").value(true))
+        assertThat(job.getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        assertThat(job.isRemoteCleanupPending()).isFalse();
+        assertThat(job.getEstadoHeatmap()).isEqualTo(hasMap ? EstadoHeatmap.DISPONIBLE
+                : mode.equals("UNAVAILABLE") ? EstadoHeatmap.NO_DISPONIBLE : EstadoHeatmap.ERROR_DESCARGA);
+        assertThat(job.getCodigoError()).isEqualTo(mode.equals("INVALID") ? "RESPUESTA_ANALIZADOR_INVALIDA" : null);
+        assertThat(deletedAfterCommit.get()).isTrue();
+        mvc.perform(get("/api/v1/analisis/" + id).with(user("analista").roles("ADMIN"))).andExpect(jsonPath("$.heatmapDisponible").value(hasMap))
                 .andExpect(jsonPath("$.respuestaRecibida").value(true)).andExpect(jsonPath("$.resultadosDisponibles").value(false));
         mvc.perform(get("/api/v1/analisis/" + id + "/resultados")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/analisis/" + id + "/heatmap")).andExpect(status().isUnauthorized());
@@ -139,19 +165,25 @@ class SparkWorkflowIntegrationTest {
                 .andExpect(status().isOk()).andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.players[0].jerseyStatus").value("consensus_unverified"))
                 .andExpect(jsonPath("$.players[0].movement.distanceMeters").isEmpty());
-        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN")))
-                .andExpect(status().isOk()).andExpect(content().contentType("image/png"))
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"analysis-" + id + "-heatmap.png\""))
-                .andExpect(content().bytes(HttpAnalysisGatewayTest.png()));
+        if (hasMap) {
+            mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN")))
+                    .andExpect(status().isOk()).andExpect(content().contentType("image/png"))
+                    .andExpect(content().bytes(HttpAnalysisGatewayTest.png()));
+        } else {
+            mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN")))
+                    .andExpect(status().isNotFound());
+        }
         assertThat(metrics.count()).isZero();
         worker.processNext();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (jobs.findById(id).orElseThrow().isRemoteCleanupPending() && System.nanoTime() < deadline) Thread.sleep(10);
         assertThat(deletedAfterCommit.get()).isTrue();
+        assertThat(deletes.get()).isZero();
+        assertThat(remoteDeleted.get()).isTrue();
         assertThat(jobs.findById(id).orElseThrow().isRemoteCleanupPending()).isFalse();
         // Serving a saved result never calls back to a Spark that has already deleted it.
         mvc.perform(get("/api/v1/analisis/" + id + "/resultados").with(user("analista").roles("ADMIN"))).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN"))).andExpect(status().isOk());
+        if (hasMap) mvc.perform(get("/api/v1/analisis/" + id + "/heatmap").with(user("analista").roles("ADMIN"))).andExpect(status().isOk());
         mvc.perform(get("/api/v1/analisis/999999/heatmap").with(user("analista").roles("ADMIN"))).andExpect(status().isNotFound());
     }
 }

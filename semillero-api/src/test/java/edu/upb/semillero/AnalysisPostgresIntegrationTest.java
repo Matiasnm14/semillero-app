@@ -38,6 +38,9 @@ class AnalysisPostgresIntegrationTest {
     @Test
     void storesSparkResultsAndRecoversRemoteJobsWithoutUploadingAgain() throws Exception {
         AtomicInteger submissions = new AtomicInteger();
+        AtomicInteger resultDownloads = new AtomicInteger();
+        AtomicReference<JdbcTemplate> database = new AtomicReference<>();
+        AtomicBoolean jsonCommittedBeforeMap = new AtomicBoolean();
         java.util.concurrent.atomic.AtomicReference<String> reply = new java.util.concurrent.atomic.AtomicReference<>();
         AtomicBoolean hold = new AtomicBoolean();
         CountDownLatch entered = new CountDownLatch(1);
@@ -68,9 +71,13 @@ class AnalysisPostgresIntegrationTest {
                     exchange.sendResponseHeaders(204, -1);
                     return;
                 } else if (path.endsWith("/heatmap")) {
+                    jsonCommittedBeforeMap.set(database.get().queryForObject(
+                            "select count(*) from analysis_jobs where remote_analysis_id=? and respuesta_json is not null",
+                            Integer.class, remoteId) == 1);
                     status = 422;
                     response = "{\"error\":{\"code\":\"HEATMAP_UNAVAILABLE\"}}";
                 } else if (path.endsWith("/results")) {
+                    resultDownloads.incrementAndGet();
                     response = reply.get().formatted(remoteId);
                 } else {
                     assertThat(accepted).contains(remoteId);
@@ -85,7 +92,7 @@ class AnalysisPostgresIntegrationTest {
             finally { exchange.close(); }
         });
         remote.start();
-        long completedId, pendingId, crashedId;
+        long completedId, pendingId, crashedId, checkpointRecoveryId;
         try {
             prepareLegacySchema();
             long match;
@@ -103,12 +110,32 @@ class AnalysisPostgresIntegrationTest {
             }
             // The accepted upload survives a full application restart before its first dispatch.
             try (var context = start(remote.getAddress().getPort())) {
+                database.set(context.getBean(JdbcTemplate.class));
                 var service = context.getBean(AnalysisJobService.class);
                 assertThat(service.findById(completedId).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
                 var jdbc = context.getBean(JdbcTemplate.class);
+                // Fail a real COMMIT once, after saveAndFlush. A sequence survives rollback.
+                jdbc.execute("create sequence checkpoint_attempts");
+                jdbc.execute("""
+                        create function reject_first_checkpoint() returns trigger language plpgsql as $$
+                        begin
+                            if old.respuesta_json is null and new.respuesta_json is not null
+                               and nextval('checkpoint_attempts') = 1 then
+                                raise exception 'simulated checkpoint commit failure' using errcode='23514';
+                            end if;
+                            return new;
+                        end $$
+                        """);
+                jdbc.execute("""
+                        create constraint trigger reject_first_checkpoint after update on analysis_jobs
+                        deferrable initially deferred for each row execute function reject_first_checkpoint()
+                        """);
                 assertThat(context.getBean(AnalysisWorker.class).processNext()).isTrue();
                 await(() -> service.findById(completedId).estado().isTerminal());
                 assertThat(submissions.get()).isEqualTo(1);
+                assertThat(jdbc.queryForObject("select last_value from checkpoint_attempts", Long.class)).isEqualTo(2L);
+                assertThat(resultDownloads.get()).isEqualTo(1);
+                assertThat(jsonCommittedBeforeMap.get()).isTrue();
                 var response = service.findById(completedId);
                 assertThat(response.estado()).isEqualTo(EstadoAnalisis.COMPLETADO);
                 assertThat(response.respuestaRecibida()).isTrue();
@@ -127,6 +154,7 @@ class AnalysisPostgresIntegrationTest {
             }
             hold.set(true);
             try (var context = start(remote.getAddress().getPort())) {
+                database.set(context.getBean(JdbcTemplate.class));
                 var service = context.getBean(AnalysisJobService.class);
                 assertThat(service.findById(completedId).respuestaRecibida()).isTrue();
                 assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.PENDIENTE);
@@ -137,6 +165,7 @@ class AnalysisPostgresIntegrationTest {
             }
             release.countDown();
             try (var context = start(remote.getAddress().getPort())) {
+                database.set(context.getBean(JdbcTemplate.class));
                 var service = context.getBean(AnalysisJobService.class);
                 assertThat(service.findById(pendingId).estado()).isEqualTo(EstadoAnalisis.PROCESANDO);
                 hold.set(false);
@@ -199,7 +228,24 @@ class AnalysisPostgresIntegrationTest {
                 assertThat(jdbc.queryForObject("select count(*) from analysis_jobs", Long.class)).isEqualTo(analysesBefore);
                 assertThat(fileCount()).isEqualTo(filesBefore);
                 assertThat(submissions.get()).isEqualTo(3);
-
+                checkpointRecoveryId = service.create(match, legacyVideo(context, match)).id();
+                String checkpointId = java.util.UUID.randomUUID().toString();
+                jdbc.update("""
+                        update analysis_jobs set estado='PROCESANDO', enviado=true, fecha_inicio=current_timestamp,
+                        remote_analysis_id=?, respuesta_json=? where id=?
+                        """, checkpointId, payload.formatted(checkpointId), checkpointRecoveryId);
+            }
+            // Real PostgreSQL restart between the JSON commit and the second delivery.
+            try (var context = start(remote.getAddress().getPort())) {
+                database.set(context.getBean(JdbcTemplate.class));
+                int downloadsBefore = resultDownloads.get();
+                var service = context.getBean(AnalysisJobService.class);
+                assertThat(context.getBean(AnalysisWorker.class).processNext()).isTrue();
+                await(() -> service.findById(checkpointRecoveryId).estado().isTerminal());
+                assertThat(service.findById(checkpointRecoveryId).estado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+                assertThat(service.findById(checkpointRecoveryId).estadoHeatmap()).isEqualTo(EstadoHeatmap.NO_DISPONIBLE);
+                assertThat(resultDownloads.get()).isEqualTo(downloadsBefore);
+                assertThat(submissions.get()).isEqualTo(3);
             }
         } finally {
             release.countDown(); remote.stop(0); remoteThreads.shutdownNow();

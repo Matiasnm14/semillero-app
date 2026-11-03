@@ -101,6 +101,7 @@ public class ReglamentoService {
 
     @Transactional
     public void delete(Long torneoId, Long usuarioId) {
+        Long actor = acceso.exigirActor(usuarioId, "/api/v1/torneos/" + torneoId + "/reglamento");
         Reglamento entity = require(torneoId);
         Long reglamentoId = entity.getId();
         String anterior = snapshot(entity);
@@ -108,7 +109,7 @@ public class ReglamentoService {
         desempates.flush();
         repository.delete(entity);
         repository.flush();
-        registrar("ELIMINAR", reglamentoId, anterior, null, usuarioId);
+        registrar("ELIMINAR", reglamentoId, anterior, null, actor);
     }
 
     public List<ReglamentoDesempateResponseDto> findDesempates(Long torneoId) {
@@ -121,10 +122,12 @@ public class ReglamentoService {
     @Transactional
     public List<ReglamentoDesempateResponseDto> reemplazarDesempates(Long torneoId,
             List<String> codigos, Long usuarioId) {
+        Long actor = acceso.exigirActor(usuarioId,
+                "/api/v1/torneos/" + torneoId + "/reglamento/desempates");
         Reglamento reglamento = require(torneoId);
         String anterior = snapshot(reglamento);
         aplicarDesempates(reglamento, codigos);
-        registrar("MODIFICAR_DESEMPATES", reglamento.getId(), anterior, snapshot(reglamento), usuarioId);
+        registrar("MODIFICAR_DESEMPATES", reglamento.getId(), anterior, snapshot(reglamento), actor);
         return desempates.findByReglamentoIdOrderByOrdenAsc(reglamento.getId()).stream()
                 .map(this::toDesempateResponse)
                 .toList();

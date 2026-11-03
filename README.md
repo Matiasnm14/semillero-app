@@ -66,7 +66,7 @@ Variables:
 | `DB_DDL_AUTO` | La plantilla usa `validate` para comprobar el esquema creado por SQL. |
 | `PORT` | Puerto de la API, `8080`. |
 
-Las migraciones [V000–V012](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 la identidad remota, progreso y limpieza de análisis Spark, y V012 la procedencia de las cargas y la espera de YouTube. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
+Las migraciones [V000–V013 y V015](database/migrations) se incluyen en el JAR y Flyway las ejecuta automáticamente antes de JPA. La transición reconoce bases anteriores creadas por SQL o Hibernate, incluidas las que ya tienen torneos y roles, y completa sus restricciones sin borrar datos. V005 y V006 incorporan y normalizan fotos; V007 agrega torneos, V008 los roles compartidos, V009 los highlights y V010 el perfil de clubes y V011 la identidad remota, progreso y limpieza de análisis Spark, V012 la procedencia de las cargas y la espera de YouTube, V013 los documentos del jugador y V015 los checkpoints de entrega de Spark. V014 no se reutiliza porque perteneció a una propuesta retirada. `flyway_schema_history` registra versiones y checksums para evitar repetirlas. Conservar `DB_DDL_AUTO=validate`, también en `dev`; no hace falta ejecutar SQL manual después de un pull. Docker Compose solo crea PostgreSQL: las tablas de negocio y el historial aparecen al iniciar el backend. `docker compose down` conserva los datos. Ver [adopción y diagnóstico](docs/BASE_DATOS_DOCKER.md).
 
 ## Preparación del VPS
 
@@ -221,7 +221,7 @@ Las pruebas arrancan la aplicación completa con H2 en modo PostgreSQL y ejercit
 
 ## Contrato de análisis Spark
 
-El backend incorpora el [contrato Spark](docs/spark-implementation.md): recepción `202`, consultas de estado, resultados JSON, descarga del mapa de calor PNG y limpieza remota después de guardar el resultado. Ver [flujo, configuración y endpoints de Spring](docs/HU02_HU03_ANALISIS.md). La integración permanece deshabilitada hasta que la Spark publique esos endpoints; los dorsales candidatos no se vinculan automáticamente a jugadores.
+El backend incorpora el [contrato Spark vigente](docs/INFORME_INTEGRACION_SPARK.md): recepción `202`, consultas de estado, JSON guardado antes de solicitar el mapa y limpieza automática remota tras ambas entregas. Los checkpoints permiten retomar descargas y conservar el JSON si falla el PNG. Ver [flujo, configuración y endpoints de Spring](docs/HU02_HU03_ANALISIS.md) y [validación y activación](docs/INTEGRACION_SPARK_BACKEND.md). Se habilita mediante configuración; los dorsales candidatos no se vinculan automáticamente a jugadores.
 
 ## Permisos y cargas persistentes
 

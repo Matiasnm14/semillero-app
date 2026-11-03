@@ -8,7 +8,7 @@ Compose utiliza `network_mode: host`, sin publicación `ports`. Spring escucha e
 
 Las credenciales existentes están en `/home/backend/proyecto/.env.db`. El archivo no se copia a Git, a la imagen ni al paquete compartible. Compose lee ese archivo con `--env-file /home/backend/proyecto/.env.db` y después un `.env` privado del despliegue, con permisos `0600`, que conserva `JWT_SECRET`, versión y CORS sin duplicar las credenciales SQL. No ejecutar el contenido de los archivos de configuración como código shell.
 
-El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. El backend de esta entrega necesita el esquema compatible con V000–V012. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
+El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. El backend de esta entrega necesita el esquema compatible con V000–V013 y V015. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
 
 ## Imagen y almacenamiento
 
@@ -23,7 +23,7 @@ Java 21, curl, FFmpeg/FFprobe; UID/GID 10001, raíz de solo lectura, límite ini
 
 Los videos no se escriben en el pequeño tmpfs `/tmp`. Reservar disco para originales y temporales concurrentes. Recrear el contenedor conserva el volumen; no usar `down -v` para actualizar ni cambiar permisos recursivamente sobre datos existentes.
 
-La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark, workers y YouTube permanecen deshabilitados; no se incluye Python/uploader/OAuth. Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
+La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark y su worker están deshabilitados por defecto y pueden activarse mediante las variables de la plantilla después de aplicar V015 y configurar el token; ver [integración Spark](../../docs/INTEGRACION_SPARK_BACKEND.md). YouTube permanece deshabilitado; no se incluye Python/uploader/OAuth. Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
 
 ## Construcción y publicación
 

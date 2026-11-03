@@ -6,6 +6,7 @@ import edu.upb.semillero.repository.enums.EstadoYoutube;
 import edu.upb.semillero.repository.repos.VideoPartidoRepository;
 import edu.upb.semillero.repository.entity.AnalysisJob;
 import edu.upb.semillero.repository.enums.EstadoAnalisis;
+import edu.upb.semillero.repository.enums.EstadoHeatmap;
 import edu.upb.semillero.repository.repos.AnalysisJobRepository;
 import edu.upb.semillero.service.video.LocalVideoStorage;
 import jakarta.annotation.PreDestroy;
@@ -143,7 +144,29 @@ public class AnalysisWorker {
         job.setProximaEjecucion(now.plus(properties.getPollInterval()));
         jobs.saveAndFlush(job);
         return new Work(id, token, deadline, new AnalysisGateway.Submission(job.getRemoteAnalysisId(),
-                storage.original(video.getStorageId()), resume, progress -> recordProgress(id, token, progress)));
+                storage.original(video.getStorageId()), resume, progress -> recordProgress(id, token, progress),
+                job.getRespuestaJson(), job.getEstadoHeatmap(),
+                payload -> checkpoint(id, token, saved -> saved.setRespuestaJson(validator.validate(payload))),
+                heatmap -> checkpoint(id, token, saved -> saved.setEstadoHeatmap(heatmap))));
+    }
+
+    /** A failure must escape to the gateway: it must not request the second artifact before commit. */
+    private void checkpoint(Long id, String token, java.util.function.Consumer<AnalysisJob> save) {
+        try {
+            transaction.executeWithoutResult(status -> {
+                var job = jobs.findLockedById(id).orElse(null);
+                Instant now = clock.instant();
+                if (job == null || job.getEstado().isTerminal() || !token.equals(job.getClaimToken())
+                        || job.getLeaseUntil() == null || !job.getLeaseUntil().isAfter(now)) {
+                    throw new AnalysisGatewayException(INTERRUPTED);
+                }
+                save.accept(job);
+                job.setFechaActualizacion(now);
+                jobs.saveAndFlush(job);
+            });
+        } catch (org.springframework.dao.DataAccessException | org.springframework.transaction.TransactionException e) {
+            throw new AnalysisGatewayException(CHECKPOINT);
+        }
     }
 
     private void recordProgress(Long id, String token, AnalysisGateway.Progress progress) {
@@ -162,7 +185,7 @@ public class AnalysisWorker {
         }
     }
 
-    /** Remote deletion only sees committed rows. Failure keeps the flag for a later cycle/restart. */
+    /** Legacy flags only; new jobs use Spark's automatic cleanup and never schedule DELETE. */
     private void cleanupCompleted() {
         if (!properties.isEnabled()) return;
         for (var job : jobs.findByRemoteCleanupPendingTrueOrderById(PageRequest.of(0, 20))) {
@@ -225,25 +248,10 @@ public class AnalysisWorker {
                     return;
                 }
                 job.setRespuestaJson(payload);
-                job.setRemoteCleanupPending(job.getRemoteAnalysisId() != null);
-                job.setEstado(EstadoAnalisis.COMPLETADO);
-                job.setFechaFin(now.truncatedTo(ChronoUnit.MICROS));
-                job.setFechaActualizacion(now);
-                // The JSON has arrived; player mapping and publication of final metrics belong to HU12.
-                job.setResultadosDisponibles(false);
-                job.setResultadoRef(null);
                 job.setCodigoError(null);
                 job.setMensajeError(null);
                 job.setFallosConsecutivos(0);
-                job.setProximaEjecucion(null);
-                release(job);
-                jobs.saveAndFlush(job);
-                var video = videos.findLockedById(job.getVideo().getId()).orElseThrow();
-                if (videoProperties.getYoutube().isEnabled() && video.getEstadoYoutube() == EstadoYoutube.ESPERANDO_ANALISIS) {
-                    video.setEstadoYoutube(EstadoYoutube.PENDIENTE);
-                    video.setProximoIntento(now);
-                    videos.saveAndFlush(video);
-                }
+                complete(job, now);
             });
             running.remove(waiting.work().id(), waiting);
         } catch (RuntimeException e) {
@@ -257,6 +265,15 @@ public class AnalysisWorker {
     }
 
     private void finishError(AnalysisJob job, AnalysisGatewayException.Reason reason) {
+        // A failed second delivery never discards the already committed JSON.
+        if (job.getRespuestaJson() != null) {
+            if (job.getEstadoHeatmap() == EstadoHeatmap.PENDIENTE) job.setEstadoHeatmap(EstadoHeatmap.ERROR_DESCARGA);
+            job.setCodigoError(reason.code());
+            job.setMensajeError(reason.message());
+            job.setFallosConsecutivos(job.getFallosConsecutivos() + 1);
+            complete(job, clock.instant());
+            return;
+        }
         job.setEstado(EstadoAnalisis.ERROR);
         job.setFechaFin(clock.instant().truncatedTo(ChronoUnit.MICROS));
         job.setFechaActualizacion(clock.instant());
@@ -269,6 +286,25 @@ public class AnalysisWorker {
         job.setProximaEjecucion(null);
         release(job);
         jobs.saveAndFlush(job);
+    }
+
+    private void complete(AnalysisJob job, Instant now) {
+        job.setRemoteCleanupPending(false);
+        job.setEstado(EstadoAnalisis.COMPLETADO);
+        job.setFechaFin(now.truncatedTo(ChronoUnit.MICROS));
+        job.setFechaActualizacion(now);
+        // Raw segments are preserved; player mapping and final metrics still belong to HU12.
+        job.setResultadosDisponibles(false);
+        job.setResultadoRef(null);
+        job.setProximaEjecucion(null);
+        release(job);
+        jobs.saveAndFlush(job);
+        var video = videos.findLockedById(job.getVideo().getId()).orElseThrow();
+        if (videoProperties.getYoutube().isEnabled() && video.getEstadoYoutube() == EstadoYoutube.ESPERANDO_ANALISIS) {
+            video.setEstadoYoutube(EstadoYoutube.PENDIENTE);
+            video.setProximoIntento(now);
+            videos.saveAndFlush(video);
+        }
     }
 
     private void release(AnalysisJob job) {

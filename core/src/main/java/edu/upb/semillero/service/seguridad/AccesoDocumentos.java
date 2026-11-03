@@ -8,6 +8,8 @@ import edu.upb.semillero.service.exception.ForbiddenException;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -29,9 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  * documento no lo aprueba. Es la política inicial conservadora hasta que los
  * equipos definan otros validadores.
  *
- * <p>Igual que {@link AccesoTorneos}, la propiedad solo se comprueba cuando hay
- * un {@link UsuarioAutenticado} real (producción y pruebas con token). Sin él
- * —solo en las pruebas con usuario de mentira— no se restringe.
+ * <p>Las operaciones requieren una identidad autenticada también cuando el
+ * servicio se invoca directamente, fuera de la cadena HTTP.
  */
 @Service
 @Transactional(readOnly = true)
@@ -49,10 +50,13 @@ public class AccesoDocumentos {
         this.registro = registro;
     }
 
-    /** Vacío cuando no hay un usuario real autenticado (por ejemplo en una prueba). */
+    /** Vacío si falta autenticación o el principal no representa una identidad válida. */
     public Optional<UsuarioAutenticado> actual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UsuarioAutenticado usuario) {
+        if (auth != null && auth.isAuthenticated()
+                && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+                && auth.getPrincipal() instanceof UsuarioAutenticado usuario
+                && usuario.usuarioId() != null && usuario.usuarioId() > 0) {
             return Optional.of(usuario);
         }
         return Optional.empty();
@@ -60,25 +64,25 @@ public class AccesoDocumentos {
 
     public boolean esAdministrador() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream()
+        return actual().isPresent() && auth.getAuthorities().stream()
                 .anyMatch(a -> ("ROLE_" + Roles.ADMIN).equals(a.getAuthority()));
     }
 
     /** Aprobar a VIGENTE es solo del administrador (política inicial). */
     public boolean puedeAprobar() {
-        return esAdministrador() || actual().isEmpty();
+        return esAdministrador();
     }
 
     public boolean puedeAdministrar(Long jugadorId) {
         if (jugadorId == null) {
             return false;
         }
-        if (esAdministrador()) {
-            return true;
-        }
         Optional<UsuarioAutenticado> actual = actual();
         if (actual.isEmpty()) {
-            return true;                       // pruebas con usuario de mentira
+            return false;
+        }
+        if (esAdministrador()) {
+            return true;
         }
         Long actor = actual.get().usuarioId();
         if (actor == null || !comun.usuarioExiste(actor)) {
@@ -90,35 +94,39 @@ public class AccesoDocumentos {
             return true;
         }
         // El personal de un club maneja los de sus jugadores con fichaje vigente.
-        for (Long clubId : comun.clubesDondeTrabaja(actor)) {
-            if (fichados.existsByJugadorIdAndClubIdAndFechaFinalFichajeIsNull(jugadorId, clubId)) {
-                return true;
-            }
-        }
-        return false;
+        return jugadoresFichadosVigentes(actor).contains(jugadorId);
     }
 
     /**
      * Para acotar el listado sin filtrarlo dejaría ver documentos ajenos:
-     * {@code null} significa todos (administrador o prueba); si no, el conjunto
+     * {@code null} significa todos (administrador); si no, el conjunto
      * de jugadores cuyos documentos puede ver el usuario.
      */
     public Set<Long> jugadoresAdministrables() {
-        if (esAdministrador() || actual().isEmpty()) {
+        UsuarioAutenticado usuario = actual().orElseThrow(() -> {
+            registro.rechazado("GET", "/api/v1/documentos-jugador", null,
+                    "Falta una identidad autenticada para consultar documentos");
+            return new ForbiddenException("Debes iniciar sesión para consultar documentos");
+        });
+        if (esAdministrador()) {
             return null;
         }
         Set<Long> ids = new HashSet<>();
-        Long actor = actual().get().usuarioId();
+        Long actor = usuario.usuarioId();
         if (actor == null || !comun.usuarioExiste(actor)) {
             return ids;
         }
         jugadores.findFirstByUsuarioId(actor).ifPresent(jugador -> ids.add(jugador.getId()));
-        Set<Long> clubes = comun.clubesDondeTrabaja(actor);
-        if (!clubes.isEmpty()) {
-            fichados.findByClubIdInAndFechaFinalFichajeIsNull(clubes)
-                    .forEach(fichado -> ids.add(fichado.getJugador().getId()));
-        }
+        ids.addAll(jugadoresFichadosVigentes(actor));
         return ids;
+    }
+
+    private Set<Long> jugadoresFichadosVigentes(Long actor) {
+        Set<Long> clubes = comun.clubesDondeTrabaja(actor);
+        if (clubes.isEmpty()) return Set.of();
+        LocalDate hoy = LocalDate.now();
+        return fichados.findJugadorIdsVigentesEnClubes(clubes,
+                hoy.atStartOfDay(), hoy.atTime(LocalTime.MAX));
     }
 
     public void requireAdministrar(String metodo, String ruta, Long jugadorId) {

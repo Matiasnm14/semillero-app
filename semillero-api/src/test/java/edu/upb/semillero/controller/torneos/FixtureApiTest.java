@@ -58,6 +58,7 @@ class FixtureApiTest {
                 "nombres", "Mauricio", "apellidos", "Valdivia",
                 "email", "fixture" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioId, "ORGANIZADOR");
         long sedeId = create(TORNEOS + "/sedes", Map.of("nombre", "Sede Central " + System.nanoTime(),
                 "direccion", "Av. Siempre Viva 123", "ciudadId", ciudadId));
         canchaA = cancha(sedeId, "Cancha A");
