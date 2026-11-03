@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
     "spring.datasource.url=${SCOUTING_TEST_URL:jdbc:h2:mem:scouting;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}",
     "spring.datasource.username=${SCOUTING_TEST_USER:sa}",
+    "scouting.cuotas.usuario-dia=2", "scouting.cuotas.club-dia=2", "scouting.cuotas.jugador-dia=2",
     "scouting.correo.remitente=contacto@semillero.example.test",
     "scouting.correo.url-publica=https://semillero.example.test"
 })
@@ -298,4 +299,81 @@ class ScoutingContactosApiTest {
             .andExpect(jsonPath("$.paths['/api/v1/scouting/solicitudes']").exists())
             .andExpect(jsonPath("$.paths['/api/v1/scouting/mi-perfil/preferencias']").exists());
     }
+    private ResultActions bloqueo(Caso c, Usuario actor, boolean activo) throws Exception {
+        var request = activo ? put(API+"/mi-perfil/bloqueos/"+c.club().getId())
+                : delete(API+"/mi-perfil/bloqueos/"+c.club().getId());
+        return mvc.perform(request.header("Authorization",auth(actor)));
+    }
+    private void vincular(Usuario actor, Club club) {
+        var perfil=usuariosClub.findFirstByUsuarioId(actor.getId()).orElseThrow();
+        var t=new UsuarioTrabaja();t.setUsuarioClub(perfil);t.setClub(club);t.setTipoUsuarioClub("DI");trabajos.saveAndFlush(t);
+    }
+    @Test void bloqueoEsPropioIdempotenteYNoReviveUnConsentimientoAnterior() throws Exception {
+        var c=caso();var id=nueva(c);
+        resolver(c,id,c.usuarioJugador(),"ACEPTADA",0).andExpect(status().isOk());
+        bloqueo(c,c.representante(),true).andExpect(status().isForbidden());
+        bloqueo(c,c.usuarioJugador(),true).andExpect(status().isNoContent());
+        bloqueo(c,c.usuarioJugador(),true).andExpect(status().isNoContent());
+        datos(id,c.representante()).andExpect(status().isConflict());
+        crear(c,UUID.randomUUID(),c.representante()).andExpect(status().isNotFound());
+        mvc.perform(get(API+"/mi-perfil/bloqueos").header("Authorization",auth(c.usuarioJugador())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        bloqueo(c,c.usuarioJugador(),false).andExpect(status().isNoContent());
+        bloqueo(c,c.usuarioJugador(),false).andExpect(status().isNoContent());
+        datos(id,c.representante()).andExpect(status().isConflict());
+        mvc.perform(get(API+"/mi-perfil/bloqueos").header("Authorization",auth(c.usuarioJugador())))
+            .andExpect(jsonPath("$.totalElements").value(0));
+    }
+    @Test void bloqueoImpideAceptarPendienteYPrepararInvitacion() throws Exception {
+        var c=caso();var id=nueva(c);
+        var correo=correos.findByEventoSolicitudId(UUID.fromString(id)).stream()
+            .filter(m->m.getPlantilla().equals("INVITACION_JUGADOR")).findFirst().orElseThrow();
+        bloqueo(c,c.usuarioJugador(),true).andExpect(status().isNoContent());
+        resolver(c,id,c.usuarioJugador(),"ACEPTADA",0).andExpect(status().isConflict());
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->preparador.preparar(correo.getId()))
+            .isInstanceOf(edu.upb.semillero.service.exception.ConflictException.class);
+        resolver(c,id,c.usuarioJugador(),"RECHAZADA",0).andExpect(status().isOk());
+    }
+    @Test void cuotaDelUsuarioSeComparteEntreClubesYReintentoNoLaConsume() throws Exception {
+        var a=caso();var b=caso();var c=caso();vincular(a.representante(),b.club());
+        var key=UUID.randomUUID();
+        crear(a,key,a.representante()).andExpect(status().isCreated());
+        crear(a,key,a.representante()).andExpect(status().isOk());
+        crear(b,UUID.randomUUID(),a.representante()).andExpect(status().isCreated());
+        crear(new Caso(a.representante(),a.club(),c.usuarioJugador(),c.jugador()),UUID.randomUUID(),a.representante())
+            .andExpect(status().isTooManyRequests()).andExpect(header().exists("Retry-After"));
+    }
+    @Test void cuotaDelClubSeComparteEntreRepresentantes() throws Exception {
+        var a=caso();var b=caso();var c=caso();vincular(b.representante(),a.club());vincular(c.representante(),a.club());
+        crear(a,UUID.randomUUID(),a.representante()).andExpect(status().isCreated());
+        crear(new Caso(b.representante(),a.club(),b.usuarioJugador(),b.jugador()),UUID.randomUUID(),b.representante())
+            .andExpect(status().isCreated());
+        crear(new Caso(c.representante(),a.club(),c.usuarioJugador(),c.jugador()),UUID.randomUUID(),c.representante())
+            .andExpect(status().isTooManyRequests());
+    }
+    @Test void cuotaDelDestinatarioSeComparteEntreClubes() throws Exception {
+        var a=caso();var b=caso();var c=caso();
+        crear(a,UUID.randomUUID(),a.representante()).andExpect(status().isCreated());
+        crear(new Caso(b.representante(),b.club(),a.usuarioJugador(),a.jugador()),UUID.randomUUID(),b.representante())
+            .andExpect(status().isCreated());
+        crear(new Caso(c.representante(),c.club(),a.usuarioJugador(),a.jugador()),UUID.randomUUID(),c.representante())
+            .andExpect(status().isTooManyRequests());
+    }
+    @Test void peticionesConcurrentesNoSuperanCuota() throws Exception {
+        var a=caso();var b=caso();var c=caso();
+        try(var executor=Executors.newFixedThreadPool(3)) {
+            var inicio=new CountDownLatch(1);
+            var futuros=new ArrayList<Future<Integer>>();
+            for(var target:List.of(a,b,c)) futuros.add(executor.submit(()->{
+                inicio.await();
+                return crear(new Caso(a.representante(),a.club(),target.usuarioJugador(),target.jugador()),UUID.randomUUID(),a.representante())
+                    .andReturn().getResponse().getStatus();
+            }));
+            inicio.countDown();
+            var estados=new ArrayList<Integer>();
+            for(var f:futuros)estados.add(f.get(20,TimeUnit.SECONDS));
+            assertThat(estados).containsExactlyInAnyOrder(201,201,429);
+        }
+    }
+
 }

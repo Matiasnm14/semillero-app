@@ -25,13 +25,14 @@ public class DatosContactoService {
     private final AccesoScouting acceso;
     private final AccesoContactoRepository auditoria;
     private final Clock clock;
+    private final BloqueoClubService bloqueos;
     public DatosContactoService(SolicitudContactoService solicitudes, SolicitudContactoRepository repository,
             PreferenciaContactoRepository preferencias, PreferenciaContactoService politica,
             JugadorRepository jugadores, UsuarioRepository usuarios, ComunService comun,
-            AccesoScouting acceso, AccesoContactoRepository auditoria, @Qualifier("scoutingClock") Clock clock) {
+            AccesoScouting acceso, AccesoContactoRepository auditoria, @Qualifier("scoutingClock") Clock clock, BloqueoClubService bloqueos) {
         this.solicitudes = solicitudes; this.repository = repository; this.preferencias = preferencias;
         this.politica = politica; this.jugadores = jugadores; this.usuarios = usuarios; this.comun = comun;
-        this.acceso = acceso; this.auditoria = auditoria; this.clock = clock;
+        this.acceso = acceso; this.auditoria = auditoria; this.clock = clock; this.bloqueos = bloqueos;
     }
     @Transactional
     public DatosContactoDto consultar(UUID id, String proposito) {
@@ -39,6 +40,7 @@ public class DatosContactoService {
         var s = repository.bloquear(id).orElseThrow(() -> new NotFoundException("Solicitud no disponible"));
         if (s.getEstado() != EstadoContacto.ACEPTADA) throw new ConflictException("El jugador debe aceptar primero la solicitud");
         var p = preferencias.bloquear(s.getJugadorId());
+        bloqueos.exigirAutorizacion(s.getJugadorId(), s.getClubId(), s.getCreadaEn());
         var j = jugadores.findById(s.getJugadorId());
         if (p.isEmpty() || !p.get().isVisible() || !p.get().isAceptaSolicitudes()
                 || j.isEmpty() || !politica.adulto(j.get()) || j.get().getUsuario() == null

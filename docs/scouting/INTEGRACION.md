@@ -37,7 +37,8 @@ Menores y edad desconocida quedan bloqueados hasta implementar tutor verificado.
 
 ## DB y migración
 
-`V016__scouting_contactos.sql` crea seis tablas propias. No se cambian scripts
+`V016__scouting_contactos.sql` crea seis tablas propias. V017 agrega dos tablas
+propias de bloqueos y cuotas, sin modificar V016. No se cambian scripts
 históricos, roles ni tablas maestras. V011 ya está ocupada por Spark y V013 por
 documentos de jugador. **V016 es una propuesta pendiente de confirmar contra
 el historial real y de reservar con el administrador.** No usar Flyway repair.
@@ -82,7 +83,9 @@ las peticiones que verifican permisos del módulo mantienen su actor original.
 
 Conectar Flutter al contrato, registro/aprobación de representantes, alta de jugador
 autenticada y atómica, verificación de email, proveedor de correo, despacho con
-reintentos, cuotas globales, bloqueo/denuncia, expiración, retención y tutor.
+reintentos, denuncia, límite por IP, expiración, retención y tutor.
+Bloqueos y cuotas persistentes por usuario/club/destinatario ya están implementados;
+el contrato y los valores técnicos iniciales están en API_CONTACTOS.md.
 Esta entrega cierra accesos concretos; no declara terminado todo el MVP ni cumplimiento
 integral de OWASP/NIST.
 
@@ -98,3 +101,12 @@ En este entorno no hay FFmpeg/ffprobe. Se excluyeron explícitamente
 `VideoPermissionsIntegrationTest`. Los casos PostgreSQL condicionados por entorno
 permanecieron omitidos. No equivale a la validación completa requerida antes de push
 o despliegue. El frontend todavía necesita adaptar las llamadas indicadas arriba.
+
+### Segunda corrección: bloqueo y cuotas
+
+Se agregaron seis casos de API (33 de contactos en total): bloqueo propio/idempotente,
+no reactivación del consentimiento al desbloquear, cancelación de invitación
+preparada, cuotas compartidas por usuario/club/destinatario y concurrencia.
+La regresión limpia reportó 518 casos, 0 fallas, 0 errores y los mismos 20 omitidos,
+con las tres exclusiones de FFmpeg indicadas anteriormente. V017 no se aplicó al VPS.
+La revisión del nuevo push externo está en REVISION_BACKEND_FINAL_13dadc4.md.

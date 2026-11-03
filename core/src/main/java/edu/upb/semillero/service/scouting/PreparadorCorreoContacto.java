@@ -17,14 +17,15 @@ public class PreparadorCorreoContacto {
     private final CorreoContactoRepository correos;
     private final UsuarioRepository usuarios;
     private final PreferenciaContactoRepository preferencias;
+    private final BloqueoClubService bloqueos;
     private final String remitente;
     private final String urlPublica;
     public PreparadorCorreoContacto(CorreoContactoRepository correos, UsuarioRepository usuarios,
-            PreferenciaContactoRepository preferencias,
+            PreferenciaContactoRepository preferencias, BloqueoClubService bloqueos,
             @Value("${scouting.correo.remitente:}") String remitente,
             @Value("${scouting.correo.url-publica:}") String urlPublica) {
         this.correos = correos; this.usuarios = usuarios; this.preferencias = preferencias;
-        this.remitente = remitente; this.urlPublica = urlPublica;
+        this.bloqueos = bloqueos; this.remitente = remitente; this.urlPublica = urlPublica;
     }
     public record CorreoPreparado(UUID id, String de, String para, String responderA, String asunto, String texto) {}
     public CorreoPreparado preparar(UUID id) {
@@ -41,6 +42,7 @@ public class PreparadorCorreoContacto {
         var correo = correos.findById(id).orElseThrow(() -> new NotFoundException("Correo no disponible"));
         var s = correo.getEvento().getSolicitud();
         if (correo.getPlantilla().equals("INVITACION_JUGADOR")) {
+            bloqueos.exigirAutorizacion(s.getJugadorId(), s.getClubId(), s.getCreadaEn());
             var p = preferencias.findById(s.getJugadorId());
             if (s.getEstado() != EstadoContacto.PENDIENTE || p.isEmpty() || !p.get().isAceptaSolicitudes() || !p.get().isVisible())
                 throw new ConflictException("La invitación ya no está vigente");

@@ -1,5 +1,5 @@
 > Actualización HU-13 (02/11/2026): esta base se integra sobre main en
-> `scouting/HU-13-integracion-segura`. La migración propuesta es V016, pendiente
+> `scouting/HU-13-integracion-segura`. Las migraciones propuestas son V016 y V017, pendientes
 > de confirmar con el administrador de DB. También se corrigen permisos compartidos.
 > El contrato vigente de integración y sus incompatibilidades están en [INTEGRACION.md](INTEGRACION.md).
 
@@ -27,7 +27,7 @@ no una medición de cumplimiento de todos los RF/RNF del documento académico.
 
 ## Propiedad e integración
 
-Se añaden únicamente tablas `scouting_*` mediante V016 y clases en subpaquetes `scouting`.
+Se añaden únicamente tablas `scouting_*` mediante V016/V017 y clases en subpaquetes `scouting`.
 No se alteran tablas/migraciones previas, el catálogo de roles, login, controladores de otros módulos,
 ni la tabla `conversa`. La numeración V011 debe comprobarse otra vez antes de integrar la rama.
 
@@ -103,7 +103,8 @@ La cola NO es garantía de entrega ni se muestra como ENVIADO. No hay correos re
 ## Pendiente del alcance completo
 
 - Consentimiento de tutor, verificación de contactos y políticas institucionales para menores.
-- Bloqueos por usuario/club, cuotas globales contra abuso y retención/anonimización automatizada.
+- Denuncias, límites por IP y retención/anonimización automatizada.
+- Bloqueos por club y cuotas persistentes por usuario/club/destinatario implementados en V017; ver API_CONTACTOS.md.
 - Fusión de duplicados, prospectos, asignaciones, informes y pruebas deportivas del PDF.
 - Integraciones públicas completas con los otros grupos; eventos externos y observabilidad.
 - OIDC/PKCE y controles de infraestructura descritos en el documento académico.
@@ -126,4 +127,4 @@ $env:SCOUTING_TEST_USER = 'scouting_test'
 ```
 
 Las variables solo cambian el datasource de esta clase de pruebas. No usar una base de trabajo
-o producción para pruebas. Flyway aplica V000–V016 (V014 no existe en main) y JPA valida el esquema; el test normal usa H2.
+o producción para pruebas. Flyway aplica V000–V017 (V014 no existe en main) y JPA valida el esquema; el test normal usa H2.

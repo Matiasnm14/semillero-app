@@ -21,6 +21,21 @@ public class ContactoController {
     private final SolicitudContactoService solicitudes;
     private final PreferenciaContactoService preferencias;
     private final JugadorGuardadoService guardados;
+    private final BloqueoClubService bloqueos;
+    @GetMapping("/mi-perfil/bloqueos")
+    public PageResponse<BloqueoClubService.Bloqueado> bloqueos(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return PageResponse.from(bloqueos.listar(page, size));
+    }
+    @PutMapping("/mi-perfil/bloqueos/{clubId}")
+    public ResponseEntity<Void> bloquear(@PathVariable @Positive Long clubId) {
+        bloqueos.cambiar(clubId, true); return ResponseEntity.noContent().build();
+    }
+    @DeleteMapping("/mi-perfil/bloqueos/{clubId}")
+    public ResponseEntity<Void> desbloquear(@PathVariable @Positive Long clubId) {
+        bloqueos.cambiar(clubId, false); return ResponseEntity.noContent().build();
+    }
     @GetMapping("/mi-perfil/preferencias")
     public PreferenciaActualDto preferencias() { return preferencias.obtener(); }
     @PutMapping("/mi-perfil/preferencias")

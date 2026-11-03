@@ -124,3 +124,33 @@ Consultar [INTEGRACION.md](INTEGRACION.md) antes de desplegar: las cuentas priva
 afiliaciones compartidas ya no son públicas. Flutter debe consumir este directorio
 para búsqueda y las APIs privadas solo para datos propios. El contrato no permite
 crear por cuenta propia una afiliación operativa a un club existente.
+
+## Bloqueo de clubes
+
+- `GET /mi-perfil/bloqueos?page=0&size=20`: bloqueos activos del titular, paginados.
+- `PUT /mi-perfil/bloqueos/{clubId}`: bloquea, 204; repetir no duplica ni cambia la fecha.
+- `DELETE /mi-perfil/bloqueos/{clubId}`: desbloquea, 204; repetir es idempotente.
+
+La ficha se obtiene de la sesión: no se acepta jugadorId. Requiere haber guardado
+las preferencias propias (pueden estar privadas). Un club no administra los bloqueos
+de un jugador. Bloquear impide solicitudes nuevas, aceptar solicitudes previas,
+consultar emails autorizados previamente y preparar invitaciones pendientes.
+El club recibe errores genéricos; no conoce el listado de bloqueos. Rechazar o
+cancelar una pendiente sigue permitido. Desbloquear no reactiva la autorización
+anterior: hace falta una solicitud nueva y una aceptación nueva.
+
+## Cuotas diarias
+
+Por defecto: 20 solicitudes por usuario, 50 por club y 5 por destinatario, con corte
+a medianoche UTC. Son límites técnicos iniciales configurables; el responsable
+funcional debe confirmar los valores de operación. Las cuotas son persistentes
+y se comparten entre instancias del backend. No sustituyen un límite por IP
+en el proxy ni los controles de abuso del login.
+
+Un reintento con la misma Idempotency-Key no vuelve a consumir cuota. Una solicitud
+rechazada por permisos, bloqueo, duplicado o validación no consume cuota porque
+la transacción revierte. Agotar cualquiera devuelve 429 ProblemDetail, Retry-After
+en segundos hasta el siguiente corte y Cache-Control: no-store. No reintentar
+automáticamente antes del plazo.
+
+Las tablas se proponen en V017, pendiente de coordinación junto a V016.

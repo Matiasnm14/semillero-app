@@ -24,13 +24,16 @@ public class SolicitudContactoService {
     private final EventoContactoRepository eventos;
     private final CorreoContactoRepository correos;
     private final Clock clock;
+    private final BloqueoClubService bloqueos;
+    private final CuotaContactoService cuotas;
     public SolicitudContactoService(AccesoScouting acceso, JugadorRepository jugadores,
             PreferenciaContactoRepository preferencias, PreferenciaContactoService politica,
             SolicitudContactoRepository solicitudes, EventoContactoRepository eventos,
-            CorreoContactoRepository correos, @Qualifier("scoutingClock") Clock clock) {
+            CorreoContactoRepository correos, @Qualifier("scoutingClock") Clock clock,
+            BloqueoClubService bloqueos, CuotaContactoService cuotas) {
         this.acceso = acceso; this.jugadores = jugadores; this.preferencias = preferencias;
         this.politica = politica; this.solicitudes = solicitudes; this.eventos = eventos;
-        this.correos = correos; this.clock = clock;
+        this.correos = correos; this.clock = clock; this.bloqueos = bloqueos; this.cuotas = cuotas;
     }
     public record Creada(SolicitudContactoDto solicitud, boolean nueva) {}
 
@@ -41,10 +44,12 @@ public class SolicitudContactoService {
         String motivo = input.motivo().strip();
         var previa = solicitudes.findBySolicitanteIdAndClave(actor, clave);
         if (previa.isPresent()) return repetir(previa.get(), input, motivo);
+        cuotas.reservar(actor, input.clubId(), input.jugadorId());
         // Todos los creadores del mismo par se serializan sobre nuestra preferencia,
         // sin bloquear ni modificar tablas del grupo de ficha técnica.
         var p = preferencias.bloquear(input.jugadorId())
             .orElseThrow(() -> new NotFoundException("Perfil no disponible para contacto"));
+        bloqueos.exigirDisponible(input.jugadorId(), input.clubId());
         var jugador = jugadores.findById(input.jugadorId())
             .orElseThrow(() -> new NotFoundException("Perfil no disponible para contacto"));
         if (!p.isVisible() || !p.isAceptaSolicitudes() || !politica.adulto(jugador)
@@ -104,6 +109,7 @@ public class SolicitudContactoService {
             if (!esJugador(s)) throw new ForbiddenException("Solo el jugador destinatario puede responder");
             if (destino == EstadoContacto.ACEPTADA) {
                 var p = preferencias.bloquear(s.getJugadorId());
+                bloqueos.exigirAutorizacion(s.getJugadorId(), s.getClubId(), s.getCreadaEn());
                 var j = jugadores.findById(s.getJugadorId());
                 if (p.isEmpty() || !p.get().isVisible() || !p.get().isAceptaSolicitudes()
                         || j.isEmpty() || !politica.adulto(j.get())
