@@ -311,7 +311,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 15 : 14);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 16 : 15);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }
@@ -328,10 +328,12 @@ class DatabaseMigrationsPostgresTest {
     private void assertCurrent() {
         assertThat(jdbc.queryForObject("select count(*) from pg_tables where schemaname='public'", Integer.class)).isEqualTo(61);
         assertThat(jdbc.queryForList("select version::integer from flyway_schema_history where type='SQL' and success order by installed_rank", Integer.class))
-                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where type='SQL' and checksum is not null", Integer.class))
-                .isEqualTo(14);
+                .isEqualTo(15);
         assertThat(jdbc.queryForObject("select to_regclass('public.scouting_prospects') is not null", Boolean.class)).isTrue();
+        assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where table_schema='public' and table_name='scouting_assignments' and column_name in ('criteria_set_id','scheduled_at')", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where table_schema='public' and table_name='scouting_exports' and column_name in ('reason','selected_fields')", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from roles where codigo in ('SCOUT','COORDINADOR_SCOUTING','RECLUTADOR','EVALUADOR','RESPONSABLE_SALVAGUARDA','SCOUTING_AUDITOR','SCOUTING_CONFIG','SCOUTING_STATUS')", Integer.class))
                 .isEqualTo(8);
     }

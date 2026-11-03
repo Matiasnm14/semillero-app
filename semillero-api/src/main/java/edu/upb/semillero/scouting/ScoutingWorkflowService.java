@@ -123,7 +123,9 @@ public class ScoutingWorkflowService {
         OffsetDateTime scheduled = ScoutingProspectService.parseTimestamp(request.get("scheduledAt"), "scheduledAt");
         if (scheduled == null || scheduled.isBefore(OffsetDateTime.now().minusMinutes(5))) ScoutingProspectService.bad("scheduledAt debe ser una fecha futura");
         String location = ScoutingSupport.text(request, "location", true);
+        if (location.length() > 240) ScoutingProspectService.bad("location supera 240 caracteres");
         Long clubId = ScoutingProspectService.positiveLong(request.get("clubId"), "clubId", false);
+        if (clubId != null) support.one("SELECT id FROM clubes WHERE id=?", clubId);
         long evaluatorId = ScoutingProspectService.positiveLong(request.get("evaluatorUserId"), "evaluatorUserId", true);
         support.one("SELECT id FROM users WHERE id=?", evaluatorId);
         if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM usuarios_roles ur JOIN roles r ON r.id=ur.roles_id WHERE ur.users_id=? AND r.codigo='EVALUADOR')", Boolean.class, evaluatorId))) {
@@ -208,7 +210,6 @@ public class ScoutingWorkflowService {
         return support.one("SELECT id,user_id,category,site,granted_by,granted_at,active,revoked_by,revoked_at FROM scouting_user_scopes WHERE id=?", id);
     }
 
-    @Transactional(readOnly = true)
     public List<Map<String,Object>> auditEvents(String resourceType, String resourceId, int limit) {
         support.require("SCOUTING_AUDITOR", "COORDINADOR_SCOUTING");
         if (limit < 1 || limit > 200) ScoutingProspectService.bad("limit debe estar entre 1 y 200");
@@ -217,14 +218,18 @@ public class ScoutingWorkflowService {
         if (resourceType != null) { sql.append(" AND resource_type=?"); args.add(resourceType); }
         if (resourceId != null) { sql.append(" AND resource_id=?"); args.add(resourceId); }
         sql.append(" ORDER BY occurred_at DESC,id DESC LIMIT ?"); args.add(limit);
-        return jdbc.queryForList(sql.toString(), args.toArray());
+        List<Map<String,Object>> results = jdbc.queryForList(sql.toString(), args.toArray());
+        support.audit("AUDIT_EVENTS_VIEWED", "AUDIT", null,
+                Map.of("purpose", "SECURITY_REVIEW", "resultCount", results.size(), "limit", limit));
+        return results;
     }
 
-    @Transactional(readOnly = true)
     public List<Map<String,Object>> outbox(int limit) {
         support.require("COORDINADOR_SCOUTING", "SCOUTING_CONFIG");
         if (limit < 1 || limit > 200) ScoutingProspectService.bad("limit debe estar entre 1 y 200");
-        return jdbc.queryForList("SELECT id,event_type,aggregate_id,idempotency_key,status,attempts,next_attempt_at,created_at,published_at,last_error FROM scouting_outbox ORDER BY created_at DESC LIMIT ?", limit);
+        List<Map<String,Object>> results = jdbc.queryForList("SELECT id,event_type,aggregate_id,idempotency_key,status,attempts,next_attempt_at,created_at,published_at,last_error FROM scouting_outbox ORDER BY created_at DESC LIMIT ?", limit);
+        support.audit("OUTBOX_VIEWED", "OUTBOX", null, Map.of("resultCount", results.size(), "limit", limit));
+        return results;
     }
 
     public Map<String,Object> retryOutbox(UUID id) {
@@ -235,14 +240,15 @@ public class ScoutingWorkflowService {
         return support.one("SELECT id,event_type,aggregate_id,status,attempts,next_attempt_at FROM scouting_outbox WHERE id=?", id);
     }
 
-    @Transactional(readOnly = true)
     public List<Map<String,Object>> securityAlerts(int limit) {
         support.require("SCOUTING_AUDITOR", "COORDINADOR_SCOUTING");
         if (limit < 1 || limit > 200) ScoutingProspectService.bad("limit debe estar entre 1 y 200");
-        return jdbc.queryForList("""
+        List<Map<String,Object>> results = jdbc.queryForList("""
                 SELECT id,alert_type,user_id,window_started_at,last_observed_at,occurrence_count,acknowledged_at,acknowledged_by
                 FROM scouting_security_alerts ORDER BY acknowledged_at NULLS FIRST,last_observed_at DESC LIMIT ?
                 """, limit);
+        support.audit("SECURITY_ALERTS_VIEWED", "SECURITY_ALERT", null, Map.of("resultCount", results.size(), "limit", limit));
+        return results;
     }
 
     public Map<String,Object> acknowledgeAlert(long id) {

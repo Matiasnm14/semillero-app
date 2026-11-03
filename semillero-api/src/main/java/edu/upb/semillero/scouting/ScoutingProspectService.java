@@ -2,11 +2,15 @@ package edu.upb.semillero.scouting;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,13 +40,16 @@ public class ScoutingProspectService {
         if (category.length() > 80) bad("category supera 80 caracteres");
         String position = ScoutingSupport.text(request, "primaryPosition", false);
         String site = ScoutingSupport.text(request, "sourceSite", false);
+        if (position != null && position.length() > 80) bad("primaryPosition supera 80 caracteres");
+        if (site != null && site.length() > 120) bad("sourceSite supera 120 caracteres");
         Long originClub = positiveLong(request.get("originClubId"), "originClubId", false);
         Long originCategory = positiveLong(request.get("originTournamentCategoryId"), "originTournamentCategoryId", false);
+        if (originClub != null) support.one("SELECT id FROM clubes WHERE id=?", originClub);
+        if (originCategory != null) support.one("SELECT id FROM torneo_categorias WHERE id=?", originCategory);
         String canonical = ScoutingSupport.normalized(first) + "|" + ScoutingSupport.normalized(last) + "|" + dob;
         String fingerprint = support.crypto().fingerprint(canonical);
-        var duplicateIds = jdbc.queryForList("SELECT id FROM scouting_prospects WHERE identity_fingerprint=? AND stage<>'ARCHIVED'",
-                UUID.class, fingerprint);
-        var duplicates = duplicateIds.stream().filter(support::canAccess).map(UUID::toString).toList();
+        var duplicateIds = visibleDuplicateIds(jdbc.queryForList(
+                "SELECT id FROM scouting_prospects WHERE identity_fingerprint=? AND stage<>'ARCHIVED'", UUID.class, fingerprint), support::canAccess);
         String review = duplicateIds.isEmpty() ? "NOT_DUPLICATE" : "NEEDS_REVIEW";
         Map<String, Object> sensitive = new LinkedHashMap<>();
         sensitive.put("firstName", first); sensitive.put("lastName", last); sensitive.put("birthDate", dob.toString());
@@ -57,23 +64,20 @@ public class ScoutingProspectService {
                 VALUES(?,?,?,?,?,?,?,?,?) RETURNING id
                 """, UUID.class, support.crypto().encrypt(sensitive), fingerprint, review, category,
                 position, originClub, originCategory, site, support.userId());
-        jdbc.update("INSERT INTO scouting_assignments(prospect_id,scout_user_id,assigned_by,reason) VALUES(?,?,?,?)",
-                id, support.userId(), support.userId(), "Asignación inicial al creador");
-        support.audit("PROSPECT_CREATED", "PROSPECT", id, Map.of("category", category, "possibleDuplicates", duplicateIds.size()));
+        support.audit("PROSPECT_CREATED", "PROSPECT", id, Map.of("category", category, "possibleDuplicatesInScope", duplicateIds.size()));
         Map<String, Object> response = support.prospect(id, true);
         response.put("possibleDuplicateFound", !duplicateIds.isEmpty());
         response.put("possibleDuplicateCount", duplicateIds.size());
-        response.put("possibleDuplicateIds", duplicates);
+        response.put("possibleDuplicateIds", duplicateIds.stream().map(UUID::toString).toList());
         return response;
     }
 
-    @Transactional(readOnly = true)
     public Map<String, Object> getProspect(UUID id) {
         support.requireProspectRole(id);
+        support.audit("PROSPECT_VIEWED", "PROSPECT", id, Map.of("purpose", "SCOUTING_REVIEW"));
         return support.prospect(id, true);
     }
 
-    @Transactional(readOnly = true)
     public Map<String, Object> listProspects(String stage, String category, int page, int size) {
         support.requireContent();
         if (page < 0 || size < 1 || size > 100) bad("page debe ser >=0 y size entre 1 y 100");
@@ -81,6 +85,10 @@ public class ScoutingProspectService {
         List<Object> args = new ArrayList<>();
         long actor = support.userId();
         where.append("EXISTS(SELECT 1 FROM scouting_assignments a WHERE a.prospect_id=p.id AND a.scout_user_id=? AND a.active)");
+        args.add(actor);
+        where.append(" OR EXISTS(SELECT 1 FROM scouting_prospects own WHERE own.id=p.id AND own.created_by=?)");
+        args.add(actor);
+        where.append(" OR EXISTS(SELECT 1 FROM scouting_observation_reports r WHERE r.prospect_id=p.id AND r.scout_user_id=?)");
         args.add(actor);
         if (support.hasRole("COORDINADOR_SCOUTING")) {
             where.append(" OR EXISTS(SELECT 1 FROM scouting_user_scopes s WHERE s.user_id=? AND s.active AND (s.category IS NULL OR s.category=p.category) AND (s.site IS NULL OR s.site=p.source_site))");
@@ -93,12 +101,17 @@ public class ScoutingProspectService {
         }
         if (category != null && !category.isBlank()) { where.append(" AND p.category=?"); args.add(category); }
         Long total = jdbc.queryForObject("SELECT count(*) FROM scouting_prospects p" + where, Long.class, args.toArray());
-        String sql = "SELECT p.id FROM scouting_prospects p" + where + " ORDER BY p.updated_at DESC,p.id LIMIT ? OFFSET ?";
-        args.add(size); args.add((long) page * size);
+        String sql = "SELECT p.id FROM scouting_prospects p" + where + " ORDER BY p.updated_at DESC,p.id DESC LIMIT ? OFFSET ?";
+        args.add(size);
+        args.add((long) page * size);
         List<UUID> ids = jdbc.queryForList(sql, UUID.class, args.toArray());
-        List<Map<String, Object>> content = ids.stream().map(id -> support.prospect(id, true)).toList();
-        return Map.of("content", content, "page", page, "size", size, "totalElements", total == null ? 0 : total,
-                "totalPages", total == null || total == 0 ? 0 : (total + size - 1) / size);
+        List<Map<String, Object>> content = ids.stream().map(id -> {
+            support.audit("PROSPECT_VIEWED", "PROSPECT", id, Map.of("purpose", "SCOUTING_SEARCH_RESULT"));
+            return support.prospect(id, true);
+        }).toList();
+        long totalElements = total == null ? 0 : total;
+        return Map.of("content", content, "page", page, "size", size, "totalElements", totalElements,
+                "totalPages", totalElements == 0 ? 0 : (totalElements + size - 1) / size);
     }
 
     @Transactional(readOnly = true)
@@ -173,7 +186,7 @@ public class ScoutingProspectService {
     public List<Map<String, Object>> assignments(String prospectId) {
         if (prospectId != null) support.requireProspectRole(ScoutingSupport.uuid(prospectId, "prospectId"));
         else support.require("SCOUT", "COORDINADOR_SCOUTING");
-        String sql = "SELECT id,prospect_id,scout_user_id,assigned_by,match_id,due_at,location,reason,assigned_at,completed_at,active FROM scouting_assignments";
+        String sql = "SELECT id,prospect_id,scout_user_id,assigned_by,match_id,scheduled_at,due_at,location,criteria_set_id,form_version,reason,assigned_at,completed_at,active FROM scouting_assignments";
         List<Map<String,Object>> rows = jdbc.queryForList(sql + " ORDER BY due_at NULLS LAST,assigned_at DESC");
         return rows.stream().filter(row -> support.canAccess(UUID.fromString(row.get("prospect_id").toString()))
                         && (support.hasRole("COORDINADOR_SCOUTING") || ((Number) row.get("scout_user_id")).longValue() == support.userId()))
@@ -183,18 +196,32 @@ public class ScoutingProspectService {
     public List<Map<String, Object>> assign(Map<String, Object> request) {
         support.require("COORDINADOR_SCOUTING");
         UUID prospectId = ScoutingSupport.uuid(ScoutingSupport.text(request, "prospectId", true), "prospectId");
-        support.one("SELECT id FROM scouting_prospects WHERE id=?", prospectId);
+        Map<String,Object> prospect = support.one("SELECT id,category FROM scouting_prospects WHERE id=?", prospectId);
         support.requireAccess(prospectId);
+        UUID criteriaSetId = ScoutingSupport.uuid(ScoutingSupport.text(request, "criteriaSetId", true), "criteriaSetId");
+        Map<String,Object> criteriaSet = support.one("SELECT id,category,version,status FROM scouting_criteria_sets WHERE id=?", criteriaSetId);
+        if (!"PUBLISHED".equals(criteriaSet.get("status")) || !prospect.get("category").equals(criteriaSet.get("category"))) {
+            conflict("El formulario debe estar publicado y corresponder a la categoría del prospecto");
+        }
         String reason = ScoutingSupport.text(request, "reason", false);
+        if (reason != null && reason.length() > 1000) bad("reason supera 1000 caracteres");
         boolean reassign = Boolean.TRUE.equals(request.get("reassign"));
         if (reassign && (reason == null || reason.length() < 8)) bad("La reasignación requiere un motivo de al menos 8 caracteres");
         Object raw = request.get("scoutUserIds");
         if (!(raw instanceof List<?>)) bad("scoutUserIds debe ser una lista");
         List<?> users = (List<?>) raw;
         if (users.isEmpty() || users.size() > 10) bad("scoutUserIds debe incluir entre 1 y 10 usuarios");
+        Set<Long> uniqueUsers = new java.util.HashSet<>();
+        for (Object rawUser : users) {
+            long scoutId = positiveLong(rawUser, "scoutUserIds", true);
+            if (!uniqueUsers.add(scoutId)) bad("scoutUserIds no debe repetir usuarios");
+        }
         Long matchId = positiveLong(request.get("matchId"), "matchId", false);
         if (matchId != null) support.one("SELECT id FROM partidos WHERE id=?", matchId);
-        String location = ScoutingSupport.text(request, "location", false);
+        String location = ScoutingSupport.text(request, "location", true);
+        if (location.length() > 240) bad("location supera 240 caracteres");
+        OffsetDateTime scheduledAt = parseTimestamp(request.get("scheduledAt"), "scheduledAt");
+        if (scheduledAt == null) bad("scheduledAt es obligatorio para la asignación");
         OffsetDateTime dueAt = parseTimestamp(request.get("dueAt"), "dueAt");
         if (reassign) jdbc.update("UPDATE scouting_assignments SET active=false,completed_at=coalesce(completed_at,now()),reason=left(concat(coalesce(reason,''),' | Reasignada: ',?),1000) WHERE prospect_id=? AND active", reason, prospectId);
         List<Map<String,Object>> out = new ArrayList<>();
@@ -203,10 +230,12 @@ public class ScoutingProspectService {
             support.one("SELECT id FROM users WHERE id=?", scoutId);
             if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM usuarios_roles ur JOIN roles r ON r.id=ur.roles_id WHERE ur.users_id=? AND r.codigo='SCOUT')", Boolean.class, scoutId))) conflict("Los usuarios asignados deben tener el rol SCOUT");
             UUID id = jdbc.queryForObject("""
-                    INSERT INTO scouting_assignments(prospect_id,scout_user_id,assigned_by,match_id,due_at,location,reason)
-                    VALUES(?,?,?,?,?,?,?) RETURNING id
-                    """, UUID.class, prospectId, scoutId, support.userId(), matchId, dueAt, location, reason);
-            out.add(support.one("SELECT id,prospect_id,scout_user_id,assigned_by,match_id,due_at,location,reason,assigned_at,active FROM scouting_assignments WHERE id=?", id));
+                    INSERT INTO scouting_assignments(prospect_id,scout_user_id,assigned_by,match_id,scheduled_at,due_at,location,
+                        criteria_set_id,form_version,reason)
+                    VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id
+                    """, UUID.class, prospectId, scoutId, support.userId(), matchId, scheduledAt, dueAt, location,
+                    criteriaSetId, criteriaSet.get("version").toString(), reason);
+            out.add(support.one("SELECT id,prospect_id,scout_user_id,assigned_by,match_id,scheduled_at,due_at,location,criteria_set_id,form_version,reason,assigned_at,active FROM scouting_assignments WHERE id=?", id));
         }
         support.audit("ASSIGNMENT_CREATED", "PROSPECT", prospectId, Map.of("assignees", users.size(), "reassigned", reassign));
         return out;
@@ -227,6 +256,7 @@ public class ScoutingProspectService {
         support.require("COORDINADOR_SCOUTING", "EVALUADOR");
         String category = ScoutingSupport.text(request, "category", true);
         String title = ScoutingSupport.text(request, "title", true);
+        if (category.length() > 80 || title.length() > 160) bad("category o title exceden la longitud permitida");
         Object raw = request.get("criteria");
         if (!(raw instanceof List<?>)) bad("criteria debe ser una lista");
         List<?> criteria = (List<?>) raw;
@@ -243,6 +273,9 @@ public class ScoutingProspectService {
             String code = ScoutingSupport.text(c, "code", true);
             String label = ScoutingSupport.text(c, "label", true);
             String behavior = ScoutingSupport.text(c, "observableBehavior", true);
+            if (code.length() > 80 || label.length() > 160 || behavior.length() > 1000) {
+                bad("code, label u observableBehavior exceden la longitud permitida");
+            }
             if (!List.of("TECHNICAL","TACTICAL","PHYSICAL","PSYCHOLOGICAL").contains(dimension)) bad("dimension no válida");
             if ("PSYCHOLOGICAL".equals(dimension) && behavior.toLowerCase().matches(".*(diagn[oó]stic|depresi[oó]n|trastorno|patolog[ií]a|ansiedad cl[ií]nica).*")) {
                 bad("La evaluación psicológica solo puede describir conducta deportiva observable, sin diagnósticos");
@@ -285,12 +318,22 @@ public class ScoutingProspectService {
         String idempotency = headerKey == null || headerKey.isBlank()
                 ? ScoutingSupport.text(request, "idempotencyKey", true) : headerKey.trim();
         if (idempotency.length() > 120) bad("Idempotency-Key supera 120 caracteres");
-        UUID assignmentUuid = null;
-        if (request.get("assignmentId") != null) {
-            assignmentUuid = ScoutingSupport.uuid(request.get("assignmentId").toString(), "assignmentId");
-            Map<String,Object> assignment = support.one("SELECT prospect_id,scout_user_id FROM scouting_assignments WHERE id=? AND active", assignmentUuid);
-            if (!prospectId.toString().equals(assignment.get("prospect_id").toString()) || ((Number) assignment.get("scout_user_id")).longValue() != support.userId()) forbidden();
-        } else if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM scouting_assignments WHERE prospect_id=? AND scout_user_id=? AND active)", Boolean.class, prospectId, support.userId()))) forbidden();
+        String requestFingerprint = support.requestFingerprint(request);
+        var existing = jdbc.queryForList("SELECT id,request_fingerprint FROM scouting_observation_reports WHERE scout_user_id=? AND idempotency_key=?",
+                support.userId(), idempotency);
+        if (!existing.isEmpty()) {
+            if (!requestFingerprint.equals(existing.getFirst().get("request_fingerprint"))) conflict("Idempotency-Key ya fue usado con datos diferentes");
+            return report(UUID.fromString(existing.getFirst().get("id").toString()));
+        }
+        UUID criteriaSet = ScoutingSupport.uuid(ScoutingSupport.text(request, "criteriaSetId", true), "criteriaSetId");
+        Map<String,Object> criteria = support.one("SELECT category,status FROM scouting_criteria_sets WHERE id=?", criteriaSet);
+        Map<String,Object> prospect = support.one("SELECT category FROM scouting_prospects WHERE id=?", prospectId);
+        if ("DRAFT".equals(criteria.get("status")) || !criteria.get("category").equals(prospect.get("category"))) conflict("El conjunto de criterios no corresponde a la categoría o aún no fue publicado");
+        UUID assignmentUuid = ScoutingSupport.uuid(ScoutingSupport.text(request, "assignmentId", true), "assignmentId");
+        Map<String,Object> assignment = support.one("SELECT prospect_id,scout_user_id,criteria_set_id FROM scouting_assignments WHERE id=? AND active", assignmentUuid);
+        if (!prospectId.toString().equals(assignment.get("prospect_id").toString())
+                || ((Number) assignment.get("scout_user_id")).longValue() != support.userId()) forbidden();
+        requireAssignedCriteriaSet(assignment.get("criteria_set_id"), criteriaSet);
         String observed = ScoutingSupport.text(request, "observedAt", true);
         OffsetDateTime observedAt;
         try { observedAt = OffsetDateTime.parse(observed); }
@@ -300,10 +343,6 @@ public class ScoutingProspectService {
         Integer performance = rating(request.get("currentPerformance"), "currentPerformance");
         Integer potential = rating(request.get("potential"), "potential");
         Integer minutes = request.get("minutesPlayed") == null ? null : integerRange(request.get("minutesPlayed"), "minutesPlayed", 0, 180);
-        UUID criteriaSet = ScoutingSupport.uuid(ScoutingSupport.text(request, "criteriaSetId", true), "criteriaSetId");
-        Map<String,Object> criteria = support.one("SELECT category,status FROM scouting_criteria_sets WHERE id=?", criteriaSet);
-        Map<String,Object> prospect = support.one("SELECT category FROM scouting_prospects WHERE id=?", prospectId);
-        if (!"PUBLISHED".equals(criteria.get("status")) || !criteria.get("category").equals(prospect.get("category"))) conflict("El conjunto publicado no corresponde a la categoría del prospecto");
         List<Map<String,Object>> criteriaRows = jdbc.queryForList("SELECT id FROM scouting_criteria WHERE criteria_set_id=?", criteriaSet);
         Object rawScores = request.get("scores");
         if (!(rawScores instanceof List<?>)) bad("scores debe ser una lista");
@@ -318,20 +357,15 @@ public class ScoutingProspectService {
             if (scoreById.put(criterion.toString(), score) != null) bad("Criterio repetido");
         }
         for (Map<String,Object> criterion : criteriaRows) if (!scoreById.containsKey(criterion.get("id").toString())) bad("Falta un criterio de la versión");
-        String requestFingerprint = support.requestFingerprint(request);
-        var existing = jdbc.queryForList("SELECT id,request_fingerprint FROM scouting_observation_reports WHERE scout_user_id=? AND idempotency_key=?",
-                support.userId(), idempotency);
-        if (!existing.isEmpty()) {
-            if (!requestFingerprint.equals(existing.getFirst().get("request_fingerprint"))) conflict("Idempotency-Key ya fue usado con datos diferentes");
-            return report(UUID.fromString(existing.getFirst().get("id").toString()));
-        }
         String narrative = ScoutingSupport.text(request, "narrative", false);
         Map<String,Object> narrativePayload = Map.of("text", narrative == null ? "" : narrative);
         String opponent = ScoutingSupport.text(request, "opponent", false);
         String position = ScoutingSupport.text(request, "playedPosition", false);
+        if (opponent != null && opponent.length() > 160) bad("opponent supera 160 caracteres");
+        if (position != null && position.length() > 80) bad("playedPosition supera 80 caracteres");
         Long matchId = positiveLong(request.get("matchId"), "matchId", false);
         if (matchId != null) support.one("SELECT id FROM partidos WHERE id=?", matchId);
-        if (matchId != null && assignmentUuid != null) {
+        if (matchId != null) {
             Object assignedMatch = support.one("SELECT match_id FROM scouting_assignments WHERE id=?", assignmentUuid).get("match_id");
             if (assignedMatch != null && ((Number) assignedMatch).longValue() != matchId) conflict("El partido no coincide con la asignación");
         }
@@ -371,16 +405,16 @@ public class ScoutingProspectService {
         support.require("SCOUT", "COORDINADOR_SCOUTING");
         long user = support.userId();
         return jdbc.queryForList("""
-                SELECT id,prospect_id,scout_user_id,assigned_by,match_id,due_at,location,reason,assigned_at,completed_at,active
+                SELECT id,prospect_id,scout_user_id,assigned_by,match_id,scheduled_at,due_at,location,criteria_set_id,form_version,reason,assigned_at,completed_at,active
                 FROM scouting_assignments WHERE scout_user_id=? AND active ORDER BY due_at NULLS LAST,assigned_at
                 """, user).stream().map(row -> {
                     row.put("prospect", support.prospect(UUID.fromString(row.get("prospect_id").toString()), false)); return row;
                 }).toList();
     }
 
-    @Transactional(readOnly = true)
     public Map<String,Object> history(UUID id) {
         support.requireProspectRole(id);
+        support.audit("PROSPECT_HISTORY_VIEWED", "PROSPECT", id, Map.of("purpose", "SCOUTING_REVIEW"));
         List<Map<String,Object>> reports = jdbc.queryForList("""
                 SELECT id,assignment_id,scout_user_id,match_id,observed_at,opponent,played_position,minutes_played,
                        current_performance,potential,confidence,criteria_set_id,narrative_cipher
@@ -402,15 +436,47 @@ public class ScoutingProspectService {
                             }).toList());
                     return out;
                 }).toList();
-        List<Map<String,Object>> stages = jdbc.queryForList("SELECT from_stage,to_stage,reason,changed_by,reviewed_by,evidence_reference,changed_at FROM scouting_stage_history WHERE prospect_id=? ORDER BY changed_at,id", id);
+        List<Map<String,Object>> stages = jdbc.queryForList("SELECT id,from_stage,to_stage,reason,changed_by,reviewed_by,evidence_reference,changed_at FROM scouting_stage_history WHERE prospect_id=? ORDER BY changed_at,id", id);
+        List<Map<String,Object>> communications = jdbc.queryForList("""
+                SELECT c.id,c.channel,c.status,c.requested_at,c.sent_at,c.attempts,t.code AS template_code
+                FROM scouting_communications c JOIN scouting_message_templates t ON t.id=c.template_id
+                WHERE c.prospect_id=? ORDER BY c.requested_at,c.id
+                """, id);
+        List<Map<String,Object>> timeline = new ArrayList<>();
+        for (Map<String,Object> report : reports) {
+            timeline.add(timelineEvent("OBSERVATION", report.get("id"), report.get("observed_at"),
+                    "assignmentId", report.get("assignment_id"), "scoutUserId", report.get("scout_user_id"),
+                    "opponent", report.get("opponent"), "playedPosition", report.get("played_position"),
+                    "minutesPlayed", report.get("minutes_played"), "currentPerformance", report.get("current_performance"),
+                    "potential", report.get("potential"), "confidence", report.get("confidence")));
+        }
+        for (Map<String,Object> stage : stages) {
+            timeline.add(timelineEvent("STAGE_DECISION", stage.get("id"), stage.get("changed_at"),
+                    "fromStage", stage.get("from_stage"), "toStage", stage.get("to_stage"),
+                    "reason", stage.get("reason"), "changedBy", stage.get("changed_by"), "reviewedBy", stage.get("reviewed_by")));
+        }
+        for (Map<String,Object> communication : communications) {
+            timeline.add(timelineEvent("CONTACT", communication.get("id"), communication.get("requested_at"),
+                    "communicationId", communication.get("id"), "channel", communication.get("channel"),
+                    "status", communication.get("status"), "templateCode", communication.get("template_code"),
+                    "sentAt", communication.get("sent_at"), "attempts", communication.get("attempts")));
+        }
+        timeline.sort(Comparator.comparing(item -> Instant.parse(item.get("timestamp").toString())));
         Long distinct = jdbc.queryForObject("SELECT count(DISTINCT scout_user_id) FROM scouting_observation_reports WHERE prospect_id=?", Long.class, id);
-        return Map.of("prospectId", id, "observations", reports, "stageHistory", stages,
-                "observationCount", reports.size(), "distinctScouts", distinct == null ? 0 : distinct);
+        Map<String,Object> response = new LinkedHashMap<>();
+        response.put("prospectId", id);
+        response.put("observations", reports);
+        response.put("stageHistory", stages);
+        response.put("communications", communications);
+        response.put("timeline", timeline);
+        response.put("observationCount", reports.size());
+        response.put("distinctScouts", distinct == null ? 0 : distinct);
+        return response;
     }
 
-    @Transactional(readOnly = true)
     public Map<String,Object> context(UUID id) {
         support.requireProspectRole(id);
+        support.audit("PROSPECT_CONTEXT_VIEWED", "PROSPECT", id, Map.of("purpose", "SCOUTING_REVIEW"));
         Map<String,Object> prospect = support.one("SELECT origin_club_id,origin_tournament_category_id FROM scouting_prospects WHERE id=?", id);
         Map<String,Object> result = new LinkedHashMap<>();
         Object sourceClub = prospect.get("origin_club_id");
@@ -445,28 +511,59 @@ public class ScoutingProspectService {
         return result;
     }
 
+    private static Map<String,Object> timelineEvent(String type, Object id, Object timestamp, Object... values) {
+        Map<String,Object> event = new LinkedHashMap<>();
+        event.put("type", type);
+        event.put("id", id == null ? null : id.toString());
+        Instant instant = timestamp instanceof java.sql.Timestamp sqlTimestamp
+                ? sqlTimestamp.toInstant()
+                : timestamp instanceof OffsetDateTime offsetDateTime ? offsetDateTime.toInstant()
+                : timestamp instanceof Instant value ? value
+                : OffsetDateTime.parse(timestamp.toString()).toInstant();
+        event.put("timestamp", instant.toString());
+        for (int index = 0; index < values.length; index += 2) event.put(values[index].toString(), values[index + 1]);
+        return event;
+    }
+
     public Map<String,Object> createExport(Map<String,Object> request) {
         support.require("COORDINADOR_SCOUTING", "RECLUTADOR");
         UUID prospectId = ScoutingSupport.uuid(ScoutingSupport.text(request, "prospectId", true), "prospectId");
         support.requireAccess(prospectId);
+        String reason = ScoutingSupport.text(request, "reason", true);
+        if (reason.length() < 8 || reason.length() > 500) bad("reason debe tener entre 8 y 500 caracteres");
+        Object rawFields = request.get("fields");
+        if (!(rawFields instanceof List<?>)) bad("fields debe incluir al menos una sección exportable");
+        List<String> fields = exportFields(rawFields);
         int minutes = request.get("expiresInMinutes") == null ? 30
                 : integerRange(request.get("expiresInMinutes"), "expiresInMinutes", 1, 60);
+        UUID exportId = UUID.randomUUID();
+        OffsetDateTime generatedAt = OffsetDateTime.now();
         Map<String,Object> payload = new LinkedHashMap<>();
-        payload.put("prospect", support.prospect(prospectId, true));
-        payload.put("history", history(prospectId));
-        payload.put("tournamentContext", context(prospectId));
-        payload.put("generatedAt", OffsetDateTime.now().toString());
-        UUID exportId = jdbc.queryForObject("""
-                INSERT INTO scouting_exports(prospect_id,requested_by,payload_cipher,expires_at)
-                VALUES(?,?,?,now()+(? * interval '1 minute')) RETURNING id
-                """, UUID.class, prospectId, support.userId(), support.crypto().encrypt(payload), minutes);
-        support.audit("EXPORT_CREATED", "EXPORT", exportId, Map.of("prospectId", prospectId.toString(), "expiresInMinutes", minutes));
-        return support.one("SELECT id,prospect_id,expires_at FROM scouting_exports WHERE id=?", exportId);
+        if (fields.contains("profile")) {
+            support.audit("PROSPECT_VIEWED", "PROSPECT", prospectId, Map.of("purpose", "AUTHORIZED_EXPORT"));
+            payload.put("prospect", support.prospect(prospectId, true));
+        }
+        if (fields.contains("history")) payload.put("history", history(prospectId));
+        if (fields.contains("tournamentContext")) payload.put("tournamentContext", context(prospectId));
+        payload.put("generatedAt", generatedAt.toString());
+        payload.put("watermark", Map.of("exportId", exportId.toString(), "requestedBy", support.userId(),
+                "generatedAt", generatedAt.toString()));
+        String serializedFields = support.json().writeValueAsString(fields);
+        jdbc.update("""
+                INSERT INTO scouting_exports(id,prospect_id,requested_by,payload_cipher,expires_at,reason,selected_fields)
+                VALUES(?,?,?,?,now()+(? * interval '1 minute'),?,CAST(? AS jsonb))
+                """, exportId, prospectId, support.userId(), support.crypto().encrypt(payload), minutes,
+                reason, serializedFields);
+        support.audit("EXPORT_CREATED", "EXPORT", exportId, Map.of("prospectId", prospectId.toString(),
+                "selectedFields", fields, "expiresInMinutes", minutes));
+        Map<String,Object> result = support.one("SELECT id,prospect_id,expires_at,reason FROM scouting_exports WHERE id=?", exportId);
+        result.put("selected_fields", fields);
+        return result;
     }
 
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public Map<String,Object> downloadExport(UUID exportId) {
-        Map<String,Object> row = support.one("SELECT id,prospect_id,requested_by,payload_cipher,expires_at FROM scouting_exports WHERE id=?", exportId);
+        Map<String,Object> row = support.one("SELECT id,prospect_id,requested_by,payload_cipher,expires_at,reason,selected_fields::text AS selected_fields FROM scouting_exports WHERE id=?", exportId);
         if (((Number) row.get("requested_by")).longValue() != support.userId()) ScoutingProspectService.forbidden();
         support.requireAccess(UUID.fromString(row.get("prospect_id").toString()));
         if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT expires_at<=now() FROM scouting_exports WHERE id=?", Boolean.class, exportId))) {
@@ -474,9 +571,12 @@ public class ScoutingProspectService {
             throw new ResponseStatusException(HttpStatus.GONE, "La exportación temporal venció");
         }
         jdbc.update("UPDATE scouting_exports SET downloaded_at=now() WHERE id=?", exportId);
-        support.audit("EXPORT_DOWNLOADED", "EXPORT", exportId, Map.of());
+        List<String> selectedFields = parseSelectedFields(row.get("selected_fields").toString());
+        support.audit("EXPORT_DOWNLOADED", "EXPORT", exportId, Map.of("selectedFields", selectedFields));
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("exportId", exportId);
+        response.put("reason", row.get("reason"));
+        response.put("selectedFields", selectedFields);
         response.put("payload", support.crypto().decrypt((byte[]) row.get("payload_cipher")));
         return response;
     }
@@ -592,6 +692,37 @@ public class ScoutingProspectService {
     static LocalDate parseDate(String value, String field) {
         try { return LocalDate.parse(value); }
         catch (Exception e) { bad(field + " debe usar YYYY-MM-DD"); return null; }
+    }
+
+    static List<UUID> visibleDuplicateIds(List<UUID> candidates, Predicate<UUID> canAccess) {
+        return candidates.stream().filter(canAccess).toList();
+    }
+
+    static void requireAssignedCriteriaSet(Object assignedCriteriaSetId, UUID requestedCriteriaSetId) {
+        if (assignedCriteriaSetId == null || !requestedCriteriaSetId.toString().equals(assignedCriteriaSetId.toString())) {
+            conflict("El informe debe usar el formulario versionado de la asignación");
+        }
+    }
+
+    static List<String> exportFields(Object rawFields) {
+        if (!(rawFields instanceof List<?>)) bad("fields debe incluir al menos una sección exportable");
+        List<String> fields = new ArrayList<>();
+        Set<String> allowedFields = Set.of("profile", "history", "tournamentContext");
+        for (Object rawField : (List<?>) rawFields) {
+            if (!(rawField instanceof String field) || !allowedFields.contains(field)) bad("fields solo admite profile, history y tournamentContext");
+            if (fields.contains(rawField)) bad("fields no debe repetir secciones");
+            fields.add((String) rawField);
+        }
+        if (fields.isEmpty()) bad("fields debe incluir al menos una sección exportable");
+        return List.copyOf(fields);
+    }
+
+    private List<String> parseSelectedFields(String serialized) {
+        JsonNode values = support.json().readTree(serialized);
+        if (values == null || !values.isArray()) throw new IllegalStateException("selected_fields de exportación debe ser un array JSON");
+        List<String> fields = new ArrayList<>();
+        values.forEach(value -> fields.add(value.asString()));
+        return List.copyOf(fields);
     }
 
     static boolean validStage(String stage) { return List.of("DISCOVERED","PRESELECTED","OBSERVING","OBSERVED","EVALUATED","RECOMMENDED","CONTACTED","TRIAL","ACCEPTED","INCORPORATED","DISCARDED","ARCHIVED").contains(stage); }

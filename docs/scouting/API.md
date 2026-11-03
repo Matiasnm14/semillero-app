@@ -21,10 +21,10 @@ Los scouts acceden a sus prospectos asignados. Coordinación y salvaguarda requi
 
 ## Flujo habitual
 
-1. Revisa duplicados con `GET /prospects/duplicates?firstName=...&lastName=...&birthDate=YYYY-MM-DD` y crea con `POST /prospects`. La respuesta indica si hay coincidencias, sin revelar datos de registros fuera del alcance.
-2. Coordinación asigna uno o más scouts con `POST /assignments`. Una reasignación requiere `reassign: true` y un motivo; también puede asociar un partido, sede y fecha límite.
-3. Coordinación/evaluación crea un conjunto de criterios nuevo con `POST /criteria-sets` y lo publica con `POST /criteria-sets/{id}/publish`. Publicar una versión nueva retira la anterior, que sigue disponible para los informes históricos.
-4. El scout sincroniza `POST /observations/reports` con un `Idempotency-Key` estable. El servidor guarda el informe una sola vez si se reintenta la misma solicitud; reutilizar la clave con otro contenido produce `409`.
+1. Revisa duplicados con `GET /prospects/duplicates?firstName=...&lastName=...&birthDate=YYYY-MM-DD` y crea con `POST /prospects`. La búsqueda actual compara nombre completo normalizado y fecha exacta; solo informa coincidencias dentro del alcance del usuario.
+2. Coordinación/evaluación crea un conjunto de criterios nuevo con `POST /criteria-sets` y lo publica con `POST /criteria-sets/{id}/publish`. Publicar una versión nueva retira la anterior, que sigue disponible para los informes históricos.
+3. Coordinación asigna uno o más scouts con `POST /assignments`, indicando el `criteriaSetId` publicado. Una reasignación requiere `reassign: true` y un motivo; también puede asociar un partido, lugar y fecha límite. Crear un prospecto no crea una asignación de observación automáticamente.
+4. El scout sincroniza `POST /observations/reports` con un `Idempotency-Key` estable y el `assignmentId` que recibió. El conjunto `criteriaSetId` debe coincidir con el formulario fijado en esa asignación. El servidor guarda el informe una sola vez si se reintenta la misma solicitud; reutilizar la clave con otro contenido produce `409`.
 5. Los cambios de etapa se solicitan con `POST /prospects/{id}/stage-transitions`. `RECOMMENDED` y `DISCARDED` quedan pendientes hasta que otra persona los apruebe en `/stage-approval`.
 6. Para menores, salvaguarda registra el consentimiento vigente en `/prospects/{id}/consents`. Coordinación da alcance a esa persona en `/scopes`. Revocarlo cancela en el acto las comunicaciones que aún no se enviaron.
 7. Reclutamiento crea comunicaciones usando una plantilla aprobada y coordina la prueba. La etapa `CONTACTED` requiere que el proveedor institucional acepte un mensaje autorizado. La etapa `TRIAL` requiere invitación aceptada y fecha; `ACCEPTED` requiere prueba completada con resultado favorable.
@@ -34,28 +34,28 @@ Los scouts acceden a sus prospectos asignados. Coordinación y salvaguarda requi
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
-| `GET` | `/prospects?page=0&size=20&stage=DISCOVERED&category=U16` | Lista paginada dentro del alcance activo. `size` máximo: 100. |
+| `GET` | `/prospects?page=0&size=20&stage=DISCOVERED&category=U16` | Lista paginada dentro del alcance del usuario. `page` empieza en 0 y `size` admite hasta 100. |
 | `POST` | `/prospects` | Alta con nombre, apellido, fecha de nacimiento, categoría y posición/origen opcionales. |
 | `GET` | `/prospects/{id}` | Perfil del prospecto para personal con permiso de contenido. |
 | `GET` | `/prospects/duplicates?firstName=&lastName=&birthDate=` | Busca coincidencias exactas sin exponer datos fuera de alcance. |
 | `POST` | `/prospects/{id}/duplicate-review` | Revisión `NOT_DUPLICATE` o consolidación `MERGE` con `canonicalProspectId` y motivo. |
-| `GET`, `POST` | `/assignments` | Consulta y asignación multi-scout. `GET /assignments/mine` lista tareas propias. |
+| `GET`, `POST` | `/assignments` | Asignación multi-scout; requiere fecha (`scheduledAt`), lugar y conjunto de criterios publicado para la categoría del prospecto. `GET /assignments/mine` lista tareas propias y su `criteriaSetId`. |
 | `POST`, `PUT` | `/scopes`, `/scopes/{id}/revoke` | Otorga o revoca alcances por categoría/sede. |
 | `GET`, `POST` | `/criteria-sets` | Consulta/crea una versión inmutable de criterios con cinco descriptores observables por criterio. |
 | `POST` | `/criteria-sets/{id}/publish` | Publica la versión para nuevos informes. |
 | `POST` | `/observations/reports` | Sincroniza el informe y sus puntajes; admite `Idempotency-Key`. |
-| `GET` | `/prospects/{id}/history` | Historial cronológico, número de observaciones y scouts distintos. No calcula una nota global. |
+| `GET` | `/prospects/{id}/history` | Observaciones, decisiones, contactos y `timeline` cronológico; incluye número de observaciones y scouts distintos. No calcula una nota global ni expone destinatarios o mensajes. |
 | `GET` | `/prospects/{id}/context` | Contexto de torneo, partidos y métricas vigentes si ya existe vínculo con ficha. Lectura solamente. |
 | `POST` | `/prospects/{id}/stage-transitions` | Solicita cambio con motivo. Para reabrir, incluye `newEvidenceReference`. |
 | `POST` | `/prospects/{id}/stage-approval` | Aprueba/rechaza `RECOMMENDED` o `DISCARDED`; debe actuar otra persona. |
-| `GET`, `POST` | `/prospects/{id}/consents` | Consulta estado o registra consentimiento de tutor. |
+| `GET`, `POST` | `/prospects/{id}/consents` | Consulta estado o registra consentimiento de tutor. El alta exige `evidenceReference`; detalles del tutor solo se devuelven a salvaguarda. |
 | `POST` | `/prospects/{id}/consents/{consentId}/revoke` | Revocación inmediata con motivo. |
 | `GET`, `POST` | `/prospects/{id}/communications` | Solicita mensaje con plantilla aprobada; la consulta devuelve estado, nunca contenido. |
 | `POST` | `/communications/{id}/retry` | Reintenta una entrega fallida, tras comprobar consentimiento vigente. |
 | `GET`, `POST` | `/message-templates` | Consulta/crea una versión de plantilla. Salvaguarda/coordinación aprueba con `/{id}/approve`. |
 | `POST`, `PUT` | `/trials`, `/trials/{id}/result` | Agenda y registra el resultado de una prueba. |
 | `POST` | `/prospects/{id}/link-player` | Vincula a `{"playerId": 123}` si la identidad coincide con el jugador existente. |
-| `POST`, `GET` | `/exports`, `/exports/{id}` | Genera/descarga JSON cifrado con vencimiento de hasta 60 minutos; solo quien lo solicitó lo descarga. |
+| `POST`, `GET` | `/exports`, `/exports/{id}` | Genera/descarga JSON cifrado con motivo, secciones elegidas y marca de agua lógica; vence en hasta 60 minutos y solo quien lo solicitó lo descarga. |
 | `POST` | `/prospects/{id}/anonymize` | Anonimización inmediata de un prospecto archivado; conserva trazabilidad sin PII. |
 | `GET`, `POST` | `/audit-events`, `/security-alerts` | Consulta eventos/alertas; coordinación o auditoría puede reconocer una alerta. |
 | `GET`, `POST` | `/outbox`, `/outbox/{id}/retry` | Consulta eventos pendientes y reintenta eventos fallidos. |
@@ -81,6 +81,34 @@ Alta:
 ```
 
 Los campos personales se cifran en base de datos. La búsqueda de duplicados usa una huella HMAC, no nombres ni fecha de nacimiento en claro.
+
+Asignación:
+
+```json
+{
+  "prospectId": "c144cb5f-534b-4b3d-9dce-1e536bbf60b0",
+  "scoutUserIds": [42, 43],
+  "criteriaSetId": "88a7dc12-1b7b-4da4-a2d0-fc1b54d8109b",
+  "scheduledAt": "2026-11-05T15:00:00-04:00",
+  "matchId": 12,
+  "dueAt": "2026-11-05T18:00:00-04:00",
+  "location": "La Paz",
+  "reason": "Primera observación"
+}
+```
+
+Exportación autorizada:
+
+```json
+{
+  "prospectId": "c144cb5f-534b-4b3d-9dce-1e536bbf60b0",
+  "reason": "Revisión del comité deportivo",
+  "fields": ["profile", "history"],
+  "expiresInMinutes": 30
+}
+```
+
+`fields` admite `profile`, `history` y `tournamentContext`. La respuesta incluye un watermark lógico con ID de exportación, solicitante y hora de generación.
 
 Informe offline:
 
@@ -143,4 +171,4 @@ Los contactos usan el endpoint institucional configurado en `SCOUTING_CONTACTS_U
 
 Para OIDC, el token debe pasar la validación de emisor, firma, vencimiento y audiencia. Un administrador vincula `subject` a un usuario Semillero existente mediante `POST /config/oidc-identities`; roles se leen de la base de datos, nunca de roles/autorizaciones declaradas por el proveedor. No hay aprovisionamiento automático de usuarios.
 
-La migración `V013__scouting_module.sql` se ejecuta con Flyway al iniciar el backend. También se incluye en `database/init.sql` para bases descartables nuevas.
+Las migraciones `V013__scouting_module.sql` y `V014__scouting_assignment_and_export_controls.sql` se ejecutan con Flyway al iniciar el backend. También se incluyen en `database/init.sql` para bases descartables nuevas. V014 recupera el formulario de asignaciones históricas solo cuando todos sus informes existentes usaron la misma versión; una asignación activa sin versión asociable debe volver a asignarse antes de recibir informes nuevos.

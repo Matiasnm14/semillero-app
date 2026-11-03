@@ -25,7 +25,7 @@ public class ScoutingContactService {
 
     public Map<String,Object> grantConsent(UUID prospectId, Map<String,Object> request) {
         support.require("RESPONSABLE_SALVAGUARDA"); support.requireAccess(prospectId);
-        Map<String,Object> profile = profile(prospectId);
+        Map<String,Object> profile = profile(prospectId, "TUTOR_CONSENT");
         LocalDate dob = LocalDate.parse(profile.get("birthDate").toString());
         if (!dob.plusYears(18).isAfter(LocalDate.now())) ScoutingProspectService.conflict("El prospecto es adulto; no se registra consentimiento de tutor");
         if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM scouting_tutor_consents WHERE prospect_id=? AND revoked_at IS NULL)", Boolean.class, prospectId))) ScoutingProspectService.conflict("Ya existe un consentimiento vigente; revócalo antes de registrar otro");
@@ -39,7 +39,7 @@ public class ScoutingContactService {
         if (!List.of("IN_PERSON", "EMAIL", "PHONE", "DOCUMENT", "PORTAL").contains(channel)) ScoutingProspectService.bad("channel no válido");
         OffsetDateTime grantedAt = ScoutingProspectService.parseTimestamp(request.get("grantedAt"), "grantedAt");
         if (grantedAt == null || grantedAt.isAfter(OffsetDateTime.now())) ScoutingProspectService.bad("grantedAt debe tener fecha válida no futura");
-        String evidence = ScoutingSupport.text(request, "evidenceReference", false);
+        String evidence = requiredEvidenceReference(request);
         UUID id = jdbc.queryForObject("""
                 INSERT INTO scouting_tutor_consents(prospect_id,tutor_payload_cipher,channel,evidence_reference,granted_at,granted_by)
                 VALUES(?,?,?,?,?,?) RETURNING id
@@ -60,20 +60,31 @@ public class ScoutingContactService {
         return consentStatus(consentId);
     }
 
-    @Transactional(readOnly = true)
     public List<Map<String,Object>> consents(UUID prospectId) {
         support.require("RESPONSABLE_SALVAGUARDA", "COORDINADOR_SCOUTING", "SCOUTING_STATUS");
         if (!support.hasRole("SCOUTING_STATUS")) support.requireAccess(prospectId);
-        return jdbc.queryForList("""
-                SELECT id,prospect_id,channel,granted_at,revoked_at,created_at,
+        List<Map<String,Object>> results = jdbc.queryForList("""
+                SELECT id,prospect_id,channel,granted_at,granted_by,evidence_reference,revoked_at,created_at,
                     CASE WHEN revoked_at IS NULL THEN 'ACTIVE' ELSE 'REVOKED' END AS status
                 FROM scouting_tutor_consents WHERE prospect_id=? ORDER BY granted_at DESC
                 """, prospectId);
+        for (Map<String,Object> result : results) {
+            UUID consentId = UUID.fromString(result.get("id").toString());
+            support.audit("CONSENT_STATUS_VIEWED", "CONSENT", consentId, Map.of("purpose", "SAFEGUARDING_STATUS"));
+            if (support.hasRole("RESPONSABLE_SALVAGUARDA")) {
+                byte[] encrypted = (byte[]) support.one("SELECT tutor_payload_cipher FROM scouting_tutor_consents WHERE id=?", consentId).get("tutor_payload_cipher");
+                result.put("tutor", support.crypto().decrypt(encrypted));
+            } else {
+                result.remove("granted_by");
+                result.remove("evidence_reference");
+            }
+        }
+        return results;
     }
 
     public Map<String,Object> createCommunication(UUID prospectId, Map<String,Object> request, String headerKey) {
         support.require("RECLUTADOR", "COORDINADOR_SCOUTING"); support.requireAccess(prospectId);
-        Map<String,Object> profile = profile(prospectId);
+        Map<String,Object> profile = profile(prospectId, "AUTHORIZED_COMMUNICATION");
         String stage = support.one("SELECT stage FROM scouting_prospects WHERE id=?", prospectId).get("stage").toString();
         if (List.of("ARCHIVED", "DISCARDED", "INCORPORATED").contains(stage)) ScoutingProspectService.conflict("El prospecto no admite nuevos contactos en su etapa actual");
         boolean minor = LocalDate.parse(profile.get("birthDate").toString()).plusYears(18).isAfter(LocalDate.now());
@@ -128,16 +139,19 @@ public class ScoutingContactService {
         return communication(id);
     }
 
-    @Transactional(readOnly = true)
     public List<Map<String,Object>> communications(UUID prospectId) {
         support.require("RECLUTADOR", "COORDINADOR_SCOUTING", "RESPONSABLE_SALVAGUARDA", "SCOUTING_STATUS");
         if (!support.hasRole("SCOUTING_STATUS")) support.requireAccess(prospectId);
         // This endpoint never returns the encrypted or rendered message, recipient, or message body.
-        return jdbc.queryForList("""
+        List<Map<String,Object>> results = jdbc.queryForList("""
                 SELECT c.id,c.prospect_id,c.template_id,t.code AS template_code,c.channel,c.status,c.requested_at,c.sent_at,c.attempts,c.last_error
                 FROM scouting_communications c JOIN scouting_message_templates t ON t.id=c.template_id
                 WHERE c.prospect_id=? ORDER BY c.requested_at DESC
                 """, prospectId);
+        for (Map<String,Object> result : results) {
+            support.audit("COMMUNICATION_STATUS_VIEWED", "COMMUNICATION", result.get("id"), Map.of("purpose", "CONTACT_STATUS"));
+        }
+        return results;
     }
 
     @Transactional(readOnly = true)
@@ -151,6 +165,7 @@ public class ScoutingContactService {
         String code = ScoutingSupport.text(request, "code", true);
         String audience = ScoutingSupport.text(request, "audience", true);
         String body = ScoutingSupport.text(request, "body", true);
+        if (code.length() > 80) ScoutingProspectService.bad("code supera 80 caracteres");
         if (!List.of("ADULT", "TUTOR").contains(audience)) ScoutingProspectService.bad("audience debe ser ADULT o TUTOR");
         if (body.length() > 2000 || body.length() < 10) ScoutingProspectService.bad("body debe tener entre 10 y 2000 caracteres");
         int version = jdbc.queryForObject("SELECT coalesce(max(version),0)+1 FROM scouting_message_templates WHERE code=?", Integer.class, code);
@@ -172,6 +187,7 @@ public class ScoutingContactService {
     public Map<String,Object> retryCommunication(UUID id) {
         support.require("COORDINADOR_SCOUTING", "RESPONSABLE_SALVAGUARDA");
         Map<String,Object> row = support.one("SELECT id,prospect_id,consent_id,status FROM scouting_communications WHERE id=?", id);
+        support.requireAccess(UUID.fromString(row.get("prospect_id").toString()));
         if (!"DELIVERY_FAILED".equals(row.get("status"))) ScoutingProspectService.conflict("Solo se reintentan comunicaciones DELIVERY_FAILED");
         if (row.get("consent_id") != null && !Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM scouting_tutor_consents WHERE id=? AND revoked_at IS NULL)", Boolean.class, row.get("consent_id")))) {
             ScoutingProspectService.conflict("No se reintenta: el consentimiento está revocado");
@@ -181,11 +197,12 @@ public class ScoutingContactService {
         return communication(id);
     }
 
-    private Map<String,Object> profile(UUID prospectId) {
+    private Map<String,Object> profile(UUID prospectId, String purpose) {
         support.requireAccess(prospectId);
         Map<String,Object> prospect = support.one("SELECT sensitive_payload,anonymized_at FROM scouting_prospects WHERE id=?", prospectId);
         if (prospect.get("anonymized_at") != null) ScoutingProspectService.conflict("Los datos personales del prospecto ya fueron anonimizados");
         JsonNode payload = support.crypto().decrypt((byte[]) prospect.get("sensitive_payload"));
+        support.audit("PROSPECT_CONTACT_DATA_READ", "PROSPECT", prospectId, Map.of("purpose", purpose));
         Map<String,Object> values = new LinkedHashMap<>();
         for (String key : List.of("firstName","lastName","birthDate","email","phone")) {
             JsonNode value = payload.path(key); values.put(key, value.isMissingNode() || value.isNull() ? null : value.asString());
@@ -212,5 +229,11 @@ public class ScoutingContactService {
         }
         if (content.contains("{{")) ScoutingProspectService.conflict("La plantilla aprobada contiene variables no disponibles");
         return content;
+    }
+
+    static String requiredEvidenceReference(Map<String,Object> request) {
+        String evidence = ScoutingSupport.text(request, "evidenceReference", true);
+        if (evidence.length() > 500) ScoutingProspectService.bad("evidenceReference supera 500 caracteres");
+        return evidence;
     }
 }
