@@ -61,7 +61,17 @@ public class JugadorService {
         entity.setAltura(request.altura());
         entity.setPeso(request.peso());
         entity.setDescripcionJugador(request.descripcionJugador());
-        entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (entity.getId() != null && !admin) {
+            if (request.usuarioId() != null && !request.usuarioId().equals(relations.id(entity.getUsuario()))) {
+                throw new edu.upb.semillero.service.exception.ForbiddenException(
+                        "La edición deportiva no permite cambiar la cuenta titular");
+            }
+        } else {
+            entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
+        }
     }
 
     private JugadorResponseDto toResponse(Jugador entity) {

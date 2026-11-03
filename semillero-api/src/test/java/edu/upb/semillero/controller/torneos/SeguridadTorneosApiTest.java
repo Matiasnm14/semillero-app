@@ -224,22 +224,16 @@ class SeguridadTorneosApiTest {
     }
 
     @Test
-    void elRegistroPublicoPuedeCrearUsuarioClub() throws Exception {
+    void elRegistroPublicoNoPuedeAtribuirseUnClub() throws Exception {
         Usuario usuario = nuevoUsuario();
-        Club club = club("Club del registro público");
-
-        long usuarioClubId = idDe(postJson("/api/v1/usuarios-club",
-                Map.of("usuarioId", usuario.getId()))
-                .andExpect(status().isCreated()));
-        postJson("/api/v1/usuarios-trabaja", Map.of(
-                "usuarioClubId", usuarioClubId,
-                "clubId", club.getId(),
-                "tipoUsuarioClub", "UC"))
-                .andExpect(status().isCreated());
-
-        login(usuario).andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value(Roles.CONSULTA))
-                .andExpect(jsonPath("$.clubId").value(club.getId()));
+        postJson("/api/v1/usuarios-club", Map.of("usuarioId", usuario.getId()))
+                .andExpect(status().isUnauthorized());
+        UsuarioClub vinculo = new UsuarioClub();
+        vinculo.setUsuario(usuario);
+        vinculo = usuariosClub.saveAndFlush(vinculo);
+        postJson("/api/v1/usuarios-trabaja", Map.of("usuarioClubId", vinculo.getId(),
+                "clubId", club("Club protegido").getId(), "tipoUsuarioClub", "UC"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
