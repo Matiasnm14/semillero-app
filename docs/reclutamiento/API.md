@@ -1,6 +1,6 @@
 # API de reclutamiento y contacto
 
-La migración `V015__club_recruitment_and_notifications.sql` amplía `pruebas` y agrega posiciones buscadas, solicitudes de contacto, postulaciones y metadatos de notificación. No reutiliza el flujo `/api/v1/scouting`, que gestiona prospectos.
+La migración `V018__club_recruitment_and_notifications.sql` amplía `pruebas` y agrega posiciones buscadas, solicitudes de contacto, postulaciones y metadatos de notificación. No reutiliza el flujo `/api/v1/scouting`, que gestiona prospectos.
 
 ## Directorio
 
@@ -41,4 +41,4 @@ Las rutas no públicas requieren sesión por defecto. El cliente Flutter actual 
 
 ## Despliegue
 
-En el VPS, Flyway está desactivado y el esquema lo administra el migrador central. Aplicar V015 a la base compartida antes de desplegar este backend; el runtime continúa usando validación de esquema, sin `ddl-auto=update`.
+En el VPS, Flyway está desactivado y el esquema lo administra el migrador central. Aplicar V018 a la base compartida antes de desplegar este backend; el runtime continúa usando validación de esquema, sin `ddl-auto=update`.

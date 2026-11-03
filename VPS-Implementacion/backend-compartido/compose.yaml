@@ -14,10 +14,26 @@ services:
       JWT_SECRET: "${JWT_SECRET:?Define un secreto de firma exclusivo del VPS}"
       SPRING_FLYWAY_ENABLED: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      PUBLIC_WEB_ORIGIN: "${PUBLIC_WEB_ORIGIN:-https://semillero.mandarina-group.cc}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
-      ANALYSIS_ENABLED: "false"
-      ANALYSIS_WORKER_ENABLED: "false"
-      VIDEO_YOUTUBE_ENABLED: "false"
+      ANALYSIS_ENABLED: "${ANALYSIS_ENABLED:-false}"
+      ANALYSIS_WORKER_ENABLED: "${ANALYSIS_WORKER_ENABLED:-false}"
+      ANALYSIS_BASE_URL: "${ANALYSIS_BASE_URL:-}"
+      ANALYSIS_TOKEN: "${ANALYSIS_TOKEN:-}"
+      ANALYSIS_READ_JERSEYS: "${ANALYSIS_READ_JERSEYS:-true}"
+      ANALYSIS_POLL_INTERVAL: "${ANALYSIS_POLL_INTERVAL:-5s}"
+      ANALYSIS_CONNECT_TIMEOUT: "${ANALYSIS_CONNECT_TIMEOUT:-10s}"
+      ANALYSIS_REQUEST_TIMEOUT: "${ANALYSIS_REQUEST_TIMEOUT:-2h}"
+      ANALYSIS_MAX_DURATION: "${ANALYSIS_MAX_DURATION:-6h}"
+      ANALYSIS_MAX_CONCURRENT_JOBS: "1"
+      ANALYSIS_MAX_RESPONSE_BYTES: "${ANALYSIS_MAX_RESPONSE_BYTES:-16777216}"
+      VIDEO_YOUTUBE_ENABLED: "${VIDEO_YOUTUBE_ENABLED:-false}"
+      VIDEO_YOUTUBE_WORKER_ENABLED: "${VIDEO_YOUTUBE_WORKER_ENABLED:-false}"
+      VIDEO_YOUTUBE_PYTHON: /opt/youtube/bin/python
+      VIDEO_YOUTUBE_SCRIPT: /app/scripts/youtube_upload.py
+      VIDEO_YOUTUBE_CLIENT: /var/lib/semillero/youtube/client_secret.json
+      VIDEO_YOUTUBE_TOKENS: /var/lib/semillero/youtube/tokens.json
+      VIDEO_YOUTUBE_CHANNEL: "${VIDEO_YOUTUBE_CHANNEL:-Semillero-Video-Analysis}"
       VIDEO_STORAGE_DIR: /var/lib/semillero/videos
       ANALYSIS_ARTIFACTS_DIR: /var/lib/semillero/analysis
       SPRING_SERVLET_MULTIPART_LOCATION: /var/lib/semillero/tmp/multipart

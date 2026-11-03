@@ -1,3 +1,5 @@
+> Documento histórico. La limpieza manual de este diseño fue sustituida por la limpieza automática del [informe vigente](INFORME_INTEGRACION_SPARK.md). Ver la [adaptación implementada en el backend](INTEGRACION_SPARK_BACKEND.md).
+
 El contrato queda con el mapa de calor como imagen descargable, sin celdas ni valores numéricos en el JSON.
 
 El video original permanecerá en YouTube. La Spark lo recibirá de Spring, lo procesará y conservará temporalmente solo lo necesario para entregar el resultado.

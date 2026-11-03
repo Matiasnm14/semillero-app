@@ -47,6 +47,7 @@ class InscripcionEquipoApiTest {
                 "nombres", "Alan", "apellidos", "Villa",
                 "email", "inscripcion" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));
+        edu.upb.semillero.SesionesDePrueba.autenticar(usuarioId, "ORGANIZADOR");
         clubA = club("Club A");
         clubB = club("Club B");
         clubC = club("Club C");
@@ -121,7 +122,8 @@ class InscripcionEquipoApiTest {
 
         Map<String, Object> usuarioInexistente = inscripcion(categoriaId, clubA);
         usuarioInexistente.put("usuarioId", Long.MAX_VALUE);
-        postJson(INSCRIPCIONES, usuarioInexistente).andExpect(status().isNotFound());
+        // El actor no se toma de una referencia enviada por el cliente.
+        postJson(INSCRIPCIONES, usuarioInexistente).andExpect(status().isForbidden());
     }
 
     @Test

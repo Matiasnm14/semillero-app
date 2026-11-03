@@ -28,10 +28,12 @@ $$;
 \ir migrations/V010__club_profile.sql
 \ir migrations/V011__spark_analysis_contract.sql
 \ir migrations/V012__persistent_video_uploads.sql
-\ir migrations/V013__scouting_module.sql
-\ir migrations/V014__scouting_assignment_and_export_controls.sql
-\ir migrations/V015__club_recruitment_and_notifications.sql
+\ir migrations/V013__documentos_jugador.sql
+\ir migrations/V015__spark_result_checkpoints.sql
+\ir migrations/V016__scouting_module.sql
+\ir migrations/V017__scouting_assignment_and_export_controls.sql
+\ir migrations/V018__club_recruitment_and_notifications.sql
 
 COMMIT;
 
-\echo 'Semillero: esquema completo inicializado (000-014).'
+\echo 'Semillero: esquema completo inicializado (000-013, 015-018).'

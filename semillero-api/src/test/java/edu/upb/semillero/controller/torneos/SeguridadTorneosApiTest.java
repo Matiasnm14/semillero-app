@@ -148,11 +148,7 @@ class SeguridadTorneosApiTest {
         Usuario entrenador = entrenadorDe(suyo);
         String token = token(entrenador);
 
-        long organizadorId = idDe(postJson("/api/v1/usuarios", Map.of("name", "org" + System.nanoTime(),
-                "nombres", "Org", "apellidos", "Org",
-                "email", "org" + System.nanoTime() + "@example.com", "password", CLAVE))
-                .andExpect(status().isCreated()));
-        long inscripcionAjena = inscripcionDe(ajeno, organizadorId);
+        long inscripcionAjena = inscripcionDe(ajeno);
 
         mvc.perform(post(TORNEOS + "/inscripciones/" + inscripcionAjena + "/lista-buena-fe")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -335,7 +331,9 @@ class SeguridadTorneosApiTest {
                 .andExpect(jsonPath("$.clubId").value(club.getId()));
     }
 
-    private long inscripcionDe(Club club, long organizadorId) throws Exception {
+    private long inscripcionDe(Club club) throws Exception {
+        Usuario organizador = usuarioCon(Roles.ORGANIZADOR);
+        String tokenOrganizador = token(organizador);
         Map<String, Object> torneo = new LinkedHashMap<>();
         torneo.put("nombre", "Copa Seguridad");
         torneo.put("temporada", java.time.LocalDate.now().getYear());
@@ -345,9 +343,8 @@ class SeguridadTorneosApiTest {
         torneo.put("fechaInicio", java.time.LocalDate.now().plusDays(20).toString());
         torneo.put("fechaFin", java.time.LocalDate.now().plusDays(100).toString());
         torneo.put("fechaLimiteInscripcion", java.time.LocalDate.now().plusDays(10).toString());
-        torneo.put("usuarioId", organizadorId);
+        torneo.put("usuarioId", organizador.getId());
 
-        String tokenOrganizador = token(usuarioCon(Roles.ORGANIZADOR));
         long torneoId = idDe(mvc.perform(post(TORNEOS)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -370,7 +367,7 @@ class SeguridadTorneosApiTest {
                 .andExpect(status().isOk());
 
         Map<String, Object> inscripcion = Map.of("torneoCategoriaId", categoriaId,
-                "clubId", club.getId(), "usuarioId", organizadorId);
+                "clubId", club.getId(), "usuarioId", organizador.getId());
         return idDe(mvc.perform(post(TORNEOS + "/inscripciones")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOrganizador)
                         .contentType(MediaType.APPLICATION_JSON)

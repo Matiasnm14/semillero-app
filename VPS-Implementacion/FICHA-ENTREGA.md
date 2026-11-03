@@ -8,7 +8,7 @@
 - Imagen: `semillero-backend:<versión>`, construida en la computadora para la arquitectura del VPS.
 - Perfil: `vps`; análisis, workers y YouTube deshabilitados para esta entrega.
 - Base: PostgreSQL compartido, conexión mediante `DB_URL`, `DB_USER`, `DB_PASSWORD`.
-- Migraciones: migrador central; Flyway desactivado en runtime y Hibernate `validate`. El esquema debe ser compatible con V000–V015; aplicar las versiones posteriores a la base compartida antes de desplegar esta entrega.
+- Migraciones: migrador central; Flyway desactivado en runtime y Hibernate `validate`. El esquema debe ser compatible con V000–V013 y V015–V018; aplicar las versiones pendientes a la base compartida antes de desplegar esta entrega.
 - Autenticación: `POST /api/v1/auth/login`, token Bearer; secreto `JWT_SECRET` exclusivo del VPS.
 - Web: orígenes mediante `CORS_ALLOWED_ORIGINS`; sin credenciales de DB en Flutter.
 - Archivos: volumen `backend_data`, ruta interna `/var/lib/semillero` para videos, PNG y temporales de multipart/Java.

@@ -14,4 +14,12 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     Page<Notificacion> findByUsuarioIdAndLeidaOrderByFechaDesc(Long usuarioId, Boolean leida, Pageable pageable);
 
     Page<Notificacion> findByUsuarioIdOrderByFechaDesc(Long usuarioId, Pageable pageable);
+
+    /**
+     * Las de un usuario, de la más nueva a la más vieja. Desempata por id porque
+     * los avisos de un mismo cierre salen en el mismo instante.
+     */
+    List<Notificacion> findByUsuarioIdOrderByFechaDescIdDesc(Long usuarioId);
+
+    List<Notificacion> findByUsuarioIdAndLeidaFalseOrderByFechaDescIdDesc(Long usuarioId);
 }

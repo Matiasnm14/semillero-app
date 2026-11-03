@@ -1,6 +1,7 @@
 package edu.upb.semillero.repository.dto.response;
 
 import edu.upb.semillero.repository.enums.EstadoAnalisis;
+import edu.upb.semillero.repository.enums.EstadoHeatmap;
 import java.time.Instant;
 
 public record AnalysisJobResponseDto(
@@ -8,5 +9,6 @@ public record AnalysisJobResponseDto(
         Double porcentaje, Long fotogramasProcesados, Long fotogramasTotales,
         Instant fechaSolicitud, Instant fechaInicio, Instant fechaFin, Instant fechaActualizacion,
         boolean resultadosDisponibles, boolean respuestaRecibida, String codigoError, String mensajeError,
-        Double segundosProcesados, Double segundosTotales, boolean heatmapDisponible) {
+        Double segundosProcesados, Double segundosTotales, boolean heatmapDisponible,
+        EstadoHeatmap estadoHeatmap) {
 }

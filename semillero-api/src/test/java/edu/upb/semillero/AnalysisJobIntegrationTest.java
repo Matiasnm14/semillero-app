@@ -412,7 +412,12 @@ class AnalysisJobIntegrationTest {
         when(gateway.evaluate(any())).thenReturn(CompletableFuture.completedFuture("{}"));
         worker.processNext();
         await(() -> job(id).getEstado().isTerminal());
-        assertThat(job(id).isRemoteCleanupPending()).isTrue();
+        assertThat(job(id).isRemoteCleanupPending()).isFalse();
+        verify(gateway, never()).cleanup(any());
+        // Only a persisted legacy flag may still request explicit cleanup.
+        var legacy = job(id);
+        legacy.setRemoteCleanupPending(true);
+        jobs.saveAndFlush(legacy);
         when(gateway.cleanup(any())).thenAnswer(call -> {
             assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
             assertThat(job(id).getRespuestaJson()).isEqualTo("{}");
@@ -424,6 +429,47 @@ class AnalysisJobIntegrationTest {
         await(() -> { worker.processNext(); return !job(id).isRemoteCleanupPending(); });
         assertThat(job(id).getRespuestaJson()).isEqualTo("{}");
         verify(gateway, atLeast(2)).cleanup(job(id).getRemoteAnalysisId());
+    }
+
+    @Test
+    void aFailedSecondDeliveryPreservesTheCheckpointAndCompletesWithMapError() throws Exception {
+        long id = create().get("id").asLong();
+        when(gateway.evaluate(any())).thenAnswer(call -> {
+            AnalysisGateway.Submission submission = call.getArgument(0);
+            submission.saveResults().accept("{\"players\":[]}");
+            return CompletableFuture.failedFuture(new AnalysisGatewayException(HEATMAP_LOST));
+        });
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        assertThat(job(id).getRespuestaJson()).isEqualTo("{\"players\":[]}");
+        assertThat(job(id).getEstadoHeatmap()).isEqualTo(EstadoHeatmap.ERROR_DESCARGA);
+        assertThat(job(id).getCodigoError()).isEqualTo("MAPA_CALOR_NO_RECUPERABLE");
+        verify(gateway, never()).cleanup(any());
+    }
+
+    @Test
+    void recoveredCheckpointIsPassedToTheGatewayWithoutUploadingAgain() throws Exception {
+        long id = create().get("id").asLong();
+        var saved = job(id);
+        saved.setRemoteAnalysisId(UUID.randomUUID().toString());
+        saved.setEstado(EstadoAnalisis.PROCESANDO);
+        saved.setEnviado(true);
+        saved.setRespuestaJson("{}");
+        saved.setEstadoHeatmap(EstadoHeatmap.NO_DISPONIBLE);
+        jobs.saveAndFlush(saved);
+        when(gateway.evaluate(any())).thenAnswer(call -> {
+            AnalysisGateway.Submission submission = call.getArgument(0);
+            assertThat(submission.resume()).isTrue();
+            assertThat(submission.savedResults()).isEqualTo("{}");
+            assertThat(submission.savedHeatmap()).isEqualTo(EstadoHeatmap.NO_DISPONIBLE);
+            return CompletableFuture.completedFuture(submission.savedResults());
+        });
+        worker.processNext();
+        await(() -> job(id).getEstado().isTerminal());
+        assertThat(job(id).getRespuestaJson()).isEqualTo("{}");
+        assertThat(job(id).getEstado()).isEqualTo(EstadoAnalisis.COMPLETADO);
+        verify(gateway, never()).cleanup(any());
     }
 
     private AnalysisJobResponseDto createDirect(Long match, Long videoId) {

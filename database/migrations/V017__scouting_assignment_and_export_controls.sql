@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_scouting_assignments_criteria_set
     ON scouting_assignments(criteria_set_id);
 
 ALTER TABLE scouting_exports
-    ADD COLUMN IF NOT EXISTS reason varchar(500) NOT NULL DEFAULT 'Exportación anterior a V014';
+    ADD COLUMN IF NOT EXISTS reason varchar(500) NOT NULL DEFAULT 'Exportación anterior a V017';
 
 ALTER TABLE scouting_exports
     ADD COLUMN IF NOT EXISTS selected_fields jsonb NOT NULL DEFAULT '["profile","history","tournamentContext"]'::jsonb;

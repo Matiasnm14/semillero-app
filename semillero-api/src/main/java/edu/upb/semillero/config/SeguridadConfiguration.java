@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,15 +39,20 @@ import org.springframework.core.annotation.Order;
  *   <li>leer (GET): cualquier usuario con sesión, incluido el rol CONSULTA;</li>
  *   <li>inscribir un equipo y manejar su lista de buena fe: ENTRENADOR, y
  *       también ORGANIZADOR y ADMIN;</li>
+ *   <li>apelar una sanción de su equipo: ENTRENADOR, ORGANIZADOR y ADMIN;</li>
+ *   <li>las notificaciones propias: cualquier usuario con sesión;</li>
+ *   <li>llenar la planilla, cargar los eventos y cerrar el partido:
+ *       MESA_CONTROL, y también ORGANIZADOR y ADMIN;</li>
  *   <li>todo lo demás que escribe (torneos, categorías, reglamento, sedes,
- *       canchas, estados de inscripción y fixture): ORGANIZADOR o ADMIN.</li>
+ *       canchas, estados de inscripción, fixture, reprogramación y reapertura
+ *       de un partido cerrado, sanciones manuales y resolución de apelaciones):
+ *       ORGANIZADOR o ADMIN.</li>
  * </ul>
  *
  * <p>Las cuentas solo las modifica su titular o un administrador. Las
  * asignaciones de administradores y vínculos con clubes requieren ADMIN porque
- * determinan los roles y la propiedad que usa torneos. El acceso público está
- * limitado a autenticación, documentación, datos de referencia y rutas que el
- * flujo de registro actual todavía necesita antes del login.
+ * determinan los roles y la propiedad que usa torneos. El registro de usuarios
+ * y el resto de las rutas compartidas conservan su acceso público.
  *
  * <p>Sin sesión de servidor y sin CSRF porque la API es stateless y se usa con
  * token (tarea S2-01). Cada rechazo queda en {@code auditoria} (tarea S2-04).
@@ -56,8 +62,16 @@ import org.springframework.core.annotation.Order;
 public class SeguridadConfiguration {
     private static final String TORNEOS = "/api/v1/torneos/**";
     private static final String LISTA_BUENA_FE = "/api/v1/torneos/inscripciones/*/lista-buena-fe/**";
+    private static final String[] MESA_DE_CONTROL = {
+            "/api/v1/torneos/partidos/*/planilla/**",
+            "/api/v1/torneos/partidos/*/eventos/**",
+            "/api/v1/torneos/partidos/*/cerrar"};
+    private static final String[] NOTIFICACIONES = {
+            "/api/v1/torneos/notificaciones", "/api/v1/torneos/notificaciones/**"};
     private static final String ORGANIZA = Roles.ORGANIZADOR;
     private static final String ADMINISTRA = Roles.ADMIN;
+    private static final String ENTRENA = Roles.ENTRENADOR;
+    private static final String MESA = Roles.MESA_CONTROL;
 
     private final RegistroAccesoService registro;
     private final JugadorRepository jugadores;
@@ -86,21 +100,20 @@ public class SeguridadConfiguration {
                         sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Rutas usadas por el registro inicial del cliente actual. Se mantienen
-                        // explícitas mientras ese flujo no disponga de un alta transaccional.
+                        // El alta inicial y los catálogos que usa el registro siguen disponibles sin sesión.
                         .requestMatchers(HttpMethod.POST, "/api/v1/usuarios", "/api/v1/jugadores",
-                                "/api/v1/posiciones", "/api/v1/posiciones-jugador",
-                                "/api/v1/clubes").permitAll()
+                                "/api/v1/posiciones", "/api/v1/posiciones-jugador", "/api/v1/clubes")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ciudades/**", "/api/v1/clubes/**",
                                 "/api/v1/paises/**", "/api/v1/posiciones/**", "/api/v1/highlights/**")
+                        .permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                         .requestMatchers("/api/v1/scouting/config/oidc-identities/**").hasRole(ADMINISTRA)
                         .requestMatchers("/api/v1/scouting/**").hasAnyRole(
                                 "SCOUT", "COORDINADOR_SCOUTING", "RECLUTADOR", "EVALUADOR",
                                 "RESPONSABLE_SALVAGUARDA", "SCOUTING_AUDITOR", "SCOUTING_CONFIG",
                                 "SCOUTING_STATUS")
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-                        .permitAll()
                         // Los administradores solo los asigna otro administrador.
                         .requestMatchers("/api/v1/roles", "/api/v1/usuarios/*/roles")
                         .hasRole(ADMINISTRA)
@@ -149,11 +162,26 @@ public class SeguridadConfiguration {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/partidos/{id}", "/api/v1/participaciones-partido/{id}", "/api/v1/fichados/{id}")
                         .hasAnyRole(ORGANIZA, ADMINISTRA)
                         .requestMatchers(LISTA_BUENA_FE)
-                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
                         .requestMatchers(HttpMethod.POST, "/api/v1/torneos/inscripciones")
-                        .hasAnyRole(Roles.ENTRENADOR, ORGANIZA, ADMINISTRA)
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
+                        // La planilla, los eventos y el cierre los carga la mesa de control
+                        // (HU 9 y 10); qué partido puede tocar lo controla AccesoTorneos.
+                        .requestMatchers(MESA_DE_CONTROL)
+                        .hasAnyRole(MESA, ORGANIZA, ADMINISTRA)
+                        // Cada uno maneja sus avisos (HU 14); de quién son lo controla
+                        // AccesoTorneos con el token.
+                        .requestMatchers(NOTIFICACIONES).authenticated()
+                        // El entrenador apela una sanción de su equipo (HU 13); resolverla
+                        // es del organizador.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/torneos/sanciones/*/apelaciones")
+                        .hasAnyRole(ENTRENA, ORGANIZA, ADMINISTRA)
                         .requestMatchers(TORNEOS).hasAnyRole(ORGANIZA, ADMINISTRA)
-                        .anyRequest().authenticated())
+                        // Los documentos del jugador llevan datos sensibles: exigen sesión y
+                        // el servicio controla, por jugador, quién puede verlos y aprobarlos.
+                        .requestMatchers("/api/v1/documentos-jugador", "/api/v1/documentos-jugador/**")
+                        .authenticated()
+                        .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(this::sinSesion)
                         .accessDeniedHandler(sinPermiso()))
@@ -180,12 +208,14 @@ public class SeguridadConfiguration {
     private AuthorizationDecision usuarioPropioOClubOAdministrador(
             Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
         Authentication actual = autenticacion.get();
-        if (actual == null || !actual.isAuthenticated()
-                || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+        if (actual == null || !actual.isAuthenticated()) {
             return new AuthorizationDecision(false);
         }
         if (esAdministrador(actual)) {
             return new AuthorizationDecision(true);
+        }
+        if (!(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+            return new AuthorizationDecision(false);
         }
         Long usuarioObjetivo;
         try {
@@ -209,12 +239,14 @@ public class SeguridadConfiguration {
     private AuthorizationDecision jugadorPropioOClubOAdministrador(
             Supplier<? extends Authentication> autenticacion, RequestAuthorizationContext contexto) {
         Authentication actual = autenticacion.get();
-        if (actual == null || !actual.isAuthenticated()
-                || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+        if (actual == null || !actual.isAuthenticated()) {
             return new AuthorizationDecision(false);
         }
         if (esAdministrador(actual)) {
             return new AuthorizationDecision(true);
+        }
+        if (!(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
+            return new AuthorizationDecision(false);
         }
         Long jugadorId;
         try {
@@ -239,7 +271,9 @@ public class SeguridadConfiguration {
                 || !(actual.getPrincipal() instanceof UsuarioAutenticado usuario)) {
             return new AuthorizationDecision(false);
         }
-        if (esAdministrador(actual)) return new AuthorizationDecision(true);
+        if (esAdministrador(actual)) {
+            return new AuthorizationDecision(true);
+        }
         try {
             Long jugadorId = Long.valueOf(contexto.getVariables().get("id"));
             return new AuthorizationDecision(jugadores.findById(jugadorId)
@@ -256,12 +290,18 @@ public class SeguridadConfiguration {
                 .anyMatch(rol -> ("ROLE_" + ADMINISTRA).equals(rol.getAuthority()));
     }
 
-    /** 401: no vino token, o no servía. */
+    /**
+     * 401: no vino token, o no servía. Tarea S4-10: el error dice cuál de las
+     * dos, porque la app tiene que saber si mandar al login o si renovar.
+     */
     private void sinSesion(HttpServletRequest request, HttpServletResponse response,
             org.springframework.security.core.AuthenticationException excepcion) throws IOException {
-        registrar(request, null, "Sin token válido");
-        responder(request, response, HttpStatus.UNAUTHORIZED,
-                "Hace falta iniciar sesión: mandá el token en Authorization: Bearer");
+        String cabecera = request.getHeader(HttpHeaders.AUTHORIZATION);
+        boolean vinoToken = cabecera != null && !cabecera.isBlank();
+        registrar(request, null, vinoToken ? "Token inválido o vencido" : "Sin token");
+        responder(request, response, HttpStatus.UNAUTHORIZED, vinoToken
+                ? "El token no es válido o ya venció: volvé a iniciar sesión en /api/v1/auth/login"
+                : "Hace falta iniciar sesión: mandá el token en Authorization: Bearer");
     }
 
     /** 403: el token es válido pero al usuario le falta el rol. */

@@ -4,6 +4,7 @@ import edu.upb.semillero.controller.dto.PageResponse;
 import edu.upb.semillero.repository.dto.request.torneos.SedeRequestDto;
 import edu.upb.semillero.repository.dto.response.torneos.SedeResponseDto;
 import edu.upb.semillero.service.torneos.SedeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+@Tag(name = "Torneos - HU 3", description = "Sedes")
 @RestController
 @RequestMapping("/api/v1/torneos/sedes")
 public class SedeController {

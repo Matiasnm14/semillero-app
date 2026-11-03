@@ -7,6 +7,7 @@ import edu.upb.semillero.repository.dto.response.torneos.AuditoriaResponseDto;
 import edu.upb.semillero.repository.dto.response.torneos.InscripcionEquipoResponseDto;
 import edu.upb.semillero.repository.enums.torneos.EstadoInscripcion;
 import edu.upb.semillero.service.torneos.InscripcionEquipoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+@Tag(name = "Torneos - HU 4 y 6", description = "Inscripción de equipos, aprobación con motivo e historial")
 @RestController
 @RequestMapping("/api/v1/torneos/inscripciones")
 public class InscripcionEquipoController {

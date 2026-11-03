@@ -8,22 +8,23 @@ Compose utiliza `network_mode: host`, sin publicación `ports`. Spring escucha e
 
 Las credenciales existentes están en `/home/backend/proyecto/.env.db`. El archivo no se copia a Git, a la imagen ni al paquete compartible. Compose lee ese archivo con `--env-file /home/backend/proyecto/.env.db` y después un `.env` privado del despliegue, con permisos `0600`, que conserva `JWT_SECRET`, versión y CORS sin duplicar las credenciales SQL. No ejecutar el contenido de los archivos de configuración como código shell.
 
-El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. Esta versión del backend necesita el esquema compatible con V000–V015, incluida la migración de convocatorias, postulaciones, contacto y notificaciones. El responsable del migrador central debe aplicar V013–V015 antes de desplegar este backend. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
+El migrador central mantiene el esquema. El perfil `vps` y Compose desactivan Flyway y conservan Hibernate `validate`. El backend de esta entrega necesita el esquema compatible con V000–V013 y V015–V018. Un error de validación se resuelve coordinando la migración central; no cambiando a `update`, activando Flyway en el runtime ni ejecutando `init.sql`. En desarrollo local continúa el flujo habitual de Flyway al iniciar.
 
 ## Imagen y almacenamiento
 
-Java 21, curl, FFmpeg/FFprobe; UID/GID 10001, raíz de solo lectura, límite inicial de 1 GiB/una CPU. El script de arranque crea las carpetas faltantes sin elevar privilegios. El volumen `backend_data` se monta en `/var/lib/semillero`:
+Java 21, curl, FFmpeg/FFprobe y Python con uploader y dependencias fijadas; UID/GID 10001, raíz de solo lectura, límite inicial de 1 GiB/una CPU. El script de arranque crea las carpetas faltantes sin elevar privilegios. El volumen `backend_data` se monta en `/var/lib/semillero`:
 
 | Ruta interna | Uso |
 | --- | --- |
 | `videos` | Originales MP4 |
 | `analysis` | Mapas de calor PNG |
+| `youtube` | Cliente OAuth, tokens renovables y metadatos del canal, privados |
 | `tmp/multipart` | Temporales de recepción |
 | `tmp/runtime` | Temporales de Java y procesos auxiliares |
 
 Los videos no se escriben en el pequeño tmpfs `/tmp`. Reservar disco para originales y temporales concurrentes. Recrear el contenedor conserva el volumen; no usar `down -v` para actualizar ni cambiar permisos recursivamente sobre datos existentes.
 
-La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark, workers y YouTube permanecen deshabilitados; no se incluye Python/uploader/OAuth. Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
+La carga autorizada valida el MP4 y responde `202` con el análisis pendiente persistido. Spark y su worker están deshabilitados por defecto y pueden activarse mediante las variables de la plantilla después de aplicar V015 y configurar el token; ver [integración Spark](../../docs/INTEGRACION_SPARK_BACKEND.md). YouTube también puede habilitarse por configuración; el runtime incluye Python y el uploader, mientras OAuth se instala por separado en el volumen privado. Ver [preparación y validación de la entrega](../../docs/ENTREGA_SPARK_YOUTUBE_VPS.md). Se mantiene multipart hasta 2 GiB; las cargas reanudables de 12 GiB y la limpieza automática del original están pendientes.
 
 ## Construcción y publicación
 
@@ -61,7 +62,9 @@ No ejecutar `up` hasta verificar que esa versión del esquema está instalada y 
 
 `JWT_SECRET` debe ser aleatorio y estable entre despliegues. No es un JWT de usuario ni `ANALYSIS_TOKEN`. Los secretos se mantienen fuera de Git; valores con caracteres especiales deben usar comillas simples de dotenv. No imprimir `.env` ni `docker compose config` sin `--quiet`.
 
-CORS vacío admite la web en el mismo origen. Confirmar las URLs HTTPS de web/API y configurar orígenes exactos cuando difieran. Las rutas protegidas conservan la autenticación y los permisos por partido. Antes de habilitar videos grandes a través del proxy, revisar sus límites de cuerpo y tiempos de espera.
+`PUBLIC_WEB_ORIGIN` identifica el origen HTTPS de la web publicada; su valor predeterminado es `https://semillero.mandarina-group.cc`. Se permite explícitamente porque Caddy conecta a Spring por HTTP local, aunque el navegador use HTTPS. Un `CORS_ALLOWED_ORIGINS` vacío conserva ese permiso; la variable sirve para agregar otros orígenes separados por comas. Usar orígenes sin ruta ni barra final. No es necesario habilitar confianza general en cabeceras reenviadas para esta corrección. Las rutas protegidas conservan la autenticación y los permisos por partido. Antes de habilitar videos grandes a través del proxy, revisar sus límites de cuerpo y tiempos de espera.
+
+La validación de JWT admite exclusivamente la cabecera `alg: HS256`, además de comprobar firma y vencimiento. Los tokens ya emitidos por el backend conservan su validez hasta expirar, sin cambiar `JWT_SECRET`.
 
 Para actualizar, cargar una imagen nueva, cambiar solo `APP_IMAGE` y recrear con Compose. Conservar secretos, base y volumen. Una reversión de imagen requiere comprobar compatibilidad con el esquema administrado centralmente.
 

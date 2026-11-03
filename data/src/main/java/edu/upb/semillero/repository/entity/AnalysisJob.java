@@ -1,6 +1,7 @@
 package edu.upb.semillero.repository.entity;
 
 import edu.upb.semillero.repository.enums.EstadoAnalisis;
+import edu.upb.semillero.repository.enums.EstadoHeatmap;
 import jakarta.persistence.*;
 import java.time.Instant;
 import lombok.Getter;
@@ -42,6 +43,9 @@ public class AnalysisJob extends BaseEntity {
     private String resultadoRef;
     @Column(name = "respuesta_json", columnDefinition = "text")
     private String respuestaJson;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_heatmap", nullable = false, length = 24)
+    private EstadoHeatmap estadoHeatmap = EstadoHeatmap.PENDIENTE;
     @Column(name = "remote_analysis_id", length = 64, unique = true)
     private String remoteAnalysisId;
     @Column(name = "segundos_procesados")

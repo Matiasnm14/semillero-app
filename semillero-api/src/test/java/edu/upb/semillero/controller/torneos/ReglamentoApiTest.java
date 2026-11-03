@@ -40,6 +40,7 @@ class ReglamentoApiTest {
                 "nombres", "Ignacio", "apellidos", "Daza",
                 "email", "reglamento" + System.nanoTime() + "@example.com",
                 "password", "secreto123"));
+        edu.upb.semillero.SesionesDePrueba.autenticar(organizadorId, "ORGANIZADOR");
     }
 
     @Test

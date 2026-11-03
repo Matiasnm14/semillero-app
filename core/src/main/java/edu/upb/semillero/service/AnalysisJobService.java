@@ -92,7 +92,9 @@ public class AnalysisJobService {
             throw new ConflictException("El análisis todavía no está completado");
         }
         if (!artifacts.exists(job.getRemoteAnalysisId())) {
-            throw new NotFoundException("Mapa de calor no disponible para este análisis; puede faltar calibración de cancha");
+            throw new NotFoundException(job.getEstadoHeatmap() == edu.upb.semillero.repository.enums.EstadoHeatmap.ERROR_DESCARGA
+                    ? "El JSON está guardado, pero no se pudo conservar la entrega del mapa de calor"
+                    : "Mapa de calor no disponible para este análisis; puede faltar calibración de cancha");
         }
         return artifacts.heatmap(job.getRemoteAnalysisId());
     }
@@ -123,6 +125,7 @@ public class AnalysisJobService {
                 job.getFechaSolicitud(), job.getFechaInicio(), job.getFechaFin(), job.getFechaActualizacion(),
                 job.isResultadosDisponibles(), job.getRespuestaJson() != null, job.getCodigoError(), job.getMensajeError(),
                 job.getSegundosProcesados(), job.getSegundosTotales(),
-                job.getEstado() == EstadoAnalisis.COMPLETADO && artifacts.exists(job.getRemoteAnalysisId()));
+                job.getEstado() == EstadoAnalisis.COMPLETADO && artifacts.exists(job.getRemoteAnalysisId()),
+                job.getEstadoHeatmap());
     }
 }

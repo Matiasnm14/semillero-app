@@ -16,7 +16,7 @@ public class DatabaseMigrationConfiguration {
     private static final Set<String> BASE_TABLES = Set.of("pais", "ciudad", "clubes", "users", "administrador",
             "usuarios_club", "usuario_trabaja", "jugadores", "posiciones", "posiciones_jugador", "fichado",
             "pruebas", "clinica_de_pago", "videos", "conversa", "partidos", "participaciones_partido");
-    // Previous development profiles also created these video, tournament and shared tables
+    // Previous development profiles also created video, tournament, scouting and shared tables
     // through Hibernate. Recognize only project tables: an unrelated schema must still fail closed.
     private static final Set<String> OPTIONAL_TABLES = Set.of("videos_partido", "analysis_jobs", "player_match_metrics",
             "sedes", "canchas", "torneos", "reglamentos", "criterios_desempate", "reglamento_desempates",
@@ -29,7 +29,7 @@ public class DatabaseMigrationConfiguration {
             "scouting_exports",
             "scouting_tutor_consents", "scouting_message_templates", "scouting_communications",
             "scouting_trials", "scouting_player_links", "scouting_outbox", "scouting_audit_events",
-            "scouting_security_alerts");
+            "scouting_security_alerts", "documentos_jugador");
     private static final Map<String, Set<String>> LEGACY_SIGNATURE = Map.of(
             "clubes", Set.of("id", "nombre_club", "ciudad_id"),
             "users", Set.of("id", "email", "password_hash"),
