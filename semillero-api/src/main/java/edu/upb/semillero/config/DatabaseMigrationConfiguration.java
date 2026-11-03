@@ -24,7 +24,9 @@ public class DatabaseMigrationConfiguration {
             "planillas", "planilla_cuerpo_tecnico", "eventos_partido", "sanciones", "apelaciones",
             "auditoria", "notificaciones", "roles", "usuarios_roles", "documentos_jugador",
             "scouting_preferencia", "scouting_solicitud", "scouting_evento", "scouting_correo",
-            "scouting_guardado", "scouting_acceso", "scouting_bloqueo", "scouting_cuota");
+            "scouting_guardado", "scouting_acceso", "scouting_bloqueo", "scouting_cuota",
+            "scouting_convocatoria", "scouting_convocatoria_posicion", "scouting_convocatoria_requisito",
+            "scouting_inscripcion_prueba", "scouting_evaluacion_prueba");
     private static final Map<String, Set<String>> LEGACY_SIGNATURE = Map.of(
             "clubes", Set.of("id", "nombre_club", "ciudad_id"),
             "users", Set.of("id", "email", "password_hash"),

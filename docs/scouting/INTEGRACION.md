@@ -32,6 +32,9 @@ sin coordinar esos cambios con frontend. El registro genérico de cuentas contin
 disponible; no concede rol ni afiliación por sí mismo.
 
 El contrato de contactos está en [API_CONTACTOS.md](API_CONTACTOS.md).
+El backend de convocatorias y evaluación individual está documentado en
+[PRUEBAS_SELECCION.md](PRUEBAS_SELECCION.md), incluido en esta entrega.
+Flutter queda fuera del alcance y no conserva cambios nuestros.
 El correo sigue en outbox pendiente de configuración: **no hay envío real**.
 Menores y edad desconocida quedan bloqueados hasta implementar tutor verificado.
 
@@ -42,6 +45,11 @@ propias de bloqueos y cuotas, sin modificar V016. No se cambian scripts
 históricos, roles ni tablas maestras. V011 ya está ocupada por Spark y V013 por
 documentos de jugador. **V016 y V017 siguen pendientes de confirmar contra
 el historial real del VPS y de reservar con el administrador.** No usar Flyway repair.
+
+La nueva V018 de pruebas de esta rama también requiere coordinación. El último
+`scouting/backend-final` tiene V016–V018 distintas e incompatibles con esta secuencia.
+El diagnóstico del error `missing table [inscripciones_prueba]` y la comprobación
+del arranque de esa otra rama están en [ARRANQUE_Y_MIGRACIONES.md](ARRANQUE_Y_MIGRACIONES.md).
 
 El runtime VPS mantiene Flyway desactivado y Hibernate en validate. El administrador
 aplica el esquema con el migrador central y respaldo previo; después se publica el
@@ -124,3 +132,12 @@ Estos resultados habilitan el push para revisión del backend. **No equivalen a
 una aceptación del sistema completo Flutter + VPS ni a tener correo real**:
 esas integraciones pendientes siguen enumeradas arriba. Antes de desplegar,
 confirmar los números SQL y adaptar el frontend a los contratos de privacidad.
+
+## Validación de convocatorias y evaluación individual (03/11/2026)
+
+Con la implementación nueva de pruebas se ejecutó nuevamente `./mvnw clean verify`
+en Docker: **571 casos, cero fallas, errores u omitidos**. Además, los ocho casos
+nuevos de `ConvocatoriaPruebaApiTest` pasaron en PostgreSQL 17 con Flyway activado
+y Hibernate en `validate`. No se migró el VPS. La validación de `backend-final`
+descrita en el diagnóstico se hizo en una copia aislada; sus contratos y permisos
+no se integraron ni se aprobaron como parte de esta rama.
