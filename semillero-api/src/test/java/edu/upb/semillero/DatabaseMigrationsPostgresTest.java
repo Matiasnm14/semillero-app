@@ -351,7 +351,7 @@ class DatabaseMigrationsPostgresTest {
             first.get(45, TimeUnit.SECONDS);
             second.get(45, TimeUnit.SECONDS);
             assertCurrent();
-            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 16 : 15);
+            assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history", Integer.class)).isEqualTo(existing ? 18 : 17);
         }
         try (var ignored = start(true, "validate")) { assertCurrent(); }
     }

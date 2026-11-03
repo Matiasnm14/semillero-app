@@ -1,5 +1,5 @@
 -- New version: never edits V016 or other teams' tables. Numbers pending DB coordination.
-CREATE TABLE scouting_bloqueo (
+CREATE TABLE IF NOT EXISTS scouting_bloqueo (
     id varchar(80) PRIMARY KEY,
     jugador_id bigint NOT NULL,
     club_id bigint NOT NULL,
@@ -11,10 +11,10 @@ CREATE TABLE scouting_bloqueo (
         (activo AND desbloqueado_en IS NULL) OR
         (NOT activo AND desbloqueado_en IS NOT NULL AND desbloqueado_en >= bloqueado_en))
 );
-CREATE INDEX idx_sc_bloqueo_jugador ON scouting_bloqueo(jugador_id,activo,bloqueado_en DESC,id);
-CREATE TABLE scouting_cuota (
+CREATE INDEX IF NOT EXISTS idx_sc_bloqueo_jugador ON scouting_bloqueo(jugador_id,activo,bloqueado_en DESC,id);
+CREATE TABLE IF NOT EXISTS scouting_cuota (
     id varchar(100) PRIMARY KEY,
     fecha date NOT NULL,
     usadas integer NOT NULL CHECK(usadas >= 0)
 );
-CREATE INDEX idx_sc_cuota_fecha ON scouting_cuota(fecha);
+CREATE INDEX IF NOT EXISTS idx_sc_cuota_fecha ON scouting_cuota(fecha);

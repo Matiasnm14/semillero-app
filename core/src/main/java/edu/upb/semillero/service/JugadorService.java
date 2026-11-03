@@ -57,7 +57,6 @@ public class JugadorService {
 
     private void apply(Jugador entity, JugadorRequestDto request) {
         entity.setPiernaHabil(request.piernaHabil());
-        entity.setFechaNacimiento(request.fechaNacimiento());
         entity.setAltura(request.altura());
         entity.setPeso(request.peso());
         entity.setDescripcionJugador(request.descripcionJugador());
@@ -65,11 +64,17 @@ public class JugadorService {
         boolean admin = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         if (entity.getId() != null && !admin) {
+            if (request.fechaNacimiento() != null
+                    && !request.fechaNacimiento().equals(entity.getFechaNacimiento())) {
+                throw new edu.upb.semillero.service.exception.ForbiddenException(
+                        "La edición deportiva no permite cambiar la fecha de nacimiento");
+            }
             if (request.usuarioId() != null && !request.usuarioId().equals(relations.id(entity.getUsuario()))) {
                 throw new edu.upb.semillero.service.exception.ForbiddenException(
                         "La edición deportiva no permite cambiar la cuenta titular");
             }
         } else {
+            entity.setFechaNacimiento(request.fechaNacimiento());
             entity.setUsuario(relations.find(Usuario.class, request.usuarioId()));
         }
     }

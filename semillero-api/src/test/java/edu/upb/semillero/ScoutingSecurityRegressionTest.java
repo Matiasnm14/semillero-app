@@ -128,4 +128,24 @@ class ScoutingSecurityRegressionTest {
             .andExpect(status().isForbidden());
     }
 
+    @Test void playerCannotChangeAgeToBypassScoutingSafeguards() throws Exception {
+        Usuario owner = user(); Jugador j = player(owner);
+        j.setFechaNacimiento(LocalDate.now().minusYears(16)); j = players.saveAndFlush(j);
+        mvc.perform(put("/api/v1/jugadores/"+j.getId()).header("Authorization",token(owner,null))
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                        "fechaNacimiento",LocalDate.now().minusYears(20).toString()))))
+            .andExpect(status().isForbidden());
+        assertThat(players.findById(j.getId()).orElseThrow().getFechaNacimiento())
+            .isEqualTo(LocalDate.now().minusYears(16));
+    }
+    @Test void ownSportsUpdatePreservesIdentityAndBirthDateWhenOmitted() throws Exception {
+        Usuario owner = user(); Jugador j = player(owner);
+        mvc.perform(put("/api/v1/jugadores/"+j.getId()).header("Authorization",token(owner,null))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"altura\":1.8,\"peso\":75}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.usuarioId").value(owner.getId()))
+            .andExpect(jsonPath("$.fechaNacimiento").value(j.getFechaNacimiento().toString()));
+        mvc.perform(get("/api/v1/jugadores/"+j.getId()).header("Authorization",token(owner,null)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.altura").value(1.8));
+    }
+
 }
